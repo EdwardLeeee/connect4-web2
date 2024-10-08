@@ -2,10 +2,13 @@ const socket = io();
 let playerColor;
 let myTurn = false;
 
+// Emit 'join' event to the server with the room ID
+socket.emit('join', { room: roomId });
+
 socket.on('startGame', (data) => {
   playerColor = data.player;
-  alert(`You are playing as ${playerColor}`);
-  myTurn = (playerColor === 'red');
+  alert(`You are ${playerColor}`);
+  myTurn = (playerColor === 'player1');
 });
 
 const gameBoard = document.getElementById('gameBoard');
@@ -27,7 +30,7 @@ for (let r = 0; r < rows; r++) {
 function makeMove(event) {
   if (!myTurn) return;
   const col = event.target.dataset.col;
-  socket.emit('makeMove', { col, player: playerColor });
+  socket.emit('makeMove', { col, player: playerColor, room: roomId });
 }
 
 socket.on('moveMade', (data) => {
@@ -54,3 +57,4 @@ socket.on('gameOver', (data) => {
     myTurn = false;
   }, 100);
 });
+

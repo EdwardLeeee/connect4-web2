@@ -5,14 +5,50 @@ body {
   justify-content: center;
   height: 100vh;
   margin: 0;
-  background-color: #282c34;
-  color: blue;
+  background-color: lightblue;
+  color: white; /*標題顏色*/
   font-family: Arial, sans-serif;
-  background-color: lightblue; /* 改變棋盤的背景色 */
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.room-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+input[type="text"] {
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+button {
+  padding: 10px;
+  font-size: 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  background-color: #007bff;
+  color: white;
+}
+
+button:hover {
+  background-color: #0056b3;
 }
 
 #gameBoard {
-		background-color: lightblue; /* 改變棋盤的背景色 */
   display: grid;
   grid-template-columns: repeat(7, 80px);
   grid-template-rows: repeat(6, 80px);
@@ -31,11 +67,11 @@ body {
   position: relative;
 }
 
-.red {
+.player1 {
   background-color: lightgreen;
 }
 
-.yellow {
+.player2 {
   background-color: lightpink;
 }
 

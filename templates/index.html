@@ -2,14 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Room {{ room_id }}</title>
   <link rel="stylesheet" href="/static/style.css">
-  <title>Online Connect 4</title>
+  <!-- Include the roomId variable -->
+  <script>
+    const roomId = "{{ room_id }}";
+  </script>
 </head>
 <body>
-  <h1>Connect 4</h1>
+  <h1>Connect 4 - Room {{ room_id }}</h1>
   <div id="gameBoard"></div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
   <script src="/static/script.js"></script>
 </body>
 </html>
+

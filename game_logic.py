@@ -23,3 +23,31 @@ def check_winner(board, player):
                 return True
 
     return False
+    
+def get_winning_cells(board, player):
+    winning_cells = []
+
+    for row in range(6):
+        for col in range(7):
+            # 檢查水平
+            if col + 3 < 7 and board[row][col] == board[row][col + 1] == board[row][col + 2] == board[row][col + 3] == player:
+                winning_cells = [{'row': row, 'col': col + i} for i in range(4)]
+                return winning_cells
+
+            # 檢查垂直
+            if row + 3 < 6 and board[row][col] == board[row + 1][col] == board[row + 2][col] == board[row + 3][col] == player:
+                winning_cells = [{'row': row + i, 'col': col} for i in range(4)]
+                return winning_cells
+
+            # 檢查對角線 \
+            if row + 3 < 6 and col + 3 < 7 and board[row][col] == board[row + 1][col + 1] == board[row + 2][col + 2] == board[row + 3][col + 3] == player:
+                winning_cells = [{'row': row + i, 'col': col + i} for i in range(4)]
+                return winning_cells
+
+            # 檢查對角線 /
+            if row + 3 < 6 and col - 3 >= 0 and board[row][col] == board[row + 1][col - 1] == board[row + 2][col - 2] == board[row + 3][col - 3] == player:
+                winning_cells = [{'row': row + i, 'col': col - i} for i in range(4)]
+                return winning_cells
+
+    return winning_cells
+

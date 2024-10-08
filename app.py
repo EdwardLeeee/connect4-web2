@@ -1,56 +1,82 @@
 # 使用 Flask 和 Flask-SocketIO
-from flask import Flask, render_template, request
-from flask_socketio import SocketIO, emit
-from game_logic import check_winner
+from flask import Flask, render_template, request, redirect, url_for
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_cors import CORS
+import random
+import game_logic
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
-socketio = SocketIO(app)
-CORS(app)  # 這行會允許所有來源的跨域請求
+CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
-players = []
-turn = 'red'
-
-board = [['' for _ in range(7)] for _ in range(6)]
+players = {}
+turn = {}
+board = {}
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('home.html')
 
-@socketio.on('connect')
-def handle_connect():
-    print('A user connected')
-    players.append(request.sid)
+@app.route('/create_room')
+def create_room():
+    room_id = str(random.randint(1000, 9999))
+    players[room_id] = []
+    turn[room_id] = 'player1'
+    board[room_id] = [['' for _ in range(7)] for _ in range(6)]
+    return redirect(url_for('room', room_id=room_id))
 
-    if len(players) == 2:
-        socketio.emit('startGame', {'player': 'red'}, room=players[0])
-        socketio.emit('startGame', {'player': 'yellow'}, room=players[1])
+@app.route('/room/<room_id>')
+def room(room_id):
+    if room_id in players:
+        return render_template('index.html', room_id=room_id)
+    else:
+        return "Room not found", 404
+
+@socketio.on('join')
+def on_join(data):
+    room_id = data['room']
+    sid = request.sid
+    if room_id in players:
+        join_room(room_id)
+        players[room_id].append(sid)
+        if len(players[room_id]) == 2:
+            socketio.emit('startGame', {'player': 'player1'}, room=players[room_id][0])
+            socketio.emit('startGame', {'player': 'player2'}, room=players[room_id][1])
+    else:
+        emit('roomNotFound')
 
 @socketio.on('makeMove')
 def handle_make_move(data):
-    global turn, board
+    room_id = data['room']
     col = int(data['col'])
     player = data['player']
 
-    if player != turn:
+    if player != turn[room_id]:
         return
 
     for row in range(5, -1, -1):
-        if board[row][col] == '':
-            board[row][col] = player
-            emit('moveMade', {'col': col, 'row': row, 'player': player}, broadcast=True)
-            if check_winner(board, player):
-                emit('highlightWinningCells', {'player': player}, broadcast=True)
-                emit('gameOver', {'winner': player}, broadcast=True)
-            turn = 'yellow' if turn == 'red' else 'red'
+        if board[room_id][row][col] == '':
+            board[room_id][row][col] = player
+            emit('moveMade', {'col': col, 'row': row, 'player': player}, room=room_id)
+            
+            # 檢查贏家
+            if game_logic.check_winner(board[room_id], player):
+                winning_cells = game_logic.get_winning_cells(board[room_id], player)  # 回傳贏家棋子的座標
+                emit('highlightWinningCells', {'winningCells': winning_cells}, room=room_id)
+                emit('gameOver', {'winner': player}, room=room_id)
+            
+            turn[room_id] = 'player2' if turn[room_id] == 'player1' else 'player1'
             break
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    print('A user disconnected')
-    if request.sid in players:
-        players.remove(request.sid)
+    sid = request.sid
+    for room_id, sids in players.items():
+        if sid in sids:
+            sids.remove(sid)
+            leave_room(room_id)
+            break
 
 if __name__ == '__main__':
-    socketio.run(app, port=5000, host='0.0.0.0',debug=True)
+    socketio.run(app, host='0.0.0.0', port=55555, debug=True)

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/style.css">
+  <title>Online Connect 4 - Home</title>
+</head>
+<body>
+  <div class="container">
+    <div class="room-box">
+      <input type="text" id="roomInput" placeholder="輸入房間 ID">
+      <button onclick="joinRoom()">加入房間</button>
+      <button onclick="createRoom()">創建房間</button>
+    </div>
+  </div>
+  <script>
+    function joinRoom() {
+      const roomId = document.getElementById('roomInput').value;
+      if (roomId) {
+        window.location.href = `/room/${roomId}`;
+      } else {
+        alert('請輸入房間 ID');
+      }
+    }
+
+    function createRoom() {
+      window.location.href = '/create_room';
+    }
+  </script>
+</body>
+</html>
