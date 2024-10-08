@@ -37,8 +37,20 @@ socket.on('moveMade', (data) => {
   myTurn = (data.player !== playerColor);
 });
 
+socket.on('highlightWinningCells', (data) => {
+  // 假設 check_winner 函數回傳了贏的棋子位置
+  const winningCells = data.winningCells;
+  winningCells.forEach((cell) => {
+    const { row, col } = cell;
+    const winningCell = document.querySelector(`[data-row='${row}'][data-col='${col}']`);
+    winningCell.classList.add('winning-cell');
+  });
+});
+
 socket.on('gameOver', (data) => {
-  alert(`${data.winner} wins!`);
-  // 遊戲結束後，禁止再進行操作
-  myTurn = false;
+  // 遊戲結束提示
+  setTimeout(() => {
+    alert(`${data.winner} wins!`);
+    myTurn = false;
+  }, 100);
 });

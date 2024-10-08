@@ -39,6 +39,7 @@ def handle_make_move(data):
             board[row][col] = player
             emit('moveMade', {'col': col, 'row': row, 'player': player}, broadcast=True)
             if check_winner(board, player):
+                emit('highlightWinningCells', {'player': player}, broadcast=True)
                 emit('gameOver', {'winner': player}, broadcast=True)
             turn = 'yellow' if turn == 'red' else 'red'
             break
@@ -50,4 +51,4 @@ def handle_disconnect():
         players.remove(request.sid)
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True,port=5555,host='0.0.0.0')
+    socketio.run(app, port=5555, host='0.0.0.0',debug=True)

@@ -6,11 +6,13 @@ body {
   height: 100vh;
   margin: 0;
   background-color: #282c34;
-  color: white;
+  color: blue;
   font-family: Arial, sans-serif;
+  background-color: lightblue; /* 改變棋盤的背景色 */
 }
 
 #gameBoard {
+		background-color: lightblue; /* 改變棋盤的背景色 */
   display: grid;
   grid-template-columns: repeat(7, 80px);
   grid-template-rows: repeat(6, 80px);
@@ -26,12 +28,24 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 .red {
-  background-color: red;
+  background-color: lightgreen;
 }
 
 .yellow {
-  background-color: yellow;
+  background-color: lightpink;
 }
+
+.winning-cell::after {
+  content: 'X';
+  color: black;
+  font-size: 48px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
