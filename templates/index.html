@@ -10,7 +10,11 @@
   </script>
 </head>
 <body>
-  <h1>Connect 4 - Room {{ room_id }}</h1>
+  <h1  style="margin-top: 10px;">Connect 4 - Room {{ room_id }}</h1>
+  <div id="turnIndicator" class="turn-indicator">
+    <span id="turnText">Waiting for the game to start...</span>
+  </div>
+  
   <div id="gameBoard"></div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
   <script src="/static/script.js"></script>

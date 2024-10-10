@@ -9,9 +9,9 @@
 <body>
   <div class="container">
     <div class="room-box">
-      <input type="text" id="roomInput" placeholder="輸入房間 ID">
-      <button onclick="joinRoom()">加入房間</button>
-      <button onclick="createRoom()">創建房間</button>
+      <input type="text" id="roomInput" placeholder="Input room ID">
+      <button onclick="joinRoom()">Join room</button>
+      <button onclick="createRoom()">Create room</button>
     </div>
   </div>
   <script>
@@ -20,7 +20,7 @@
       if (roomId) {
         window.location.href = `/room/${roomId}`;
       } else {
-        alert('請輸入房間 ID');
+        alert('Please input room ID');
       }
     }
 

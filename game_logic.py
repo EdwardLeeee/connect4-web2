@@ -50,4 +50,18 @@ def get_winning_cells(board, player):
                 return winning_cells
 
     return winning_cells
+    
+def check_draw(board):
+    """
+    檢查是否平局。
+
+    :param board: 目前的棋盤（6x7 的二維列表）
+    :return: 如果棋盤已滿，則返回 True，否則返回 False。
+    """
+    for row in board:
+        for cell in row:
+            if cell == '':  # 如果有空位，則不是平局
+                return False
+    return True
+
 

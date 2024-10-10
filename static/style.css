@@ -52,8 +52,19 @@ button:hover {
   display: grid;
   grid-template-columns: repeat(7, 80px);
   grid-template-rows: repeat(6, 80px);
-  gap: 10px;
+  gap: 15px;
   margin-top: 20px;
+}
+/* 添加媒体查询以适配移动设备 */
+@media (max-width: 1300px) {
+  #gameBoard {
+    width: 85vw; /* 让棋盘宽度为屏幕的 90% */
+    height: auto;
+    grid-template-columns: repeat(7, 1fr);
+    grid-template-rows: repeat(6, 1fr);
+    gap: 15px;
+  }
+
 }
 
 .cell {
@@ -61,7 +72,8 @@ button:hover {
   height: 80px;
   background-color: #eee;
   border-radius: 50%;
-  display: flex;
+  display: inline-block;
+  /*display: flex;*/
   align-items: center;
   justify-content: center;
   position: relative;
@@ -69,10 +81,12 @@ button:hover {
 
 .player1 {
   background-color: lightgreen;
+  border: 3px solid darkgreen; /* 深綠色邊框 */
 }
 
 .player2 {
   background-color: lightpink;
+  border: 3px solid darkred; /* 深紅色邊框 */
 }
 
 .winning-cell::after {
@@ -83,5 +97,51 @@ button:hover {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+}
+.turn-indicator {
+  display: flex;
+  align-items: center;
+  /*margin-top: 5px;*/
+  font-size: 24px;
+}
+
+/*彈出視窗*/
+.dialog {/*對話匡*/
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+}
+
+.dialog-content {/*對話匡內容*/
+  background: white;
+  padding: 20px;
+  border-radius: 15px;/*圓邊*/
+  text-align: center;
+  color: black;
+  width: 50%;
+  max-width: 600px;
+  font-size: 50px;
+}
+
+#closeDialogButton {
+  padding: 10px;
+  margin-top: 5px;
+  font-size: 40px;
+  cursor: pointer;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+}
+
+#closeDialogButton:hover {
+  background-color: #0056b3;
 }
 

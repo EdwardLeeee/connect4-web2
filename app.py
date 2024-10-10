@@ -59,15 +59,20 @@ def handle_make_move(data):
         if board[room_id][row][col] == '':
             board[room_id][row][col] = player
             emit('moveMade', {'col': col, 'row': row, 'player': player}, room=room_id)
-            
+
             # 檢查贏家
             if game_logic.check_winner(board[room_id], player):
                 winning_cells = game_logic.get_winning_cells(board[room_id], player)  # 回傳贏家棋子的座標
                 emit('highlightWinningCells', {'winningCells': winning_cells}, room=room_id)
                 emit('gameOver', {'winner': player}, room=room_id)
-            
-            turn[room_id] = 'player2' if turn[room_id] == 'player1' else 'player1'
-            break
+                return
+            # 使用 game_logic 檢查平局
+            elif game_logic.check_draw(board[room_id]):
+                emit('gameOver', {'winner': None}, room=room_id)  # 廣播平局事件
+                return
+            else:
+                turn[room_id] = 'player2' if turn[room_id] == 'player1' else 'player1'
+                break
 
 @socketio.on('disconnect')
 def handle_disconnect():
