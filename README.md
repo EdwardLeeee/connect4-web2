@@ -1,6 +1,7 @@
 ## 線上連線 Connect 4
 ### 網址
-想玩的話可以點以下連
+想玩的話可以點以下連結
+
 [線上Connect4](https://oraclelee.run.place)
 ### 須安裝之套件
 ```
