@@ -23,13 +23,16 @@ sudo ln -s /etc/nginx/sites-available/connect4.conf /etc/nginx/sites-enabled/
 ```
 #### 3. 申請SSL憑證
 > 3.1 如果還沒有申請到憑證，請先把和SSL憑證相關的設置註解掉。
+>
 > 3.2 請務必打開網頁API，不然申請時會502 Bad Gateway。
+>
 > 3.3 請打開 http/https 的防火牆
 > ```
 > sudo ufw allow 80/tcp
 > sudo ufw allow 443/tcp
 > sudo ufw reload
 > ```
+>
 > 3.4 請打開數據機的 port
 
 ```
