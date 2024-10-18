@@ -1,6 +1,0 @@
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 516-099-167
-(23030) wsgi starting up on http://127.0.0.1:55555
-(23030) accepted ('127.0.0.1', 40824)
-127.0.0.1 - - [18/Oct/2024 16:55:10] "GET / HTTP/1.1" 200 1010 0.002241
