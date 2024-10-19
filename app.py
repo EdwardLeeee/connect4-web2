@@ -84,4 +84,4 @@ def handle_disconnect():
             break
 
 if __name__ == '__main__':
-    socketio.run(app, host='127.0.0.1', port=55555, debug=True)
+    socketio.run(app, host='0.0.0.0', port=55555, debug=True)
