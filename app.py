@@ -84,4 +84,5 @@ def handle_disconnect():
             break
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=55555, debug=True)
+    # debug 必須false，不然不能背景執行
+    socketio.run(app, host='127.0.0.1', port=55555, debug=False)
