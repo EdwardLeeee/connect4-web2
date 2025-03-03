@@ -4,6 +4,10 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_cors import CORS
 import random
 import game_logic
+import ai
+import mcts_table  # 匯入 MCTS 查表系統
+
+ai_mode = {}
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
@@ -13,6 +17,18 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 players = {}
 turn = {}
 board = {}
+
+# 預先載入 MCTS 查表資料
+mcts_table.load_table()
+
+@app.route('/create_ai_room')
+def create_ai_room():
+    room_id = str(random.randint(1000, 9999))
+    players[room_id] = []
+    turn[room_id] = 'player1'
+    board[room_id] = [['' for _ in range(7)] for _ in range(6)]
+    ai_mode[room_id] = True
+    return redirect(url_for('room', room_id=room_id))
 
 @app.route('/')
 def index():
@@ -39,10 +55,14 @@ def on_join(data):
     sid = request.sid
     if room_id in players:
         join_room(room_id)
-        players[room_id].append(sid)
-        if len(players[room_id]) == 2:
-            socketio.emit('startGame', {'player': 'player1'}, room=players[room_id][0])
-            socketio.emit('startGame', {'player': 'player2'}, room=players[room_id][1])
+        if room_id in ai_mode and ai_mode[room_id]:
+            players[room_id].append(sid)
+            emit('startGame', {'player': 'player1', 'mode': 'ai'})
+        else:
+            players[room_id].append(sid)
+            if len(players[room_id]) == 2:
+                socketio.emit('startGame', {'player': 'player1', 'mode': 'pvp'}, room=players[room_id][0])
+                socketio.emit('startGame', {'player': 'player2', 'mode': 'pvp'}, room=players[room_id][1])
     else:
         emit('roomNotFound')
 
@@ -55,24 +75,49 @@ def handle_make_move(data):
     if player != turn[room_id]:
         return
 
+    # 玩家落子
     for row in range(5, -1, -1):
         if board[room_id][row][col] == '':
             board[room_id][row][col] = player
             emit('moveMade', {'col': col, 'row': row, 'player': player}, room=room_id)
+            break
 
-            # 檢查贏家
-            if game_logic.check_winner(board[room_id], player):
-                winning_cells = game_logic.get_winning_cells(board[room_id], player)  # 回傳贏家棋子的座標
+    # 檢查玩家是否勝利
+    if game_logic.check_winner(board[room_id], player):
+        winning_cells = game_logic.get_winning_cells(board[room_id], player)
+        emit('highlightWinningCells', {'winningCells': winning_cells}, room=room_id)
+        emit('gameOver', {'winner': player}, room=room_id)
+        return
+    elif game_logic.check_draw(board[room_id]):
+        emit('gameOver', {'winner': None}, room=room_id)
+        return
+    else:
+        if room_id in ai_mode and ai_mode[room_id]:
+            # AI 落子（優先查 MCTS 查表）
+            turn[room_id] = 'player1'  # 玩家始終為 player1
+            ai_col = mcts_table.get_best_move(board[room_id])  # 優先查表
+
+            # 如果查表沒找到，才用 MCTS 即時計算
+            if ai_col is None:
+                ai_col = ai.get_ai_move(board[room_id], depth=6)
+
+            # 落子並傳送結果
+            for row in range(5, -1, -1):
+                if board[room_id][row][ai_col] == '':
+                    board[room_id][row][ai_col] = 'ai'
+                    emit('moveMade', {'col': ai_col, 'row': row, 'player': 'ai'}, room=room_id)
+                    break
+
+            if game_logic.check_winner(board[room_id], 'ai'):
+                winning_cells = game_logic.get_winning_cells(board[room_id], 'ai')
                 emit('highlightWinningCells', {'winningCells': winning_cells}, room=room_id)
-                emit('gameOver', {'winner': player}, room=room_id)
+                emit('gameOver', {'winner': 'ai'}, room=room_id)
                 return
-            # 使用 game_logic 檢查平局
             elif game_logic.check_draw(board[room_id]):
-                emit('gameOver', {'winner': None}, room=room_id)  # 廣播平局事件
+                emit('gameOver', {'winner': None}, room=room_id)
                 return
-            else:
-                turn[room_id] = 'player2' if turn[room_id] == 'player1' else 'player1'
-                break
+        else:
+            turn[room_id] = 'player2' if turn[room_id] == 'player1' else 'player1'
 
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -84,5 +129,9 @@ def handle_disconnect():
             break
 
 if __name__ == '__main__':
-    # debug 必須false，不然不能背景執行
+    # 啟動 Flask 伺服器時，先讀取 MCTS 查表
+    mcts_table.load_table()
+
+    # debug 必須 false，不然不能背景執行
     socketio.run(app, host='127.0.0.1', port=55555, debug=False)
+

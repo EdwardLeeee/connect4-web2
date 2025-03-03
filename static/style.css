@@ -102,6 +102,12 @@ button:hover {
   border: 3px solid darkred; /* 深紅色邊框 */
 }
 
+.ai {
+  background-color: #D946EF; /* 霓虹紫 */
+  border: 3px solid #6B21A8; /* 深紫 */
+}
+
+
 .winning-cell::after {
   content: 'X';
   color: black;

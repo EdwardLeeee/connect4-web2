@@ -37,7 +37,9 @@ function makeMove(event) {
 socket.on('moveMade', (data) => {
   // Update the game board on the frontend
   const cell = document.querySelector(`[data-row='${data.row}'][data-col='${data.col}']`);
+  
   cell.classList.add(data.player);
+  
   myTurn = (data.player !== playerColor);
   updateTurnIndicator();
 });
