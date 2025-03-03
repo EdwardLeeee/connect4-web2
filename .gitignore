@@ -1,5 +1,10 @@
 __pycache__/
 nohup.out
-* .c
-* .so
+# 忽略 Cython 產生的 .c 和 .so 檔案
+*.so
+*.c
+build/
+dist/
+*.o
+*.pyd
 __pycache__/
