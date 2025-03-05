@@ -1,10 +1,3 @@
-## 機器人
-```
-pip install cython
-pip install numpy
-python3 cpy_setup.py build_ext --inplace
-python3 cpy_run.py
-```
 ## 線上連線 Connect 4
 ### 網址
 想玩的話可以點以下連結
@@ -148,3 +141,10 @@ ps aux | grep python | grep -v grep
 - `grep python` 過濾出包含 "python" 的進程。
 - 使用這個命令可以快速檢查 Python 進程的運行情況，比如正在運行哪些 Python 程序，以及它們的資源佔用情況。
 
+## 建立蒙地卡羅查表
+```
+pip install cython
+pip install numpy
+python3 cpy_setup.py build_ext --inplace
+python3 cpy_run.py
+```
