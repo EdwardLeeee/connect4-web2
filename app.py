@@ -99,6 +99,7 @@ def handle_make_move(data):
 
             # 如果查表沒找到，才用 MCTS 即時計算
             if ai_col is None:
+                # print('沒有表')
                 ai_col = ai.get_ai_move(board[room_id], depth=6)
 
             # 落子並傳送結果

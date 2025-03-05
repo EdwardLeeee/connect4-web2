@@ -1,3 +1,10 @@
+## 機器人
+```
+pip install cython
+pip install numpy
+python3 cpy_setup.py build_ext --inplace
+python3 cpy_run.py
+```
 ## 線上連線 Connect 4
 ### 網址
 想玩的話可以點以下連結
