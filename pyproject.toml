@@ -1,0 +1,44 @@
+[build-system]
+requires = ["maturin>=1.8,<2"]
+build-backend = "maturin"
+
+[project]
+name = "connect4-web"
+version = "2.0.0"
+description = "Server-authoritative Connect Four with a native perfect-play solver"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "anyio==4.9.0",
+  "fastapi==0.116.1",
+  "pydantic==2.11.7",
+  "starlette==0.47.2",
+  "uvicorn[standard]==0.35.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx==0.28.1",
+  "pytest>=8.4,<9",
+  "pytest-asyncio>=1.1,<2",
+  "ruff>=0.12,<1",
+]
+
+[tool.maturin]
+manifest-path = "native_solver/Cargo.toml"
+module-name = "connect4_app._solver"
+python-source = "backend"
+features = ["pyo3/extension-module"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+asyncio_mode = "auto"
+pythonpath = ["backend"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]

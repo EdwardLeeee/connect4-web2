@@ -1,0 +1,26 @@
+[Unit]
+Description=Connect 4 rootless Podman service
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+ExecStartPre=-/usr/bin/podman rm --force --ignore connect4
+ExecStart=/usr/bin/podman run \
+    --name connect4 \
+    --replace \
+    --rm \
+    --log-driver=journald \
+    --publish 127.0.0.1:55555:55555 \
+    --env-file %h/.config/connect4/connect4.env \
+    --cap-drop all \
+    --security-opt no-new-privileges \
+    localhost/connect4-web:production
+ExecStop=-/usr/bin/podman stop --time 30 connect4
+ExecStopPost=-/usr/bin/podman rm --force --ignore connect4
+Restart=always
+RestartSec=5s
+TimeoutStartSec=120s
+TimeoutStopSec=45s
+
+[Install]
+WantedBy=default.target

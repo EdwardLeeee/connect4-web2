@@ -1,150 +1,112 @@
-## 線上連線 Connect 4
-### 網址
-想玩的話可以點以下連結
+# Connect 4
 
-[線上Connect4](https://connect4.oraclelee.com)
-### 須安裝之套件
-```
-pip install flask flask-socketio eventlet flask-cors
+一個伺服器權威的即時四子棋：支援 Perfect AI、私人房與隨機配對，介面提供繁體中文／英文，並針對現代 iPhone 與 Samsung Galaxy 版面驗證。
+
+## 技術架構
+
+- `backend/connect4_app/`：FastAPI、原生 WebSocket、匿名 Cookie 工作階段與房間狀態。
+- `native_solver/`：PyO3 擴充，封裝 `connect-four-ai` 1.0.0 精確求解器。
+- `frontend/`：Vue 3、TypeScript、Pinia、Vue I18n 與響應式棋盤。
+- `Containerfile`、`deploy/`：Podman 正式映像、環境設定範例與 systemd user service。
+
+AI 會算出每個合法落子的精確終局分數，再選擇最高分手；同分時固定採中央優先。沒有深度限制、隨機弱化或啟發式備援。原生引擎若故障，該局會停止並回報錯誤。
+
+## 本機開發
+
+需要 Python 3.10+、stable Rust、Node.js 22+：
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -e '.[dev]'
+npm --prefix frontend install
 ```
 
-### 設置反向代理器教學
-#### 1. 複製設定檔到設定區
-```
-sudo cp /path/to/connect4.conf /etc/nginx/sites-available
+分別啟動 API 與 Vite：
+
+```bash
+.venv/bin/uvicorn connect4_app.app:app --host 127.0.0.1 --port 55555 --reload
+npm --prefix frontend run dev
 ```
 
-#### 2. 綁定設定檔至啟用區
-> 如果預設還在的話請刪掉它 
-> ```
-> sudo rm /etc/nginx/sites-enabled/default
-> ```
-```
-sudo ln -s /etc/nginx/sites-available/connect4.conf /etc/nginx/sites-enabled/
-```
-#### 3. 申請SSL憑證
-> 3.1 如果還沒有申請到憑證，請先只設定80 port轉service的port就好，先不要設定SSL相關配置！！！！！。
->
-> 3.2 請務必打開網頁API，不然申請時會502 Bad Gateway。
->
-> 3.4 請打開數據機的 port
->
-> 3.3 請打開 http/https 的防火牆
-> ```
-> sudo ufw allow 80/tcp
-> sudo ufw allow 443/tcp
-> sudo ufw reload
-> ```
+開啟 `http://127.0.0.1:5173`。正式執行時先跑 `npm --prefix frontend run build`，再以單一 Uvicorn worker 啟動；房間狀態目前存於記憶體，不可使用多 worker。
 
+## 驗證
+
+```bash
+.venv/bin/pytest
+.venv/bin/ruff check backend tests
+npm --prefix frontend test
+npm --prefix frontend run build
 ```
-sudo apt update
-sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d oraclelee.run.place
+
+手機矩陣測試涵蓋 390×844 至 440×956 的 iPhone 14 Pro Max～17 系列，以及 Galaxy S26 Ultra 直向／橫向：
+
+```bash
+cd frontend
+npx playwright install --with-deps chromium webkit
+npm run test:e2e
 ```
-#### 4. 重新載入nignx設置
-##### 4.1 刪掉暫時配置（http)
+
+測試會檢查水平溢位、44px 觸控目標、鍵盤高度與視覺基準。
+
+## 設定與部署
+
+正式網址為 `https://connect4.oraclelee.com`。正式主機需要 Podman 3.4+、
+systemd user service、Nginx 與有效的 TLS 憑證；開發機不需要安裝以下服務。
+
+### 建置映像
+
+在正式主機拉取已驗證的 `main` 後建置：
+
+```bash
+git pull --ff-only origin main
+podman build --format docker --file Containerfile --tag localhost/connect4-web:production .
 ```
-sudo rm /etc/nginx/sites-enabled/xxx.conf 
+
+映像會分階段建置 Vue、Rust/PyO3 與 Python 套件；最終容器以非 root
+帳號執行單一 Uvicorn worker。不要在正式環境加入 `--reload` 或增加
+worker，因為房間與配對狀態目前存於單一程序記憶體。Podman 3.x 必須使用
+Docker image format，才能保留映像內的 `HEALTHCHECK`。
+
+### 安裝 rootless 背景服務
+
+```bash
+install -d -m 700 ~/.config/connect4 ~/.config/systemd/user
+install -m 600 deploy/connect4.env.example ~/.config/connect4/connect4.env
+install -m 644 deploy/connect4.service ~/.config/systemd/user/connect4.service
+sudo loginctl enable-linger "$(id -un)"
+systemctl --user daemon-reload
+systemctl --user enable --now connect4.service
 ```
-##### 4.2 載入有SSL憑證的設置
+
+`connect4.env` 的正式預設值為：
+
+```bash
+CONNECT4_COOKIE_SECURE=1
+CONNECT4_ALLOWED_ORIGINS=https://connect4.oraclelee.com
 ```
-sudo ln -s /etc/nginx/sites-available/xxx.conf /etc/nginx/sites-enabled
-```
-##### 4.3 重新載入設置
-```  
+
+服務只發布到 `127.0.0.1:55555`，由 Nginx 對外提供 HTTPS 與 WebSocket。
+反向代理範例位於 `connect4.conf`；確認憑證路徑後安裝並重新載入：
+
+```bash
+sudo install -m 644 connect4.conf /etc/nginx/sites-available/connect4.conf
+sudo ln -s /etc/nginx/sites-available/connect4.conf /etc/nginx/sites-enabled/connect4.conf
+sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-### 背景執行
-```
-nohup python3 app.py &
-```
-#### 關掉
-> 詳見[ps aux | grep python 教學](#ps-aux-|-grep-python-教學)
-```
-ps aux | grep python
-```
-找到它的PID，然後kill掉
-```
-kill xxx
-```
-
-## ps aux | grep python 教學
-`ps aux | grep python` 是一個非常常見的命令，用來查找與 Python 相關的正在運行的進程。這裡是這個命令的分解解釋：
-
-### 1. **`ps` 命令**
-`ps` 是一個顯示系統當前正在運行進程的工具。它提供了有關正在執行的進程的詳細信息。
-
-- **`a`**：顯示當前終端下所有用戶的進程（包括其他用戶的進程），而不僅僅是當前用戶的進程。
-- **`u`**：以用戶為基礎顯示進程，這會顯示更多關於進程的詳細信息，包括用戶、CPU 和內存使用率、啟動時間等。
-- **`x`**：顯示沒有控制終端的進程，這樣可以列出包括守護進程在內的所有進程。
-
-### 2. **管道 (`|`)**
-管道將 `ps aux` 的輸出結果傳遞給後面的命令。這裡是將 `ps aux` 的結果傳遞給 `grep` 命令，方便進一步篩選。
-
-### 3. **`grep python`**
-`grep` 是一個用來在文本中查找模式的命令。在這裡，`grep` 用來過濾 `ps aux` 的結果，只顯示包含 `python` 的行。
-
-### 輸出解釋
-運行 `ps aux | grep python` 之後，你會看到類似這樣的輸出：
-
-```
-user      12345  0.1  2.3 123456 7890 ?        S    12:34   0:01 python3 app.py
-user      12350  0.0  0.0   7080  2048 pts/2    S+   12:35   0:00 grep --color=auto python
-```
-
-下面是輸出每個欄位的解釋：
-
-1. **USER**：進程的擁有者（即運行該進程的用戶）。
-2. **PID**：進程 ID（每個運行的進程都有一個唯一的 ID）。
-3. **%CPU**：該進程佔用的 CPU 百分比。
-4. **%MEM**：該進程佔用的內存百分比。
-5. **VSZ**：該進程使用的虛擬內存大小（以 KB 為單位）。
-6. **RSS**：該進程使用的實際物理內存大小（以 KB 為單位）。
-7. **TTY**：進程的控制終端。如果是 `?`，表示該進程沒有控制終端（如守護進程）。
-8. **STAT**：進程狀態：
-   - **S**：休眠狀態（sleeping）
-   - **R**：運行狀態（running）
-   - **Z**：僵屍進程（zombie）
-   - **T**：已停止（stopped）
-9. **START**：進程的啟動時間。
-10. **TIME**：進程已經使用的總 CPU 時間。
-11. **COMMAND**：運行的命令，包括其參數。在這裡你會看到 `python3 app.py` 或 `grep python` 等命令。
-
-### 示例分析
-```
-user      12345  0.1  2.3 123456 7890 ?        S    12:34   0:01 python3 app.py
-```
-- **user**：進程是由用戶 `user` 運行的。
-- **12345**：這是進程的 ID。
-- **0.1**：該進程佔用了 0.1% 的 CPU。
-- **2.3**：該進程佔用了 2.3% 的內存。
-- **123456**：該進程使用了 123456 KB 的虛擬內存。
-- **7890**：該進程使用了 7890 KB 的物理內存。
-- **?**：該進程沒有控制終端（因為它可能是守護進程或在後台運行）。
-- **S**：進程處於休眠狀態（正在等待某些事件發生）。
-- **12:34**：該進程啟動的時間是 12:34。
-- **0:01**：該進程已經使用了 1 秒的 CPU 時間。
-- **python3 app.py**：這是執行的命令。
-
-### 注意：
-最後一行通常會是 `grep` 命令本身的輸出（例如 `grep --color=auto python`），因為它也是一個進程，並且包含 `python` 這個關鍵詞。如果你不想看到這一行，可以使用以下命令來排除它：
+若啟用連結已存在，保留現有連結即可。正式切換前依序檢查：
 
 ```bash
-ps aux | grep python | grep -v grep
+systemctl --user status connect4.service
+curl --fail http://127.0.0.1:55555/api/health
+curl --fail https://connect4.oraclelee.com/api/health
+journalctl --user-unit connect4.service --follow
 ```
 
-`grep -v grep` 用來排除包含 `grep` 字樣的行。
+只有原生精確求解器自測通過，`GET /api/health` 才回傳 HTTP 200。更新版本時
+重新 `git pull --ff-only`、建置相同 production tag，再執行
+`systemctl --user restart connect4.service`。程序重啟會清除進行中的房間與配對。
 
-### 總結：
-- `ps aux` 列出當前所有正在運行的進程。
-- `grep python` 過濾出包含 "python" 的進程。
-- 使用這個命令可以快速檢查 Python 進程的運行情況，比如正在運行哪些 Python 程序，以及它們的資源佔用情況。
-
-## 建立蒙地卡羅查表
-```
-pip install cython
-pip install numpy
-python3 cpy_setup.py build_ext --inplace
-python3 cpy_run.py
-```
+設計基準位於 [Figma](https://www.figma.com/design/TGSIdojzAJC6BKL31CbW8m)。

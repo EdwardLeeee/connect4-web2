@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="mint-glow" cx="0" cy="0" r="1">
+      <stop offset="0" stop-color="#66d3a3" stop-opacity=".2" />
+      <stop offset="1" stop-color="#66d3a3" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="pink-glow" cx="0" cy="0" r="1">
+      <stop offset="0" stop-color="#f38fae" stop-opacity=".18" />
+      <stop offset="1" stop-color="#f38fae" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#f7f3ee" />
+  <circle cx="130" cy="105" r="330" fill="url(#mint-glow)" />
+  <circle cx="1100" cy="590" r="370" fill="url(#pink-glow)" />
+  <circle
+    cx="354"
+    cy="351"
+    r="128"
+    fill="#f38fae"
+    stroke="#973a5a"
+    stroke-width="28"
+  />
+  <circle
+    cx="242"
+    cy="253"
+    r="128"
+    fill="#66d3a3"
+    stroke="#176747"
+    stroke-width="28"
+  />
+  <text
+    x="540"
+    y="290"
+    fill="#21332d"
+    font-family="Noto Sans CJK TC, Noto Sans TC, Arial, sans-serif"
+    font-size="102"
+    font-weight="800"
+    letter-spacing="-4"
+  >
+    CONNECT 4
+  </text>
+  <text
+    x="548"
+    y="370"
+    fill="#365e56"
+    font-family="Noto Sans CJK TC, Noto Sans TC, Arial, sans-serif"
+    font-size="34"
+    font-weight="700"
+  >
+    數學最優 AI · 好友對戰 · 隨機配對
+  </text>
+</svg>

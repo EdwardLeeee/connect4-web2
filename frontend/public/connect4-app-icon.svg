@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#f7f3ee" />
+  <circle
+    cx="306"
+    cy="306"
+    r="112"
+    fill="#f38fae"
+    stroke="#973a5a"
+    stroke-width="24"
+  />
+  <circle
+    cx="206"
+    cy="206"
+    r="112"
+    fill="#66d3a3"
+    stroke="#176747"
+    stroke-width="24"
+  />
+</svg>

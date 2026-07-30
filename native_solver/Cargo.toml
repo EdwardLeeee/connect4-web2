@@ -1,0 +1,13 @@
+[package]
+name = "connect4-native-solver"
+version = "2.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "_solver"
+crate-type = ["cdylib"]
+
+[dependencies]
+connect-four-ai = "=1.0.0"
+pyo3 = { version = "0.29", features = ["abi3-py310"] }

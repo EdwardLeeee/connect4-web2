@@ -1,0 +1,26 @@
+{
+  "id": "/",
+  "name": "Connect 4 四子棋",
+  "short_name": "Connect 4",
+  "description": "與數學最優 AI、朋友或線上玩家進行四子棋對戰。",
+  "lang": "zh-Hant",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7f3ee",
+  "theme_color": "#f7f3ee",
+  "icons": [
+    {
+      "src": "/connect4-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/connect4-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
