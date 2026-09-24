@@ -54,7 +54,12 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
-      - run: docker build --file Containerfile --tag connect4-web:ci .
+      - run: >-
+          docker build --file Containerfile --tag connect4-web:ci
+          --label org.opencontainers.image.revision=${{ github.sha }}
+          --label org.opencontainers.image.version=${{ github.ref_name }}
+          --label org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          .
       # Release tags (v*) publish the tested image to GHCR; the host then pulls it with
       # deploy/deploy.sh instead of rebuilding from source.
       - if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')

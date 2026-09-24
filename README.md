@@ -57,12 +57,23 @@ systemd user service、Nginx 與有效的 TLS 憑證；開發機不需要安裝�
 ### 取得映像
 
 每次推送 `v*` tag，GitHub Actions 會先跑完整測試，再把映像發布到
-`ghcr.io/edwardleeee/connect4-web:<tag>`（同時更新 `latest`）。套件是私有的，
-正式主機要先用一個只有 `read:packages` 權限的 GitHub personal access token
-（classic）登入一次，憑證會存在 `~/.config/containers/auth.json`：
+`ghcr.io/edwardleeee/connect4-web:<tag>`（同時更新 `latest`）。GHCR 套件為
+Private，正式主機要先用一個只有 `read:packages` 權限的 GitHub personal access
+token（classic）登入一次：
 
 ```bash
 podman login ghcr.io --username <GitHub 帳號> --authfile ~/.config/containers/auth.json
+```
+
+一定要指定 `--authfile`：不指定時 podman 把憑證存在
+`$XDG_RUNTIME_DIR/containers/auth.json`，那個目錄在 tmpfs，主機重開機就會被清掉，
+下次 `podman pull` 會失敗；存在 `~/.config/containers/auth.json` 才會保留。
+
+每個映像都帶 `org.opencontainers.image.revision` label（建置時的 commit SHA），
+部署前可以確認拉到的映像對應哪個 commit，不必猜 tag 是否被移動過：
+
+```bash
+podman image inspect --format '{{ index .Labels "org.opencontainers.image.revision" }}' ghcr.io/edwardleeee/connect4-web:v3.0.0
 ```
 
 之後正式主機不必安裝 Rust 或 Node，直接拉映像部署：

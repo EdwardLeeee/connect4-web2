@@ -15,6 +15,7 @@ HEALTH="http://127.0.0.1:55555/api/health"
 
 echo "pulling ${IMAGE}"
 podman pull "${IMAGE}"
+echo "image revision: $(podman image inspect --format '{{ index .Labels "org.opencontainers.image.revision" }}' "${IMAGE}")"
 if podman image exists "${PROD}"; then
     podman tag "${PROD}" "${PREV}"
 fi
