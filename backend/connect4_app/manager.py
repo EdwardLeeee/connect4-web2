@@ -16,7 +16,7 @@ from .solver import PerfectSolver
 
 ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 RECONNECT_SECONDS = 30
-AI_MIN_THINK_SECONDS = 0.5
+AI_MIN_THINK_SECONDS = 1.0
 AI_ID = "__perfect_ai__"
 # The frontend stops reconnecting on this close code; do not renumber it.
 CLOSE_REPLACED = 4001
