@@ -192,12 +192,11 @@
   width: calc(var(--slot) + var(--slot-gap) + 6px);
   border: 3px solid var(--ink);
   border-radius: calc(var(--slot) / 2 + var(--slot-gap));
-  box-shadow: 0 0 0 4px var(--mint);
 }
 
+/* not your turn: grey frame, still no halo (user ruling 2026-09-24) */
 .focus-idle .col-focus {
   border-color: var(--muted);
-  box-shadow: 0 0 0 4px var(--disabled);
 }
 
 .finger {
