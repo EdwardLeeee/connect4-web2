@@ -1,0 +1,286 @@
+/* Storyboard pages (A01–A10). Frames reuse base.css components and freeze
+   motion.css animations at the time printed under each frame. */
+
+.sb {
+  width: 1440px;
+  min-height: 900px;
+  padding: 44px 56px 48px;
+}
+
+.sb-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 22px;
+}
+
+.sb-id {
+  grid-row: span 2;
+  padding: 10px 18px;
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  background: var(--sun);
+  box-shadow: 5px 5px 0 var(--ink);
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 700;
+}
+
+.sb-head h1 {
+  font-size: 36px;
+  font-weight: 900;
+}
+
+.sb-head p {
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.frames {
+  margin-top: 30px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+}
+
+.frame {
+  margin: 0;
+  padding: 16px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  background: var(--white);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+
+.frame .scene {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1;
+}
+
+.frame figcaption {
+  padding-top: 10px;
+  border-top: 2px dashed var(--ink);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.frame figcaption b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.spec {
+  width: 100%;
+  margin-top: 30px;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--white);
+  box-shadow: 5px 5px 0 var(--ink);
+  font-size: 15px;
+}
+
+.spec th,
+.spec td {
+  padding: 10px 16px;
+  border-bottom: 2px solid var(--paper);
+  text-align: left;
+  vertical-align: top;
+  line-height: 1.5;
+}
+
+.spec th {
+  width: 190px;
+  background: var(--sun-soft);
+  font-weight: 800;
+}
+
+.spec code {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--paper);
+  font-family: ui-monospace, "Noto Sans Mono CJK TC", monospace;
+  font-size: 13px;
+}
+
+.spec tr:last-child th,
+.spec tr:last-child td {
+  border-bottom: 0;
+}
+
+/* scene geometry */
+.scene .board,
+.scene .rail,
+.scene .board-unit {
+  --board-w: calc(var(--cols, 7) * var(--slot) + (var(--cols, 7) - 1) * var(--slot-gap) + 2 * var(--board-pad) + 2 * var(--bw));
+}
+
+.scene .board .grid {
+  grid-template-columns: repeat(var(--cols, 7), var(--slot));
+}
+
+.scene .rail {
+  width: var(--board-w);
+}
+
+.scene .board {
+  box-shadow: 5px 5px 0 var(--ink);
+}
+
+.scene .cell > .token {
+  --pattern-w: 2.5px;
+}
+
+.star {
+  position: absolute;
+  z-index: 6;
+  width: 26px;
+  height: 26px;
+  background: var(--sun);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  filter: drop-shadow(0 0 0 var(--ink));
+  outline: 2px solid var(--ink);
+}
+
+.key {
+  min-width: 34px;
+  padding: 3px 9px;
+  display: inline-block;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: var(--white);
+  box-shadow: 3px 3px 0 var(--ink);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.key.down {
+  background: var(--mint);
+  box-shadow: 1px 1px 0 var(--ink);
+  transform: translate(2px, 2px);
+}
+
+.keys {
+  min-height: 34px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.col-focus {
+  position: absolute;
+  z-index: 4;
+  top: calc(var(--bw) + var(--board-pad) - var(--slot-gap) / 2 - 3px);
+  bottom: calc(var(--bw) + var(--board-pad) - var(--slot-gap) / 2 - 3px);
+  left: calc(var(--bw) + var(--board-pad) + var(--fc) * (var(--slot) + var(--slot-gap)) - var(--slot-gap) / 2 - 3px);
+  width: calc(var(--slot) + var(--slot-gap) + 6px);
+  border: 3px solid var(--ink);
+  border-radius: calc(var(--slot) / 2 + var(--slot-gap));
+  box-shadow: 0 0 0 4px var(--mint);
+}
+
+.focus-idle .col-focus {
+  border-color: var(--muted);
+  box-shadow: 0 0 0 4px var(--disabled);
+}
+
+.finger {
+  position: absolute;
+  z-index: 8;
+  width: 46px;
+  height: 46px;
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  background: rgb(255 255 255 / 55%);
+  box-shadow: 0 0 0 6px rgb(27 27 31 / 12%);
+  transform: translate(-50%, -50%);
+}
+
+.sr-bubble {
+  max-width: 230px;
+  padding: 6px 10px;
+  border: 2px dashed var(--ink);
+  border-radius: 10px;
+  background: var(--paper);
+  font-size: 13px;
+}
+
+.mini-screen {
+  position: relative;
+  width: 300px;
+  height: 188px;
+  overflow: hidden;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  background:
+    radial-gradient(var(--paper-dot) 1px, transparent 1.3px) 0 0 / 12px 12px,
+    var(--paper);
+}
+
+.mini-screen .layer {
+  position: absolute;
+  inset: 0;
+  padding: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+}
+
+.rm-grid {
+  margin-top: 30px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.rm-card {
+  padding: 16px;
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  background: var(--white);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+
+.rm-card h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.rm-card p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.rm-card .scene {
+  margin: 12px 0;
+  min-height: 150px;
+  display: grid;
+  place-items: center;
+}
+
+/* A08 shows the reduced-motion result: nothing inside moves */
+.rm-grid *,
+.rm-grid *::before,
+.rm-grid *::after {
+  animation: none !important;
+  transition: none !important;
+}

@@ -1,0 +1,232 @@
+/* Direction B — 午夜街機 Midnight Arcade (colour change, dark-only theme).
+   Role mapping: green seat -> sun yellow (ring), pink seat -> coral red (stripes). */
+:root {
+  --bg-base: #0c1230;
+  --ink: #eef1ff;
+  --muted: #95a1d0;
+  --line: #27346c;
+  --card-bg: #121a40;
+  --yellow: #ffc93c;
+  --yellow-dark: #b07800;
+  --red: #ff5a6e;
+  --red-dark: #9e1f33;
+  --cobalt: #2749c9;
+  --neon: #4de3ff;
+  --online: #3cf0a0;
+  --cue: var(--yellow);
+  --g-pattern: rgb(110 64 0 / 62%);
+  --p-pattern: rgb(255 255 255 / 82%);
+  --safe-guide: rgb(238 241 255 / 22%);
+  --font-display: "Chakra Petch", var(--font-ui);
+  --bg:
+    radial-gradient(circle at 12% 8%, rgb(91 123 255 / 26%), transparent 30rem),
+    radial-gradient(circle at 90% 92%, rgb(255 90 110 / 16%), transparent 30rem),
+    radial-gradient(rgb(149 161 208 / 13%) 1px, transparent 1.4px) 0 0 / 22px 22px,
+    var(--bg-base);
+}
+
+.brand {
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+
+.profile {
+  border: 1px solid var(--line);
+  background: rgb(18 26 64 / 80%);
+}
+
+.avatar {
+  color: #0c1230;
+  background: var(--neon);
+}
+
+.token.g {
+  border: 3px solid var(--yellow-dark);
+  background: radial-gradient(
+    circle at 34% 28%,
+    #fff4c4 0 7%,
+    #ffd966 22%,
+    #ffc93c 58%,
+    #e3a400 100%
+  );
+  box-shadow:
+    inset 0 -4px 0 rgb(120 70 0 / 35%),
+    0 0 14px rgb(255 201 60 / 40%);
+}
+
+.token.p {
+  border: 3px solid var(--red-dark);
+  background: radial-gradient(
+    circle at 34% 28%,
+    #ffc7ce 0 7%,
+    #ff8494 22%,
+    #ff5a6e 58%,
+    #d8384e 100%
+  );
+  box-shadow:
+    inset 0 -4px 0 rgb(110 10 30 / 32%),
+    0 0 14px rgb(255 90 110 / 35%);
+}
+
+.token.mini,
+.token.stat-token {
+  border-width: 2px;
+}
+
+.token.mini::after,
+.token.stat-token::after {
+  display: none;
+}
+
+.board {
+  border-radius: 26px;
+  background: linear-gradient(180deg, #3159ea 0%, #2749c9 45%, #1d379e 100%);
+  box-shadow:
+    0 0 0 2px #6d8bff,
+    inset 0 2px 0 rgb(255 255 255 / 28%),
+    0 0 48px rgb(77 110 255 / 45%),
+    0 24px 50px rgb(0 0 0 / 45%);
+}
+
+.cell {
+  background: #0a0f28;
+  box-shadow:
+    inset 0 5px 10px rgb(0 0 0 / 65%),
+    0 0 0 2px rgb(255 255 255 / 7%);
+}
+
+.col-hover {
+  background: linear-gradient(
+    180deg,
+    rgb(255 201 60 / 30%),
+    rgb(255 201 60 / 4%)
+  );
+  box-shadow: 0 0 0 1px rgb(255 201 60 / 35%);
+}
+
+.token.ghost {
+  border: 3px dashed rgb(255 201 60 / 85%);
+  background: rgb(255 201 60 / 14%);
+  box-shadow: 0 0 18px rgb(255 201 60 / 35%);
+}
+
+.token.ghost::after {
+  border-color: rgb(255 201 60 / 45%);
+}
+
+.cell.is-last > .token {
+  outline: 3px solid var(--neon);
+  outline-offset: 3px;
+  box-shadow: 0 0 18px rgb(77 227 255 / 70%);
+}
+
+.token.in-hand {
+  box-shadow:
+    inset 0 -4px 0 rgb(120 70 0 / 35%),
+    0 0 26px rgb(255 201 60 / 75%),
+    0 0 60px rgb(255 201 60 / 35%);
+}
+
+.board-foot {
+  height: 2px;
+  margin: 26px 40px 0;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #6d8bff, transparent);
+  box-shadow: 0 0 20px 4px rgb(109 139 255 / 45%);
+}
+
+.turn-status strong {
+  color: var(--yellow);
+  text-shadow: 0 0 18px rgb(255 201 60 / 55%);
+}
+
+.move-chip {
+  border: 1px solid var(--line);
+  color: var(--muted);
+  background: rgb(18 26 64 / 80%);
+}
+
+.move-chip b {
+  color: var(--ink);
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgb(18 26 64 / 88%);
+  box-shadow: 0 18px 40px rgb(0 0 0 / 30%);
+}
+
+.mode-label {
+  color: var(--neon);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.player.is-current {
+  background: rgb(255 201 60 / 9%);
+  box-shadow:
+    inset 3px 0 0 var(--yellow),
+    0 0 0 1px rgb(255 201 60 / 30%);
+}
+
+.player-copy strong {
+  font-family: var(--font-display);
+}
+
+.turn-tag {
+  color: #1a1200;
+  background: var(--yellow);
+  box-shadow: 0 0 14px rgb(255 201 60 / 55%);
+}
+
+.stats strong {
+  font-weight: 700;
+}
+
+.btn.secondary {
+  border: 1px solid #3a4a8f;
+  color: var(--ink);
+  background: transparent;
+}
+
+kbd {
+  border: 1px solid var(--line);
+  color: var(--ink);
+  background: #182253;
+}
+
+@media (max-width: 620px) {
+  .board {
+    border-radius: 20px;
+  }
+
+  .token.g,
+  .token.p {
+    border-width: 2px;
+  }
+
+  .token.g::after,
+  .token.p::after {
+    --pattern-w: 2px;
+  }
+
+  .token.ghost {
+    border-width: 2px;
+  }
+
+  .cell.is-last > .token {
+    outline-width: 2px;
+    outline-offset: 2px;
+  }
+
+  .board-foot {
+    margin: 18px 30px 0;
+  }
+
+  .player.is-current {
+    box-shadow:
+      inset 3px 0 0 var(--yellow),
+      0 0 0 1px rgb(255 201 60 / 30%);
+  }
+}

@@ -1,0 +1,478 @@
+[
+ {
+  "url": "mockups/round2/screen.html?state=L01&vp=desktop&lang=zh-TW",
+  "out": "L01-lobby-zh-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L01&vp=desktop&lang=zh-TW",
+  "out": "L01-lobby-zh-desktop-1366x768.png",
+  "width": 1366,
+  "height": 768,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L02&vp=desktop&lang=en",
+  "out": "L02-lobby-en-desktop-en-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L02&vp=mobile&lang=en",
+  "out": "L02-lobby-en-mobile-en-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L03&vp=tablet&lang=zh-TW",
+  "out": "L03-lobby-tablet-tablet-768x1024.png",
+  "width": 768,
+  "height": 1024,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L04&vp=mobile&lang=zh-TW",
+  "out": "L04-lobby-collapsed-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L04&vp=safari&lang=zh-TW",
+  "out": "L04-lobby-collapsed-safari-430x739.png",
+  "width": 430,
+  "height": 739,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L04&vp=landscape&lang=zh-TW",
+  "out": "L04-lobby-collapsed-landscape-892x412.png",
+  "width": 892,
+  "height": 412,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L05&vp=mobile&lang=zh-TW",
+  "out": "L05-lobby-friends-expanded-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L06&vp=mobile&lang=zh-TW",
+  "out": "L06-lobby-matchmaking-expanded-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L07&vp=desktop&lang=zh-TW",
+  "out": "L07-lobby-offline-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L07&vp=mobile&lang=zh-TW",
+  "out": "L07-lobby-offline-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L07&vp=mobile&lang=en",
+  "out": "L07-lobby-offline-mobile-en-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L08&vp=desktop&lang=zh-TW",
+  "out": "L08-lobby-error-toast-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L08&vp=mobile&lang=zh-TW",
+  "out": "L08-lobby-error-toast-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L09&vp=desktop&lang=zh-TW",
+  "out": "L09-profile-modal-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L10&vp=mobile&lang=zh-TW",
+  "out": "L10-profile-sheet-error-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L10&vp=keyboard&lang=zh-TW",
+  "out": "L10-profile-sheet-error-keyboard-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L11&vp=desktop&lang=zh-TW",
+  "out": "L11-lobby-invite-link-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L11&vp=mobile&lang=zh-TW",
+  "out": "L11-lobby-invite-link-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P01&vp=desktop&lang=zh-TW",
+  "out": "P01-play-searching-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P01&vp=mobile&lang=zh-TW",
+  "out": "P01-play-searching-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P02&vp=desktop&lang=zh-TW",
+  "out": "P02-play-waiting-friend-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P02&vp=mobile&lang=zh-TW",
+  "out": "P02-play-waiting-friend-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P03&vp=desktop&lang=zh-TW",
+  "out": "P03-play-your-turn-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P03&vp=desktop&lang=zh-TW",
+  "out": "P03-play-your-turn-desktop-1366x768.png",
+  "width": 1366,
+  "height": 768,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P03&vp=mobile&lang=zh-TW",
+  "out": "P03-play-your-turn-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P03&vp=safari&lang=zh-TW",
+  "out": "P03-play-your-turn-safari-430x739.png",
+  "width": 430,
+  "height": 739,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P03&vp=landscape&lang=zh-TW",
+  "out": "P03-play-your-turn-landscape-892x412.png",
+  "width": 892,
+  "height": 412,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P04&vp=desktop&lang=zh-TW",
+  "out": "P04-play-opponent-turn-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P04&vp=mobile&lang=zh-TW",
+  "out": "P04-play-opponent-turn-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P04&vp=landscape&lang=zh-TW",
+  "out": "P04-play-opponent-turn-landscape-892x412.png",
+  "width": 892,
+  "height": 412,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P05&vp=desktop&lang=zh-TW",
+  "out": "P05-play-ai-thinking-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P05&vp=mobile&lang=zh-TW",
+  "out": "P05-play-ai-thinking-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P06&vp=desktop&lang=zh-TW",
+  "out": "P06-play-opponent-paused-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P06&vp=mobile&lang=zh-TW",
+  "out": "P06-play-opponent-paused-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P06&vp=mobile&lang=en",
+  "out": "P06-play-opponent-paused-mobile-en-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P07&vp=desktop&lang=zh-TW",
+  "out": "P07-play-win-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P07&vp=desktop&lang=zh-TW",
+  "out": "P07-play-win-desktop-1366x768.png",
+  "width": 1366,
+  "height": 768,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P07&vp=mobile&lang=zh-TW",
+  "out": "P07-play-win-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P07&vp=safari&lang=zh-TW",
+  "out": "P07-play-win-safari-430x739.png",
+  "width": 430,
+  "height": 739,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P07&vp=landscape&lang=zh-TW",
+  "out": "P07-play-win-landscape-892x412.png",
+  "width": 892,
+  "height": 412,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P08&vp=desktop&lang=zh-TW",
+  "out": "P08-play-lose-ai-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P08&vp=mobile&lang=zh-TW",
+  "out": "P08-play-lose-ai-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P09&vp=desktop&lang=zh-TW",
+  "out": "P09-play-draw-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P09&vp=mobile&lang=zh-TW",
+  "out": "P09-play-draw-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P10&vp=desktop&lang=zh-TW",
+  "out": "P10-play-forfeit-win-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P10&vp=mobile&lang=zh-TW",
+  "out": "P10-play-forfeit-win-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P10&vp=mobile&lang=en",
+  "out": "P10-play-forfeit-win-mobile-en-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P11&vp=desktop&lang=zh-TW",
+  "out": "P11-play-opponent-left-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P11&vp=mobile&lang=zh-TW",
+  "out": "P11-play-opponent-left-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P11&vp=mobile&lang=en",
+  "out": "P11-play-opponent-left-mobile-en-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P12&vp=desktop&lang=zh-TW",
+  "out": "P12-play-solver-error-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P12&vp=mobile&lang=zh-TW",
+  "out": "P12-play-solver-error-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P12&vp=mobile&lang=en",
+  "out": "P12-play-solver-error-mobile-en-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P13&vp=desktop&lang=zh-TW",
+  "out": "P13-play-rematch-sent-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P13&vp=mobile&lang=zh-TW",
+  "out": "P13-play-rematch-sent-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P14&vp=desktop&lang=zh-TW",
+  "out": "P14-play-offline-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P14&vp=mobile&lang=zh-TW",
+  "out": "P14-play-offline-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P15&vp=desktop&lang=zh-TW",
+  "out": "P15-play-other-tab-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P15&vp=mobile&lang=zh-TW",
+  "out": "P15-play-other-tab-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P15&vp=mobile&lang=en",
+  "out": "P15-play-other-tab-mobile-en-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P16&vp=desktop&lang=zh-TW",
+  "out": "P16-play-forfeit-lose-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P16&vp=mobile&lang=zh-TW",
+  "out": "P16-play-forfeit-lose-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P17&vp=desktop&lang=zh-TW",
+  "out": "P17-play-rematch-incoming-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P17&vp=mobile&lang=zh-TW",
+  "out": "P17-play-rematch-incoming-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P18&vp=desktop&lang=zh-TW",
+  "out": "P18-play-opponent-left-after-finish-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P18&vp=mobile&lang=zh-TW",
+  "out": "P18-play-opponent-left-after-finish-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ }
+]

@@ -1,0 +1,3258 @@
+{
+ "measuredAt": "2026-09-23T18:13:10.734Z",
+ "base": "http://127.0.0.1:5199",
+ "views": {
+  "desktop-1440x900/lobby": {
+   "document": {
+    "scrollWidth": 1440,
+    "clientWidth": 1440
+   },
+   "main": [
+    {
+     "x": 160,
+     "y": 74,
+     "w": 1120,
+     "h": 808,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".topbar": [
+    {
+     "x": 160,
+     "y": 16,
+     "w": 1120,
+     "h": 58,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "16px"
+    }
+   ],
+   ".brand": [
+    {
+     "x": 160,
+     "y": 28,
+     "w": 175.5,
+     "h": 34,
+     "fontSize": "22px",
+     "fontWeight": "800",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "12px"
+    }
+   ],
+   ".profile-button": [
+    {
+     "x": 1191,
+     "y": 22,
+     "w": 89,
+     "h": 46,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "999px",
+     "padding": "5px 11px 5px 5px",
+     "gap": "9px"
+    }
+   ],
+   ".lobby-grid": [
+    {
+     "x": 160,
+     "y": 315.5,
+     "w": 1120,
+     "h": 325,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "18px"
+    }
+   ],
+   ".mode-card": [
+    {
+     "x": 160,
+     "y": 315.5,
+     "w": 395.7,
+     "h": 325,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "26px",
+     "padding": "26px",
+     "gap": "18px"
+    },
+    {
+     "x": 573.7,
+     "y": 315.5,
+     "w": 344.1,
+     "h": 325,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "26px",
+     "padding": "26px",
+     "gap": "18px"
+    },
+    {
+     "x": 935.9,
+     "y": 315.5,
+     "w": 344.1,
+     "h": 325,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "26px",
+     "padding": "26px",
+     "gap": "18px"
+    }
+   ],
+   ".mode-card h2": [
+    {
+     "x": 187,
+     "y": 408.5,
+     "w": 341.7,
+     "h": 34,
+     "fontSize": "23px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 600.7,
+     "y": 408.5,
+     "w": 290.1,
+     "h": 34,
+     "fontSize": "23px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 962.9,
+     "y": 408.5,
+     "w": 290.1,
+     "h": 34,
+     "fontSize": "23px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".mode-card p": [
+    {
+     "x": 187,
+     "y": 451.5,
+     "w": 341.7,
+     "h": 23.3,
+     "fontSize": "15px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 600.7,
+     "y": 451.5,
+     "w": 290.1,
+     "h": 23.3,
+     "fontSize": "15px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 962.9,
+     "y": 451.5,
+     "w": 290.1,
+     "h": 23.3,
+     "fontSize": "15px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".card-icon": [
+    {
+     "x": 187,
+     "y": 342.5,
+     "w": 48,
+     "h": 48,
+     "fontSize": "25px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 600.7,
+     "y": 342.5,
+     "w": 48,
+     "h": 48,
+     "fontSize": "25px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 962.9,
+     "y": 342.5,
+     "w": 48,
+     "h": 48,
+     "fontSize": "25px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".mode-card .button": [
+    {
+     "x": 187,
+     "y": 565.5,
+     "w": 341.7,
+     "h": 48,
+     "fontSize": "16px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    },
+    {
+     "x": 600.7,
+     "y": 499.5,
+     "w": 290.1,
+     "h": 48,
+     "fontSize": "16px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    },
+    {
+     "x": 788.8,
+     "y": 565.5,
+     "w": 102,
+     "h": 48,
+     "fontSize": "16px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    }
+   ]
+  },
+  "desktop-1440x900/game": {
+   "document": {
+    "scrollWidth": 1440,
+    "clientWidth": 1440
+   },
+   "main": [
+    {
+     "x": 160,
+     "y": 74,
+     "w": 1120,
+     "h": 808,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".topbar": [
+    {
+     "x": 160,
+     "y": 16,
+     "w": 1120,
+     "h": 58,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "16px"
+    }
+   ],
+   ".brand": [
+    {
+     "x": 160,
+     "y": 28,
+     "w": 175.5,
+     "h": 34,
+     "fontSize": "22px",
+     "fontWeight": "800",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "12px"
+    }
+   ],
+   ".profile-button": [
+    {
+     "x": 1191,
+     "y": 22,
+     "w": 89,
+     "h": 46,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "999px",
+     "padding": "5px 11px 5px 5px",
+     "gap": "9px"
+    }
+   ],
+   ".turn-card": [
+    {
+     "x": 160,
+     "y": 121.4,
+     "w": 720,
+     "h": 78,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "19px",
+     "padding": "14px 18px",
+     "gap": "14px"
+    }
+   ],
+   ".turn-token": [
+    {
+     "x": 456,
+     "y": 137.4,
+     "w": 46,
+     "h": 46,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".board-wrap": [
+    {
+     "x": 160,
+     "y": 217.4,
+     "w": 720,
+     "h": 617.1,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "32px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".board-grid": [
+    {
+     "x": 166,
+     "y": 223.4,
+     "w": 708,
+     "h": 593.1,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "10px",
+     "gap": "10px"
+    }
+   ],
+   ".slot": [
+    {
+     "x": 176,
+     "y": 233.4,
+     "w": 89.7,
+     "h": 87.2,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 275.7,
+     "y": 233.4,
+     "w": 89.7,
+     "h": 87.2,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 375.4,
+     "y": 233.4,
+     "w": 89.7,
+     "h": 87.2,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".game-sidebar": [
+    {
+     "x": 928,
+     "y": 391,
+     "w": 352,
+     "h": 174,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".player-strip": [
+    {
+     "x": 928,
+     "y": 391,
+     "w": 352,
+     "h": 104,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "24px",
+     "padding": "22px",
+     "gap": "14px"
+    }
+   ],
+   ".player-token": [
+    {
+     "x": 951,
+     "y": 421,
+     "w": 44,
+     "h": 44,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 1213,
+     "y": 421,
+     "w": 44,
+     "h": 44,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".player-side strong": [
+    {
+     "x": 1007,
+     "y": 439.5,
+     "w": 36,
+     "h": 26,
+     "fontSize": "18px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 1115.8,
+     "y": 439.5,
+     "w": 85.2,
+     "h": 26,
+     "fontSize": "18px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".versus": [
+    {
+     "x": 1097,
+     "y": 433,
+     "w": 14,
+     "h": 20,
+     "fontSize": "14px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".game-actions .button": [
+    {
+     "x": 928,
+     "y": 509,
+     "w": 352,
+     "h": 56,
+     "fontSize": "17px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "17px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    }
+   ]
+  },
+  "desktop-1440x900/privateFinished": {
+   "document": {
+    "scrollWidth": 1440,
+    "clientWidth": 1440
+   },
+   "main": [
+    {
+     "x": 160,
+     "y": 74,
+     "w": 1120,
+     "h": 808,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".topbar": [
+    {
+     "x": 160,
+     "y": 16,
+     "w": 1120,
+     "h": 58,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "16px"
+    }
+   ],
+   ".brand": [
+    {
+     "x": 160,
+     "y": 28,
+     "w": 175.5,
+     "h": 34,
+     "fontSize": "22px",
+     "fontWeight": "800",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "12px"
+    }
+   ],
+   ".profile-button": [
+    {
+     "x": 1191,
+     "y": 22,
+     "w": 89,
+     "h": 46,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "999px",
+     "padding": "5px 11px 5px 5px",
+     "gap": "9px"
+    }
+   ],
+   ".turn-card": [
+    {
+     "x": 160,
+     "y": 121.4,
+     "w": 720,
+     "h": 78,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "19px",
+     "padding": "14px 18px",
+     "gap": "14px"
+    }
+   ],
+   ".turn-token": [
+    {
+     "x": 456,
+     "y": 137.4,
+     "w": 46,
+     "h": 46,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".board-wrap": [
+    {
+     "x": 160,
+     "y": 217.4,
+     "w": 720,
+     "h": 617.1,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "32px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".board-grid": [
+    {
+     "x": 166,
+     "y": 223.4,
+     "w": 708,
+     "h": 593.1,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "10px",
+     "gap": "10px"
+    }
+   ],
+   ".slot": [
+    {
+     "x": 176,
+     "y": 233.4,
+     "w": 89.7,
+     "h": 87.2,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 275.7,
+     "y": 233.4,
+     "w": 89.7,
+     "h": 87.2,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 375.4,
+     "y": 233.4,
+     "w": 89.7,
+     "h": 87.2,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".game-sidebar": [
+    {
+     "x": 928,
+     "y": 306,
+     "w": 352,
+     "h": 344,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".player-strip": [
+    {
+     "x": 928,
+     "y": 306,
+     "w": 352,
+     "h": 104,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "24px",
+     "padding": "22px",
+     "gap": "14px"
+    }
+   ],
+   ".player-token": [
+    {
+     "x": 951,
+     "y": 336,
+     "w": 44,
+     "h": 44,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 1213,
+     "y": 336,
+     "w": 44,
+     "h": 44,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".player-side strong": [
+    {
+     "x": 1007,
+     "y": 354.5,
+     "w": 36,
+     "h": 26,
+     "fontSize": "18px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 1165,
+     "y": 354.5,
+     "w": 36,
+     "h": 26,
+     "fontSize": "18px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".versus": [
+    {
+     "x": 1097,
+     "y": 348,
+     "w": 14,
+     "h": 20,
+     "fontSize": "14px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".compact-code": [
+    {
+     "x": 928,
+     "y": 424,
+     "w": 352,
+     "h": 88,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "20px",
+     "padding": "18px 20px",
+     "gap": "16px"
+    }
+   ],
+   ".compact-code strong": [
+    {
+     "x": 1109.1,
+     "y": 450.5,
+     "w": 106.9,
+     "h": 35,
+     "fontSize": "24px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".game-actions .button": [
+    {
+     "x": 928,
+     "y": 526,
+     "w": 352,
+     "h": 56,
+     "fontSize": "17px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "17px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    },
+    {
+     "x": 928,
+     "y": 594,
+     "w": 352,
+     "h": 56,
+     "fontSize": "17px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "17px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    }
+   ]
+  },
+  "desktop-1366x768/lobby": {
+   "document": {
+    "scrollWidth": 1366,
+    "clientWidth": 1366
+   },
+   "main": [
+    {
+     "x": 123,
+     "y": 74,
+     "w": 1120,
+     "h": 676,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".topbar": [
+    {
+     "x": 123,
+     "y": 16,
+     "w": 1120,
+     "h": 58,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "16px"
+    }
+   ],
+   ".brand": [
+    {
+     "x": 123,
+     "y": 28,
+     "w": 175.5,
+     "h": 34,
+     "fontSize": "22px",
+     "fontWeight": "800",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "12px"
+    }
+   ],
+   ".profile-button": [
+    {
+     "x": 1154,
+     "y": 22,
+     "w": 89,
+     "h": 46,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "999px",
+     "padding": "5px 11px 5px 5px",
+     "gap": "9px"
+    }
+   ],
+   ".lobby-grid": [
+    {
+     "x": 123,
+     "y": 249.5,
+     "w": 1120,
+     "h": 325,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "18px"
+    }
+   ],
+   ".mode-card": [
+    {
+     "x": 123,
+     "y": 249.5,
+     "w": 395.7,
+     "h": 325,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "26px",
+     "padding": "26px",
+     "gap": "18px"
+    },
+    {
+     "x": 536.7,
+     "y": 249.5,
+     "w": 344.1,
+     "h": 325,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "26px",
+     "padding": "26px",
+     "gap": "18px"
+    },
+    {
+     "x": 898.9,
+     "y": 249.5,
+     "w": 344.1,
+     "h": 325,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "26px",
+     "padding": "26px",
+     "gap": "18px"
+    }
+   ],
+   ".mode-card h2": [
+    {
+     "x": 150,
+     "y": 342.5,
+     "w": 341.7,
+     "h": 34,
+     "fontSize": "23px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 563.7,
+     "y": 342.5,
+     "w": 290.1,
+     "h": 34,
+     "fontSize": "23px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 925.9,
+     "y": 342.5,
+     "w": 290.1,
+     "h": 34,
+     "fontSize": "23px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".mode-card p": [
+    {
+     "x": 150,
+     "y": 385.5,
+     "w": 341.7,
+     "h": 23.3,
+     "fontSize": "15px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 563.7,
+     "y": 385.5,
+     "w": 290.1,
+     "h": 23.3,
+     "fontSize": "15px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 925.9,
+     "y": 385.5,
+     "w": 290.1,
+     "h": 23.3,
+     "fontSize": "15px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".card-icon": [
+    {
+     "x": 150,
+     "y": 276.5,
+     "w": 48,
+     "h": 48,
+     "fontSize": "25px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 563.7,
+     "y": 276.5,
+     "w": 48,
+     "h": 48,
+     "fontSize": "25px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 925.9,
+     "y": 276.5,
+     "w": 48,
+     "h": 48,
+     "fontSize": "25px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".mode-card .button": [
+    {
+     "x": 150,
+     "y": 499.5,
+     "w": 341.7,
+     "h": 48,
+     "fontSize": "16px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    },
+    {
+     "x": 563.7,
+     "y": 433.5,
+     "w": 290.1,
+     "h": 48,
+     "fontSize": "16px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    },
+    {
+     "x": 751.8,
+     "y": 499.5,
+     "w": 102,
+     "h": 48,
+     "fontSize": "16px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    }
+   ]
+  },
+  "desktop-1366x768/game": {
+   "document": {
+    "scrollWidth": 1366,
+    "clientWidth": 1366
+   },
+   "main": [
+    {
+     "x": 123,
+     "y": 74,
+     "w": 1120,
+     "h": 676,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".topbar": [
+    {
+     "x": 123,
+     "y": 16,
+     "w": 1120,
+     "h": 58,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "16px"
+    }
+   ],
+   ".brand": [
+    {
+     "x": 123,
+     "y": 28,
+     "w": 175.5,
+     "h": 34,
+     "fontSize": "22px",
+     "fontWeight": "800",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "12px"
+    }
+   ],
+   ".profile-button": [
+    {
+     "x": 1154,
+     "y": 22,
+     "w": 89,
+     "h": 46,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "999px",
+     "padding": "5px 11px 5px 5px",
+     "gap": "9px"
+    }
+   ],
+   ".turn-card": [
+    {
+     "x": 123,
+     "y": 102.6,
+     "w": 610,
+     "h": 78,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "19px",
+     "padding": "14px 18px",
+     "gap": "14px"
+    }
+   ],
+   ".turn-token": [
+    {
+     "x": 364,
+     "y": 118.6,
+     "w": 46,
+     "h": 46,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".board-wrap": [
+    {
+     "x": 123,
+     "y": 198.6,
+     "w": 610,
+     "h": 522.8,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "32px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".board-grid": [
+    {
+     "x": 129,
+     "y": 204.6,
+     "w": 598,
+     "h": 498.8,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "10px",
+     "gap": "10px"
+    }
+   ],
+   ".slot": [
+    {
+     "x": 139,
+     "y": 214.6,
+     "w": 74,
+     "h": 71.5,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 223,
+     "y": 214.6,
+     "w": 74,
+     "h": 71.5,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 307,
+     "y": 214.6,
+     "w": 74,
+     "h": 71.5,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".game-sidebar": [
+    {
+     "x": 781,
+     "y": 325,
+     "w": 462,
+     "h": 174,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".player-strip": [
+    {
+     "x": 781,
+     "y": 325,
+     "w": 462,
+     "h": 104,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "24px",
+     "padding": "22px",
+     "gap": "14px"
+    }
+   ],
+   ".player-token": [
+    {
+     "x": 804,
+     "y": 355,
+     "w": 44,
+     "h": 44,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 1176,
+     "y": 355,
+     "w": 44,
+     "h": 44,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".player-side strong": [
+    {
+     "x": 860,
+     "y": 373.5,
+     "w": 36,
+     "h": 26,
+     "fontSize": "18px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 1078.8,
+     "y": 373.5,
+     "w": 85.2,
+     "h": 26,
+     "fontSize": "18px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".versus": [
+    {
+     "x": 1005,
+     "y": 367,
+     "w": 14,
+     "h": 20,
+     "fontSize": "14px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".game-actions .button": [
+    {
+     "x": 781,
+     "y": 443,
+     "w": 462,
+     "h": 56,
+     "fontSize": "17px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "17px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    }
+   ]
+  },
+  "desktop-1366x768/privateFinished": {
+   "document": {
+    "scrollWidth": 1366,
+    "clientWidth": 1366
+   },
+   "main": [
+    {
+     "x": 123,
+     "y": 74,
+     "w": 1120,
+     "h": 676,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".topbar": [
+    {
+     "x": 123,
+     "y": 16,
+     "w": 1120,
+     "h": 58,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "16px"
+    }
+   ],
+   ".brand": [
+    {
+     "x": 123,
+     "y": 28,
+     "w": 175.5,
+     "h": 34,
+     "fontSize": "22px",
+     "fontWeight": "800",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "12px"
+    }
+   ],
+   ".profile-button": [
+    {
+     "x": 1154,
+     "y": 22,
+     "w": 89,
+     "h": 46,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "999px",
+     "padding": "5px 11px 5px 5px",
+     "gap": "9px"
+    }
+   ],
+   ".turn-card": [
+    {
+     "x": 123,
+     "y": 102.6,
+     "w": 610,
+     "h": 78,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "19px",
+     "padding": "14px 18px",
+     "gap": "14px"
+    }
+   ],
+   ".turn-token": [
+    {
+     "x": 364,
+     "y": 118.6,
+     "w": 46,
+     "h": 46,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".board-wrap": [
+    {
+     "x": 123,
+     "y": 198.6,
+     "w": 610,
+     "h": 522.8,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "32px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".board-grid": [
+    {
+     "x": 129,
+     "y": 204.6,
+     "w": 598,
+     "h": 498.8,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "10px",
+     "gap": "10px"
+    }
+   ],
+   ".slot": [
+    {
+     "x": 139,
+     "y": 214.6,
+     "w": 74,
+     "h": 71.5,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 223,
+     "y": 214.6,
+     "w": 74,
+     "h": 71.5,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 307,
+     "y": 214.6,
+     "w": 74,
+     "h": 71.5,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".game-sidebar": [
+    {
+     "x": 781,
+     "y": 240,
+     "w": 462,
+     "h": 344,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".player-strip": [
+    {
+     "x": 781,
+     "y": 240,
+     "w": 462,
+     "h": 104,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "24px",
+     "padding": "22px",
+     "gap": "14px"
+    }
+   ],
+   ".player-token": [
+    {
+     "x": 804,
+     "y": 270,
+     "w": 44,
+     "h": 44,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 1176,
+     "y": 270,
+     "w": 44,
+     "h": 44,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".player-side strong": [
+    {
+     "x": 860,
+     "y": 288.5,
+     "w": 36,
+     "h": 26,
+     "fontSize": "18px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 1128,
+     "y": 288.5,
+     "w": 36,
+     "h": 26,
+     "fontSize": "18px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".versus": [
+    {
+     "x": 1005,
+     "y": 282,
+     "w": 14,
+     "h": 20,
+     "fontSize": "14px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".compact-code": [
+    {
+     "x": 781,
+     "y": 358,
+     "w": 462,
+     "h": 88,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "20px",
+     "padding": "18px 20px",
+     "gap": "16px"
+    }
+   ],
+   ".compact-code strong": [
+    {
+     "x": 1072.1,
+     "y": 384.5,
+     "w": 106.9,
+     "h": 35,
+     "fontSize": "24px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".game-actions .button": [
+    {
+     "x": 781,
+     "y": 460,
+     "w": 462,
+     "h": 56,
+     "fontSize": "17px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "17px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    },
+    {
+     "x": 781,
+     "y": 528,
+     "w": 462,
+     "h": 56,
+     "fontSize": "17px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "17px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    }
+   ]
+  },
+  "iphone-430x932/lobby": {
+   "document": {
+    "scrollWidth": 430,
+    "clientWidth": 430
+   },
+   "main": [
+    {
+     "x": 25.8,
+     "y": 68,
+     "w": 378.4,
+     "h": 846,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".topbar": [
+    {
+     "x": 25.8,
+     "y": 16,
+     "w": 378.4,
+     "h": 52,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "16px"
+    }
+   ],
+   ".brand": [
+    {
+     "x": 25.8,
+     "y": 27,
+     "w": 156.6,
+     "h": 30,
+     "fontSize": "20px",
+     "fontWeight": "800",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "10px"
+    }
+   ],
+   ".profile-button": [
+    {
+     "x": 358.2,
+     "y": 19,
+     "w": 46,
+     "h": 46,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "999px",
+     "padding": "4px",
+     "gap": "9px"
+    }
+   ],
+   ".lobby-grid": [
+    {
+     "x": 25.8,
+     "y": 308.9,
+     "w": 378.4,
+     "h": 364.2,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "16px"
+    }
+   ],
+   ".mode-card": [
+    {
+     "x": 25.8,
+     "y": 308.9,
+     "w": 378.4,
+     "h": 176.2,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "22px",
+     "padding": "16px",
+     "gap": "18px"
+    },
+    {
+     "x": 25.8,
+     "y": 501.1,
+     "w": 378.4,
+     "h": 78,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "22px",
+     "padding": "16px",
+     "gap": "18px"
+    },
+    {
+     "x": 25.8,
+     "y": 595.1,
+     "w": 378.4,
+     "h": 78,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "22px",
+     "padding": "16px",
+     "gap": "18px"
+    }
+   ],
+   ".mode-card h2": [
+    {
+     "x": 94.8,
+     "y": 325.9,
+     "w": 292.4,
+     "h": 30,
+     "fontSize": "21px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 94.8,
+     "y": 525.1,
+     "w": 256.4,
+     "h": 30,
+     "fontSize": "21px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 94.8,
+     "y": 619.1,
+     "w": 256.4,
+     "h": 30,
+     "fontSize": "21px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".mode-card p": [
+    {
+     "x": 94.8,
+     "y": 360.9,
+     "w": 292.4,
+     "h": 39.2,
+     "fontSize": "14px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 94.8,
+     "y": 555.1,
+     "w": 256.4,
+     "h": 0,
+     "fontSize": "14px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 94.8,
+     "y": 649.1,
+     "w": 256.4,
+     "h": 0,
+     "fontSize": "14px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".card-icon": [
+    {
+     "x": 42.8,
+     "y": 325.9,
+     "w": 40,
+     "h": 40,
+     "fontSize": "22px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "13px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 42.8,
+     "y": 518.1,
+     "w": 40,
+     "h": 40,
+     "fontSize": "22px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "13px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 42.8,
+     "y": 612.1,
+     "w": 40,
+     "h": 40,
+     "fontSize": "22px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "13px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".mode-card .button": [
+    {
+     "x": 42.8,
+     "y": 420.1,
+     "w": 344.4,
+     "h": 48,
+     "fontSize": "16px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    },
+    {
+     "x": 42.8,
+     "y": 562.1,
+     "w": 344.4,
+     "h": 48,
+     "fontSize": "16px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    },
+    {
+     "x": 285.2,
+     "y": 620.1,
+     "w": 102,
+     "h": 48,
+     "fontSize": "16px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    }
+   ]
+  },
+  "iphone-430x932/game": {
+   "document": {
+    "scrollWidth": 430,
+    "clientWidth": 430
+   },
+   "main": [
+    {
+     "x": 14,
+     "y": 68,
+     "w": 402,
+     "h": 846,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".topbar": [
+    {
+     "x": 14,
+     "y": 16,
+     "w": 402,
+     "h": 52,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "16px"
+    }
+   ],
+   ".brand": [
+    {
+     "x": 14,
+     "y": 27,
+     "w": 156.6,
+     "h": 30,
+     "fontSize": "20px",
+     "fontWeight": "800",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "10px"
+    }
+   ],
+   ".profile-button": [
+    {
+     "x": 370,
+     "y": 19,
+     "w": 46,
+     "h": 46,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "999px",
+     "padding": "4px",
+     "gap": "9px"
+    }
+   ],
+   ".turn-card": [
+    {
+     "x": 14,
+     "y": 205.8,
+     "w": 402,
+     "h": 70,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "19px",
+     "padding": "11px 13px",
+     "gap": "14px"
+    }
+   ],
+   ".turn-token": [
+    {
+     "x": 154,
+     "y": 220.8,
+     "w": 40,
+     "h": 40,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".board-wrap": [
+    {
+     "x": 14,
+     "y": 288.8,
+     "w": 402,
+     "h": 351.5,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "23px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".board-grid": [
+    {
+     "x": 19,
+     "y": 293.8,
+     "w": 392,
+     "h": 331.5,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "8px",
+     "gap": "4.73px"
+    }
+   ],
+   ".slot": [
+    {
+     "x": 27,
+     "y": 301.3,
+     "w": 49.7,
+     "h": 49.7,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 81.4,
+     "y": 301.3,
+     "w": 49.7,
+     "h": 49.7,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 135.8,
+     "y": 301.3,
+     "w": 49.7,
+     "h": 49.7,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".game-sidebar": [
+    {
+     "x": 14,
+     "y": 654.2,
+     "w": 402,
+     "h": 122,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".player-strip": [
+    {
+     "x": 14,
+     "y": 654.2,
+     "w": 402,
+     "h": 64,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "17px",
+     "padding": "13px",
+     "gap": "10px"
+    }
+   ],
+   ".player-token": [
+    {
+     "x": 28,
+     "y": 671.2,
+     "w": 30,
+     "h": 30,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 372,
+     "y": 671.2,
+     "w": 30,
+     "h": 30,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".player-side strong": [
+    {
+     "x": 67,
+     "y": 684.2,
+     "w": 28,
+     "h": 20,
+     "fontSize": "14px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 296.7,
+     "y": 684.2,
+     "w": 66.3,
+     "h": 20,
+     "fontSize": "14px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".versus": [
+    {
+     "x": 209,
+     "y": 677.7,
+     "w": 12,
+     "h": 17,
+     "fontSize": "12px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".game-actions .button": [
+    {
+     "x": 14,
+     "y": 728.2,
+     "w": 402,
+     "h": 48,
+     "fontSize": "16px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    }
+   ]
+  },
+  "iphone-430x932/privateFinished": {
+   "document": {
+    "scrollWidth": 430,
+    "clientWidth": 430
+   },
+   "main": [
+    {
+     "x": 14,
+     "y": 68,
+     "w": 402,
+     "h": 846,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".topbar": [
+    {
+     "x": 14,
+     "y": 16,
+     "w": 402,
+     "h": 52,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "16px"
+    }
+   ],
+   ".brand": [
+    {
+     "x": 14,
+     "y": 27,
+     "w": 156.6,
+     "h": 30,
+     "fontSize": "20px",
+     "fontWeight": "800",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "10px"
+    }
+   ],
+   ".profile-button": [
+    {
+     "x": 370,
+     "y": 19,
+     "w": 46,
+     "h": 46,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "999px",
+     "padding": "4px",
+     "gap": "9px"
+    }
+   ],
+   ".turn-card": [
+    {
+     "x": 14,
+     "y": 164.8,
+     "w": 402,
+     "h": 70,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "19px",
+     "padding": "11px 13px",
+     "gap": "14px"
+    }
+   ],
+   ".turn-token": [
+    {
+     "x": 154,
+     "y": 179.8,
+     "w": 40,
+     "h": 40,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".board-wrap": [
+    {
+     "x": 14,
+     "y": 247.8,
+     "w": 402,
+     "h": 351.5,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "23px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".board-grid": [
+    {
+     "x": 19,
+     "y": 252.8,
+     "w": 392,
+     "h": 331.5,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "8px",
+     "gap": "4.73px"
+    }
+   ],
+   ".slot": [
+    {
+     "x": 27,
+     "y": 260.3,
+     "w": 49.7,
+     "h": 49.7,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 81.4,
+     "y": 260.3,
+     "w": 49.7,
+     "h": 49.7,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 135.8,
+     "y": 260.3,
+     "w": 49.7,
+     "h": 49.7,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".game-sidebar": [
+    {
+     "x": 14,
+     "y": 613.2,
+     "w": 402,
+     "h": 204,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".player-strip": [
+    {
+     "x": 14,
+     "y": 613.2,
+     "w": 402,
+     "h": 64,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "17px",
+     "padding": "13px",
+     "gap": "10px"
+    }
+   ],
+   ".player-token": [
+    {
+     "x": 28,
+     "y": 630.2,
+     "w": 30,
+     "h": 30,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 372,
+     "y": 630.2,
+     "w": 30,
+     "h": 30,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".player-side strong": [
+    {
+     "x": 67,
+     "y": 643.2,
+     "w": 28,
+     "h": 20,
+     "fontSize": "14px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 335,
+     "y": 643.2,
+     "w": 28,
+     "h": 20,
+     "fontSize": "14px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".versus": [
+    {
+     "x": 209,
+     "y": 636.7,
+     "w": 12,
+     "h": 17,
+     "fontSize": "12px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".compact-code": [
+    {
+     "x": 14,
+     "y": 687.2,
+     "w": 402,
+     "h": 72,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "16px",
+     "padding": "13px 15px",
+     "gap": "16px"
+    }
+   ],
+   ".compact-code strong": [
+    {
+     "x": 287.1,
+     "y": 711.2,
+     "w": 71.3,
+     "h": 24,
+     "fontSize": "16px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".game-actions .button": [
+    {
+     "x": 14,
+     "y": 769.2,
+     "w": 196.5,
+     "h": 48,
+     "fontSize": "16px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    },
+    {
+     "x": 219.5,
+     "y": 769.2,
+     "w": 196.5,
+     "h": 48,
+     "fontSize": "16px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    }
+   ]
+  },
+  "landscape-892x412/lobby": {
+   "document": {
+    "scrollWidth": 892,
+    "clientWidth": 892
+   },
+   "main": [
+    {
+     "x": 18,
+     "y": 8,
+     "w": 856,
+     "h": 740,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".topbar": [
+    {
+     "x": 18,
+     "y": 8,
+     "w": 856,
+     "h": 58,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "16px"
+    }
+   ],
+   ".brand": [
+    {
+     "x": 18,
+     "y": 20,
+     "w": 175.5,
+     "h": 34,
+     "fontSize": "22px",
+     "fontWeight": "800",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "12px"
+    }
+   ],
+   ".profile-button": [
+    {
+     "x": 785,
+     "y": 14,
+     "w": 89,
+     "h": 46,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "999px",
+     "padding": "5px 11px 5px 5px",
+     "gap": "9px"
+    }
+   ],
+   ".lobby-grid": [
+    {
+     "x": 18,
+     "y": 40,
+     "w": 856,
+     "h": 668,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "18px"
+    }
+   ],
+   ".mode-card": [
+    {
+     "x": 18,
+     "y": 40,
+     "w": 856,
+     "h": 325,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "26px",
+     "padding": "26px",
+     "gap": "18px"
+    },
+    {
+     "x": 18,
+     "y": 383,
+     "w": 419,
+     "h": 325,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "26px",
+     "padding": "26px",
+     "gap": "18px"
+    },
+    {
+     "x": 455,
+     "y": 383,
+     "w": 419,
+     "h": 325,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "26px",
+     "padding": "26px",
+     "gap": "18px"
+    }
+   ],
+   ".mode-card h2": [
+    {
+     "x": 45,
+     "y": 133,
+     "w": 802,
+     "h": 34,
+     "fontSize": "23px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 45,
+     "y": 476,
+     "w": 365,
+     "h": 34,
+     "fontSize": "23px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 482,
+     "y": 476,
+     "w": 365,
+     "h": 34,
+     "fontSize": "23px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".mode-card p": [
+    {
+     "x": 45,
+     "y": 176,
+     "w": 802,
+     "h": 23.3,
+     "fontSize": "15px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 45,
+     "y": 519,
+     "w": 365,
+     "h": 23.3,
+     "fontSize": "15px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 482,
+     "y": 519,
+     "w": 365,
+     "h": 23.3,
+     "fontSize": "15px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".card-icon": [
+    {
+     "x": 45,
+     "y": 67,
+     "w": 48,
+     "h": 48,
+     "fontSize": "25px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 45,
+     "y": 410,
+     "w": 48,
+     "h": 48,
+     "fontSize": "25px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 482,
+     "y": 410,
+     "w": 48,
+     "h": 48,
+     "fontSize": "25px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".mode-card .button": [
+    {
+     "x": 45,
+     "y": 290,
+     "w": 802,
+     "h": 48,
+     "fontSize": "16px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    },
+    {
+     "x": 45,
+     "y": 567,
+     "w": 365,
+     "h": 48,
+     "fontSize": "16px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    },
+    {
+     "x": 308,
+     "y": 633,
+     "w": 102,
+     "h": 48,
+     "fontSize": "16px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    }
+   ]
+  },
+  "landscape-892x412/game": {
+   "document": {
+    "scrollWidth": 892,
+    "clientWidth": 892
+   },
+   "main": [
+    {
+     "x": 18,
+     "y": 8,
+     "w": 856,
+     "h": 396,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".topbar": [
+    {
+     "x": 18,
+     "y": 8,
+     "w": 856,
+     "h": 58,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "16px"
+    }
+   ],
+   ".brand": [
+    {
+     "x": 18,
+     "y": 20,
+     "w": 56,
+     "h": 34,
+     "fontSize": "0px",
+     "fontWeight": "800",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "12px"
+    }
+   ],
+   ".profile-button": [
+    {
+     "x": 785,
+     "y": 14,
+     "w": 89,
+     "h": 46,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "999px",
+     "padding": "5px 11px 5px 5px",
+     "gap": "9px"
+    }
+   ],
+   ".board-wrap": [
+    {
+     "x": 72,
+     "y": 17,
+     "w": 441,
+     "h": 378,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "32px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".board-grid": [
+    {
+     "x": 78,
+     "y": 23,
+     "w": 429,
+     "h": 354,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "9.812px",
+     "gap": "9.812px"
+    }
+   ],
+   ".slot": [
+    {
+     "x": 87.8,
+     "y": 32.8,
+     "w": 50.1,
+     "h": 47.6,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 147.7,
+     "y": 32.8,
+     "w": 50.1,
+     "h": 47.6,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 207.6,
+     "y": 32.8,
+     "w": 50.1,
+     "h": 47.6,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".game-sidebar": [
+    {
+     "x": 531,
+     "y": 145,
+     "w": 343,
+     "h": 122,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".player-strip": [
+    {
+     "x": 531,
+     "y": 145,
+     "w": 343,
+     "h": 60,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "20px",
+     "padding": "11px",
+     "gap": "10px"
+    }
+   ],
+   ".player-token": [
+    {
+     "x": 543,
+     "y": 158,
+     "w": 34,
+     "h": 34,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 828,
+     "y": 158,
+     "w": 34,
+     "h": 34,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".player-side strong": [
+    {
+     "x": 586,
+     "y": 173,
+     "w": 28,
+     "h": 20,
+     "fontSize": "14px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 752.7,
+     "y": 173,
+     "w": 66.3,
+     "h": 20,
+     "fontSize": "14px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".versus": [
+    {
+     "x": 696.5,
+     "y": 166.5,
+     "w": 12,
+     "h": 17,
+     "fontSize": "12px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".game-actions .button": [
+    {
+     "x": 531,
+     "y": 219,
+     "w": 343,
+     "h": 48,
+     "fontSize": "16px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    }
+   ]
+  },
+  "landscape-892x412/privateFinished": {
+   "document": {
+    "scrollWidth": 892,
+    "clientWidth": 892
+   },
+   "main": [
+    {
+     "x": 18,
+     "y": 8,
+     "w": 856,
+     "h": 396,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".topbar": [
+    {
+     "x": 18,
+     "y": 8,
+     "w": 856,
+     "h": 58,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "16px"
+    }
+   ],
+   ".brand": [
+    {
+     "x": 18,
+     "y": 20,
+     "w": 56,
+     "h": 34,
+     "fontSize": "0px",
+     "fontWeight": "800",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "12px"
+    }
+   ],
+   ".profile-button": [
+    {
+     "x": 785,
+     "y": 14,
+     "w": 89,
+     "h": 46,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "999px",
+     "padding": "5px 11px 5px 5px",
+     "gap": "9px"
+    }
+   ],
+   ".board-wrap": [
+    {
+     "x": 72,
+     "y": 17,
+     "w": 441,
+     "h": 378,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "32px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".board-grid": [
+    {
+     "x": 78,
+     "y": 23,
+     "w": 429,
+     "h": 354,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "9.812px",
+     "gap": "9.812px"
+    }
+   ],
+   ".slot": [
+    {
+     "x": 87.8,
+     "y": 32.8,
+     "w": 50.1,
+     "h": 47.6,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 147.7,
+     "y": 32.8,
+     "w": 50.1,
+     "h": 47.6,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 207.6,
+     "y": 32.8,
+     "w": 50.1,
+     "h": 47.6,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".game-sidebar": [
+    {
+     "x": 531,
+     "y": 145,
+     "w": 343,
+     "h": 122,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".player-strip": [
+    {
+     "x": 531,
+     "y": 145,
+     "w": 343,
+     "h": 60,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "20px",
+     "padding": "11px",
+     "gap": "10px"
+    }
+   ],
+   ".player-token": [
+    {
+     "x": 543,
+     "y": 158,
+     "w": 34,
+     "h": 34,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 828,
+     "y": 158,
+     "w": 34,
+     "h": 34,
+     "fontSize": "16px",
+     "fontWeight": "400",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "50%",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".player-side strong": [
+    {
+     "x": 586,
+     "y": 173,
+     "w": 28,
+     "h": 20,
+     "fontSize": "14px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    },
+    {
+     "x": 791,
+     "y": 173,
+     "w": 28,
+     "h": 20,
+     "fontSize": "14px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".versus": [
+    {
+     "x": 696.5,
+     "y": 166.5,
+     "w": 12,
+     "h": 17,
+     "fontSize": "12px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "0px",
+     "padding": "0px",
+     "gap": "normal"
+    }
+   ],
+   ".game-actions .button": [
+    {
+     "x": 531,
+     "y": 219,
+     "w": 167,
+     "h": 48,
+     "fontSize": "16px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    },
+    {
+     "x": 707,
+     "y": 219,
+     "w": 167,
+     "h": 48,
+     "fontSize": "16px",
+     "fontWeight": "700",
+     "fontFamily": "\"Noto Sans CJK TC\"",
+     "radius": "15px",
+     "padding": "11px 18px",
+     "gap": "10px"
+    }
+   ]
+  }
+ }
+}

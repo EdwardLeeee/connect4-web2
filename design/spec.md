@@ -1,0 +1,382 @@
+# Connect 4 UI 規格：方向 C「粗線派對」（第二階段）
+
+- **狀態**：使用者 2026-09-24 核准，並做了第 0 節列的調整。這份文件和 `design/artboards/round2/` 的 78 張圖就是 RD 實作的規格、QA 的基準。
+  圖只存在本機，不進 git；要看就在本機重現或用 eog 開。
+- **方向**：使用者 2026-09-24 選 C，不做亮／暗切換，等待畫面加 QR code 與分享連結。
+- **協定**：以 `docs/protocol.md` 為準（connect4-back 已定案）。線上／排隊人數（presence）這一輪不做，畫面上也沒有。
+- **原始檔**：
+  - `design/mockups/round2/`：
+    - `tokens.css`、`base.css`：樣式。
+    - `motion.css`：動效。
+    - `states.js`：各狀態的 snapshot fixture。
+    - `strings.js`：兩種語言的文案。
+    - `render.js`、`story.js`：畫面與分鏡的產生程式。
+  - 重現步驟：
+    ```bash
+    python3 -m http.server 8790 --bind 127.0.0.1 --directory design &
+    python3 design/tools/round2-jobs.py
+    PLAYWRIGHT_BROWSERS_PATH=$PWD/.playwright node design/tools/shoot.mjs \
+      http://127.0.0.1:8790/ design/artboards/round2 design/tools/round2-jobs.json
+    PLAYWRIGHT_BROWSERS_PATH=$PWD/.playwright node design/tools/shoot.mjs \
+      http://127.0.0.1:8790/ design/artboards/round2 design/tools/storyboard-jobs.json
+    ```
+- **限制**：
+  - 圖是在 Linux 上用 Chromium 算繪的，中文字是 Noto Sans CJK TC；iPhone 上會是 PingFang TC，字寬略有差異。
+  - WebKit 在這台機器缺 `libavif13`，所以手機圖也用 Chromium 算。
+  - 手機最終驗收要用使用者的 iPhone 14 Pro Max Safari 實測，這一輪不宣稱通過。
+
+## 0. 使用者裁示（2026-09-24）
+
+- **偏離項目**：D1–D10 全部照設計做（使用者說沒特別提的就是沒問題）。
+- **AI 名稱**：改叫 **Super AI**。
+  - 後端 `manager.py` 裡 AI 的暱稱要跟著改。
+  - 等 AI 下子時，狀態列顯示「**AI 正在思考**」。
+- **AI 思考動效**：AI 幾乎都是立即落子，所以拿掉 AI 的巡行動畫、秒數和長說明。
+  - 真人對戰輪到對手時，改成「{name} 正在思考」加三點跳動（A04）。
+- **複製房號**：按過之後一直顯示「已複製」，不再變回「複製房號」，避免誤會（A06）。
+- **AI 局結算文案**：改成「挑戰者別氣餒，再挑戰一次？」。
+- **真人對戰再來一局**：**顏色不互換**，雙方維持原本的顏色。
+  - 這要改後端，目前 `manager.py` 在再來一局時會換座位。
+  - 所以先手永遠是同一個人（綠方先手）。
+- **邀請連結**：打開後帶入房號，**按一下「加入房間」才加入**，不自動加入。
+- **設計圖檔**：只存本機，不 push。規格與 mockup 原始檔可以進 git。
+
+## 1. 怎麼看這套圖
+
+`eog design/artboards/round2/` 會依檔名排序，順序如下：
+1. A01–A10：動效分鏡。
+2. L01–L11：大廳與個人設定。
+3. P01–P18：對局。
+
+檔名格式是 `{ID}-{路由}-{狀態}-{viewport}.png`。viewport 有以下幾種：
+
+| viewport | 尺寸 | 用途 |
+|---|---|---|
+| desktop | 1440×900 | 主要桌機 |
+| desktop | 1366×768 | 矮桌機 |
+| desktop-en | 1440×900 | 英文桌機 |
+| tablet | 768×1024 | 平板（只出 L03） |
+| mobile | 430×932 | iPhone 14 Pro Max PWA standalone。上 59px、下 34px 是 safe area，畫了動態島與 home indicator |
+| mobile-en | 430×932 | 英文手機（L02、L07、P06、P10、P11、P12、P15：最長的英文文案） |
+| keyboard | 430×932 | 鍵盤彈出（只出 L10） |
+| safari | 430×739 | Safari 工具列展開後的可見高度（L04、P03、P07）。739 是假設值，要實機確認 |
+| landscape | 892×412 | Galaxy S26 Ultra 橫向（L04、P03、P04、P07） |
+
+## 2. Design tokens（`tokens.css`，可直接搬進 `frontend/src/styles.css` 的 `:root`）
+
+| 類別 | token | 值 |
+|---|---|---|
+| 底 | `--paper` / `--paper-dot` | `#fff4dc`，加 20px 點陣 `rgb(226 196 130 / 55%)` |
+| 墨 | `--ink` / `--muted` | `#1b1b1f` / `#5d584f` |
+| 棋盤 | `--sun` / `--sun-soft` | `#ffd23f` / `#fff0b3` |
+| 綠棋 | `--mint` / `--mint-soft` | `#3ddc97` / `#c8f5df`（原 `#66d3a3`） |
+| 粉棋 | `--pink` / `--pink-soft` | `#ff5fa2` / `#ffd3e6`（原 `#f38fae`） |
+| 其他 | `--online` / `--disabled` / `--scrim` | `#1fae6c` / `#d9d2c3` / `rgb(27 27 31 / 45%)` |
+| 線 | `--bw` / `--bw-thin` | 桌機 3px、手機與橫向 2px / 2px |
+| 圓角 | `--r-card` / `--r-btn` / `--r-input` / `--r-board` | 20（手機 18）/ 15 / 13 / 24（手機 18） |
+| 硬陰影 | `--sh-card` / `--sh-btn` / `--sh-board` | 桌機 6/4/8px、手機 4/3/5px，都是 `x y 0 var(--ink)` |
+| 字級 | `--fs-*` | 11、12、13、15、17、19、22、28、40、56 |
+| 曲線 | `--ease-out` / `--ease-in` / `--ease-back` | `(.2,.8,.2,1)` / `(.55,0,1,.45)` / `(.34,1.56,.64,1)` |
+| 時長 | `--dur-fast` / `--dur-base` / `--dur-slow` | 120 / 180 / 320ms |
+
+**字體**
+- 拉丁字母與數字用 Space Grotesk。自架拉丁子集，一個可變字重檔 22KB（`design/fonts/SpaceGrotesk-700-latin.woff2`，OFL 授權），`font-display: swap`。
+- 中文一律用系統字，不載入中文 webfont。
+- 品牌字仍是桌機 22px、手機直向 20px，但字型改成 Space Grotesk 700。
+
+**色弱辨識**
+- 綠棋有同心圓，粉棋有兩條斜線，花紋一律用墨色。
+- 預覽棋子用虛線外框加半透明底。
+- 勝利棋子加白邊和墨邊。
+- 上一手在棋子外加一圈墨框。
+
+## 3. 版面與尺寸
+
+| 情境 | 條件 | 棋盤格徑／間距／內距 | 棋盤外框 | 其他 |
+|---|---|---|---|---|
+| 桌機 | ≥901px | 84 / 12 / 14 | 3px | 內容最大寬 1120；棋盤欄 694 + 側欄 352；頂列 58 |
+| 矮桌機 | ≥901px 且高度 ≤820px | 68 / 10 / 12 | 3px | 結束畫面的側欄不顯示資訊卡（上一手已標在棋盤上） |
+| 平板 | 621–900px | 76 / 10 / 12 | 3px | 大廳改兩欄，AI 卡整列橫放 |
+| 手機直向 | ≤620px | 48 / 6 / 9 | 2px | 左右邊距 14，大廳 20；頂列 52；棋盤垂直置中；離開按鈕固定在底部拇指區 |
+| 手機矮視窗 | ≤620px 且高度 ≤780px | 同手機 | 同上 | 間距縮小，結束時不顯示軌道；對應 Safari 工具列展開 |
+| 橫向手機 | 橫向且高度 ≤500px | 56 / 5 / 8 | 2px | 棋盤貼左、佔滿高度；狀態籤移到右欄頂端；頂列縮成右上角的品牌 mark 和頭像 |
+
+**對局區由上到下**
+1. **狀態籤**：貼紙樣式，旋轉 −1.5°。右側是手數籤。
+2. **落子軌道**：高度為一個格徑加 18px。輪到自己時，手上的棋子浮在指到的欄上方。
+3. **棋盤**。
+
+**桌機側欄由上到下**
+1. 結局面板（只在結束時出現）。
+2. 對局卡：模式籤、雙方、比分。
+3. 資訊卡：先手、上一手。
+4. 按鈕。
+5. 鍵盤提示。
+
+**手機**
+- 由上到下：對局卡縮成一條，接著是棋盤，最後是結局面板或離開按鈕。
+- 手機不顯示資訊卡：先後手已寫在對局卡，上一手標在棋盤上。
+
+**觸控與溢位**
+- 觸控目標一律 ≥44px。
+- 桌機主要按鈕高 56，手機高 48。
+- profile 欄位高 48、字級 16。
+- 78 張圖的水平溢位全部是 0。
+
+## 4. 頁面 × 狀態（觸發條件以 snapshot 判斷）
+
+| ID | 狀態 | 何時出現 | 重點 |
+|---|---|---|---|
+| L01 | 大廳（zh） | `room == null && !queue.searching` | 桌機兩欄：左邊是「挑戰 AI」大卡，內含會演示的迷你棋盤；右邊依序是朋友卡、配對卡。沒有 hero 或標語 |
+| L02 | 大廳（en） | 同上，`locale = en` | 確認英文長度（桌機、手機各一張） |
+| L03 | 大廳平板 | 621–900px | AI 卡整列橫放，朋友卡與配對卡並排 |
+| L04 | 手機大廳（收合） | ≤620px | AI 卡常駐展開；朋友、配對是手風琴，一次只開一個 |
+| L05 | 展開朋友卡 | 手機點朋友卡 | 展開後 AI 卡收起迷你棋盤與說明，讓展開內容留在畫面內 |
+| L06 | 展開配對卡 | 手機點配對卡 | 同上 |
+| L07 | 大廳離線 | `connection = offline` | 頂列顯示連線狀態；下方加一條粉紅橫幅；所有開始按鈕停用，以斜紋表示 |
+| L08 | 錯誤 toast | `error` 事件 | 粉紅貼紙 toast，有 44px 關閉鈕；桌機在右下，手機橫跨底部 |
+| L09 | 個人設定（桌機 modal） | 點頭像 | 欄位高 48，語言用原生 select 加自畫箭頭 |
+| L10 | 個人設定（手機 sheet） | 點頭像；422 `invalid_nickname` | 欄位錯誤時底色轉粉紅、外框加粗，錯誤文字放在欄位下方；鍵盤彈出時 sheet 貼在鍵盤上方（keyboard 圖） |
+| L11 | 邀請連結開啟 | 網址帶 `/?room=CODE` | 薄荷色橫幅「朋友邀請你加入房間 CODE」；朋友卡自動展開；房號已帶入；「加入房間」改成主要按鈕。**不自動加入** |
+| P01 | 配對中 | `queue.searching` | 三顆棋子跳動，顯示「已等待 m:ss」和取消按鈕 |
+| P02 | 等朋友 | `game.status = waiting` | 大字房號、QR code。桌機的主按鈕是「複製邀請連結」，圖上畫的是按下後「已複製」的狀態，而且之後不會變回原字；手機的主按鈕是「分享邀請」（`navigator.share`），另有「複製房號」和「離開」 |
+| P03 | 我的回合 | `playing && turn == you` | 軌道上的棋子、欄位亮框、預覽落點、上一手框、鍵盤提示 |
+| P04 | 對手回合 | `playing && turn != you` | 狀態籤「{name} 正在思考」加三點跳動；軌道空白；棋盤不接受操作 |
+| P05 | AI 思考 | `thinking` 持續超過 300ms | 狀態籤「AI 正在思考」加三點；300ms 內就落子則不顯示；沒有秒數、沒有超時 |
+| P06 | 對手離線 | `paused`（只在真人局；AI 局沒有斷線倒數，玩家回來就接著下） | 狀態籤「{name} 離線了」；倒數籤；對手頭像外加倒數環與「離線」標 |
+| P07 | 勝（私人房） | `finished && winner == you`，`connect_four` | 連線高亮加墨線；結局面板在側欄（手機在棋盤下）；本場比分 |
+| P08 | 敗（AI） | `finished && winner != you`，AI 模式 | 「Super AI 拿下這局」、「挑戰者別氣餒，再挑戰一次？」和「重新開始」 |
+| P09 | 平手 | `result_reason = draw` | 面板用向日葵色，圖示是綠粉雙棋 |
+| P10 | 對手離線判負（你勝） | `forfeit && winner == you` | `rematch_available` 為 true，仍可再來一局；對手顯示離線 |
+| P11 | 對手中途離開 | `result_reason = left` | 只有「回到大廳」按鈕 |
+| P12 | 求解器故障 | `status = error` | 棋盤蓋上斜紋；說明文字寫明「不會改用較弱的備援 AI」；「重新開始」 |
+| P13 | 我已邀請再來一局 | `rematch[you]` | 「已邀請 {name}」「{name} 還沒回應」；主按鈕停用，顯示「等待對手回應…」 |
+| P14 | 我離線 | `connection = offline` | 棋盤蓋上斜紋，並顯示「連線中斷，正在重新連線…」 |
+| P15 | 已在其他分頁開啟 | close code 4001 | 一顆主要按鈕「在這裡繼續」（front 的 `reclaim()`），加一段說明；不自動搶回 |
+| P16 | 自己離線判負 | `forfeit && winner != you` | 「離線逾時，這局判負」；和 P08 的連四敗是不同文案 |
+| P17 | 對手邀請再來一局 | `rematch[opponent] && !rematch[you]` | 「{name} 想再來一局！」「按下就開始下一局，雙方顏色不變。」；主按鈕「好，再來一局」 |
+| P18 | 分出勝負後對手才離開 | `finished && rematch_available == false && result_reason != left` | 保留原本結果，加註「{name} 已離開房間，無法再來一局」；只有「回到大廳」 |
+
+## 5. 元件
+
+- **按鈕**：
+  - 共通樣式：3px 墨框（手機 2px）、硬陰影 4px，按下時位移 3px、陰影縮成 1px。
+  - 種類：
+    - 主要按鈕：薄荷底。
+    - 次要按鈕：白底。
+    - 深色按鈕：墨底加粉紅陰影，用在「加入房間」。
+    - 文字按鈕：底線樣式，用在等朋友畫面的「離開」。
+  - 停用：灰底斜紋、無陰影。
+- **卡片**：白底，3px 墨框，圓角 20，硬陰影 6px。
+- **棋盤**：
+  - 向日葵底，3px 墨框，圓角 24，硬陰影 8px。
+  - 空格是紙色，有 3px 墨框和內陰影。
+  - 棋子邊緣蓋住空格的邊框（inset −3px），左上有貼紙高光。
+- **軌道**：輪到自己時，手上的棋子轉 −10° 並帶 5px 硬陰影，下方有墨色三角箭頭指向欄位。
+- **欄位亮框**：半透明白底，2px 墨色虛線，圓角膠囊形。
+- **狀態籤**的底色：
+  - 自己回合：薄荷。
+  - 對手回合：白。
+  - AI 思考：淡粉。
+  - 離線倒數：向日葵；最後 10 秒轉粉紅並脈動。
+  - 錯誤：粉紅。
+  - 自己離線：灰。
+- **結局面板**：
+  - 上半是色帶加徽章：勝利用薄荷、落敗用粉紅、平手用向日葵、錯誤用淡粉。
+  - 中段是再來一局的狀態列（可選）。
+  - 下半是按鈕：桌機直排，手機兩欄並排，主要按鈕在右。
+- **對局卡**：
+  - 包含模式籤、兩列玩家（輪到的一方有墨框底色）、「對」、本場比分（`series`）。
+  - 私人房的房號寫在模式籤上。
+- **QR 卡**：白卡轉 2°，QR 用墨色，下方寫「用手機掃描加入」。
+
+## 6. 動效（詳見 A01–A10 分鏡與 `motion.css`）
+
+| ID | 動效 | 時長與曲線 | reduced-motion |
+|---|---|---|---|
+| A01 | 落子重力＋壓扁＋回彈＋一次小彈 | 260 + 30×下落列數 ms；下落段 ease-in | 直接出現在落點 |
+| A02 | 滑鼠／觸控預覽 | 棋子滑動 140ms；亮框與預覽淡入 100ms | 瞬移；只淡入 120ms |
+| A03 | 勝利連線＋結局面板 | 放大 240ms，每顆錯開 70ms；墨線 320ms；面板在 650ms 時開始進場，歷時 360ms ease-back | 一次到位；面板淡入 |
+| A04 | 思考中（真人對手、AI） | 三點跳動 900ms 循環，每點錯開 150ms；AI 超過 300ms 才顯示 | 三點靜止 |
+| A05 | 離線 30 秒倒數 | 30 秒線性；最後 10 秒每 1 秒脈動一次 | 每秒跳一格，不脈動 |
+| A06 | 配對跳動、複製回饋 | 跳動 900ms 循環，每顆錯開 150ms；複製彈跳 180ms，之後維持「已複製」 | 靜止；只換字 |
+| A07 | 大廳 → 對局 | 大廳淡出 160ms，對局升起 240ms，狀態籤彈出 160ms | 交叉淡入淡出 120ms |
+| A08 | reduced-motion 總表 | — | — |
+| A09 | 鍵盤操作 | 同 A02、A01 | 同 A02、A01 |
+| A10 | 大廳迷你棋盤演示 | 6 秒循環；不在畫面內時暫停 | 只顯示第一幀 |
+
+## 7. 資料來源（`docs/protocol.md`）
+
+| 畫面需要的資料 | 欄位 | 說明 |
+|---|---|---|
+| 手數、上一手 | `game.history` | 長度就是手數；最後一碼是上一手所在的欄，該欄最上面那顆就是上一手 |
+| 先後手 | 固定綠方先手 | 對局卡、資訊卡顯示「先手／後手」 |
+| 倒數 | `players[c].grace_deadline`、`server_time` | 剩餘秒數 = `grace_deadline − (本機現在 + offset)`；值是 null 時只顯示文字 |
+| 再來一局 | `rematch {green, pink}`、`rematch_available` | P13、P17、P18、P10、P11 的按鈕與狀態列；不要用 `result_reason` 推導 |
+| 比分 | `series {you, opponent, draws}` | 對局卡底部；AI 模式不顯示 |
+| 對手連線 | `players[c].connected` | 「在線」「離線」標籤 |
+| 線上人數 | —（這一輪不做） | 大廳與配對畫面都沒有 |
+| AI 名稱 | `players[c].nickname`（`is_ai`） | 後端改成 `Super AI` |
+| 再來一局的顏色 | 後端換座位邏輯 | 真人對戰不換色（使用者裁示），後端要改；`docs/protocol.md` 的「再來一局時伺服器會換座位」也要一起改 |
+
+## 8. 分工
+
+| 項目 | 誰 | 說明 |
+|---|---|---|
+| 樣式、元件、版面、動效 | front | 以本規格和 78 張圖為準 |
+| 深連結 `/?room=CODE` | front（新路由） | 開啟後停在大廳、展開朋友卡並帶入房號，不自動加入（L11） |
+| QR code | front（新依賴） | 候選 `qrcode-generator` 或同級、可產 SVG 的套件；實作時量體積，預估 gzip 後在 10KB 內（未量測）。QR 內容就是深連結 |
+| 分享 | front | 手機用 `navigator.share({ title, text, url })`；不支援就複製邀請連結 |
+| 鍵盤操作（A09） | front | roving tabindex，←／→／Home／End／Enter／空白鍵，`aria-live` 朗讀 |
+| 在這裡繼續（P15） | front | `reclaim()`，已列在 front 的 F1 |
+| 字型 | front | 自架 Space Grotesk 拉丁子集，`unicode-range` 限定拉丁字元 |
+| 協定欄位 | back（已完成） | 見第 7 節 |
+| AI 改名 | back | `manager.py` 裡 AI 的暱稱從 `Perfect AI` 改成 `Super AI` |
+| 再來一局不換色 | back | 真人對戰再來一局時維持原座位與顏色（目前 `manager.py` 會換座位）；同步更新 `docs/protocol.md` 和測試 |
+| 求解器 | 不變 | 不弱化、不加超時、不加備援 |
+
+## 9. 品牌資產連動（C 保留綠／粉紅色相，只把色值調亮）
+
+- **要依新色值重新輸出**：
+  - `frontend/public/` 底下的 `connect4-mark.svg`、`connect4-mark-32.png`、`favicon.ico`、`apple-touch-icon.png`、
+    `connect4-app-icon.svg`、`connect4-icon-192.png`、`connect4-icon-512.png`、`connect4-preview.svg`、`connect4-preview.png`。
+  - 新的 mark 是薄荷棋疊粉紅棋，加 2px 墨框。
+- **manifest 與 HTML**：
+  - `site.webmanifest` 的 `background_color` 和 `theme_color` 改成 `#fff4dc`。
+  - `index.html` 的 `theme-color` 也改成 `#fff4dc`。
+  - OG／Twitter 的圖片替代文字寫的是「綠色與粉紅色棋子組成的 Connect 4 標誌」；色相沒變，照舊可用。
+- **e2e 像素測試**（spec:804-805）：新色 `#3ddc97` 和 `#ff5fa2` 都符合判準，照樣會通過。
+
+## 10. 偏離清單（和現有 e2e 斷言或既有設計不同的地方；使用者 2026-09-24 全部核准）
+
+| # | 項目 | 現況 | 新設計 | 影響 |
+|---|---|---|---|---|
+| D1 | 回合狀態卡 | `.turn-card` 是棋盤上方一張獨立的卡；橫向手機會隱藏 | 改成棋盤上緣的狀態籤加落子軌道；橫向手機時移到右欄 | 截圖基準要重產 |
+| D2 | 大廳版面 | 桌機三欄等寬卡 | 桌機兩欄：左邊是 AI 大卡（含迷你棋盤），右邊疊朋友卡與配對卡。簡報裡的「L01 三欄桌機」因此改名 | 截圖基準 |
+| D3 | 對局中的房號 | 私人房對局時側欄有 `compact-code` 區塊，可點擊複製，房號字級 24、高度 ≥88，有 e2e 斷言（spec:883-884） | 對局中不再放可複製的房號區塊，房號只顯示在對局卡的模式籤；分享放在等朋友畫面（P02） | 要改 spec:883-884 |
+| D4 | 桌機玩家列 | `player-strip` 一列放兩人，高度 ≥104 | 對局卡直排兩位玩家，每列高 ≥76。token 44、名字 18、「對」字 14 都保留 | 選擇器與高度斷言要改 |
+| D5 | 顏色與棋盤 | sage 棋盤、`#66d3a3`／`#f38fae`、背景 `#f7f3ee` | 向日葵棋盤、`#3ddc97`／`#ff5fa2`、背景 `#fff4dc`、墨框硬陰影 | 36 張基準截圖全部重產 |
+| D6 | 品牌字型 | 系統字 800 | Space Grotesk 700（拉丁子集 22KB），字級仍是 22／20 | 字級斷言不變 |
+| D7 | 空格形狀 | 桌機實測 89.7×87.2，是橢圓 | 正圓，桌機 84、手機 48（第一階段三方向共用的 49.7 是舊值，以 48 為準，因為 C 的粗框需要空間） | — |
+| D8 | 桌機棋盤寬 | 720 | 694，多出的空間給軌道 | — |
+| D9 | 手機大廳 | AI 卡只有標題、說明、按鈕 | AI 卡加入迷你棋盤；展開朋友或配對卡時收起棋盤 | 卡片高度斷言要看；間距 16 保留 |
+| D10 | 觸控落子 | 點一下就落子 | 仍是點一下就落子；另外按住時顯示預覽，可以拖動換欄，在棋盤外放開就取消 | 新增行為 |
+
+**保留不變的斷言**：
+- 品牌字 22／20。
+- 觸控目標 ≥44。
+- profile 欄位高 48、字級 16。
+- select 的 `appearance: none`。
+- 水平溢位 ≤1。
+- `.hero-copy` 和 `.badge` 數量為 0（沒有加回 hero）。
+- 10 個 device project，截圖差異上限 0.5%。
+
+## 11. 未決事項
+
+1. Safari 工具列展開時的可見高度 739 是假設值。手機矮視窗規則用 ≤780 作門檻，要在實機確認。
+2. PingFang TC 和 Space Grotesk 混排時，數字與中文的基線可能略有落差，QA 時要看手數籤、比分、倒數。
+3. QR 套件的選擇與實際體積由 front 實作時量測。
+4. 已決定：`/?room=` 深連結只帶入房號，按一下「加入房間」才加入。
+5. 這套規格只涵蓋亮色，不做暗色（使用者 2026-09-24 決定）。
+
+## 12. 新增與改寫的文案（zh-TW／en；完整字串見 `design/mockups/round2/strings.js`）
+
+| key | zh-TW | en | 備註 |
+|---|---|---|---|
+| `backToLobby` | 回到大廳 | Back to lobby | 新增 |
+| `copyCode` | 複製房號 | Copy code | 新增（was common.copy) |
+| `shareInvite` | 分享邀請 | Share invite | 新增 |
+| `copyLink` | 複製邀請連結 | Copy invite link | 新增 |
+| `lobbyOffline` | 連線恢復前無法開始對局。 | You can start a game once the connection is back. | 新增 |
+| `inviteBanner` | 朋友邀請你加入房間 | A friend invited you to room | 新增 |
+| `inviteHint` | 房號已帶入，按「加入房間」就能開始。 | The code is filled in. Tap “Join room” to start. | 新增 |
+| `yourTurnHint` | 選一欄落子 | Pick a column | 新增 |
+| `opponentTurn` | {name} 正在思考 | {name} is thinking | 新增（was game.opponentTurn) |
+| `moveNo` | 第 {n} 手 | Move {n} | 新增 |
+| `gameOver` | 對局結束 | Game over | 新增 |
+| `first` | 先手 | First | 新增 |
+| `second` | 後手 | Second | 新增 |
+| `lastMove` | 上一手 | Last move | 新增；game.history |
+| `solver` | 精確求解器 | Exact solver | 新增 |
+| `online` | 在線 | Online | 新增 |
+| `offlineTag` | 離線 | Offline | 新增 |
+| `kbdPick` | 選欄 | choose | 新增 |
+| `kbdDrop` | 落子 | drop | 新增 |
+| `series` | 本場比分 | Series | 新增；game.series |
+| `modeAi` | 挑戰 Super AI | vs Super AI | 新增 |
+| `modePrivate` | 私人房 | Private room | 新增 |
+| `aiThinking` | AI 正在思考 | AI is thinking | 改寫 |
+| `paused` | {name} 離線了 | {name} went offline | 新增（replaces game.paused) |
+| `pausedBody` | 保留棋局 30 秒，等對方回來。 | Holding the game for 30 seconds while they reconnect. | 新增 |
+| `reconnected` | {name} 回來了 | {name} is back | 新增 |
+| `winSub` | 連成四子，共 {n} 手 | Four in a row in {n} moves | 新增 |
+| `loseAi` | Super AI 拿下這局 | Super AI takes this one | 新增 |
+| `loseAiSub` | 挑戰者別氣餒，再挑戰一次？ | Don’t give up, challenger. Try again? | 新增 |
+| `lose` | {name} 拿下這局 | {name} won this game | 新增 |
+| `drawSub` | 42 格全滿，沒有人連成四子。 | All 42 slots are full and nobody connected four. | 新增 |
+| `forfeitWin` | 你獲勝！{name} 離線逾時 | You win! {name} timed out | 新增（was game.forfeitWin) |
+| `forfeitWinSub` | 對手沒有在 30 秒內回來。 | Your opponent didn’t come back within 30 seconds. | 新增 |
+| `forfeitLose` | 離線逾時，這局判負 | You timed out — game lost | 新增 |
+| `forfeitLoseSub` | 你的連線中斷超過 30 秒，由對手獲勝。 | Your connection dropped for more than 30 seconds, so your opponent wins. | 新增 |
+| `left` | {name} 離開了房間 | {name} left the room | 新增 |
+| `leftSub` | 這局算你獲勝。對手已離開，無法再來一局。 | You win this game. They’ve left, so a rematch isn’t available. | 新增 |
+| `rematchSent` | 已邀請 {name} 再來一局 | Rematch invite sent to {name} | 新增（was game.rematchWaiting) |
+| `rematchPending` | {name} 還沒回應 | Waiting for {name} to answer | 新增；game.rematch[opponent] false |
+| `rematchWaitingBtn` | 等待對手回應… | Waiting for response… | 新增 |
+| `rematchIncoming` | {name} 想再來一局！ | {name} wants a rematch! | 新增；game.rematch[opponent] |
+| `rematchIncomingSub` | 按下就開始下一局，雙方顏色不變。 | Accept to start the next game. Colours stay the same. | 新增 |
+| `rematchAccept` | 好，再來一局 | Accept rematch | 新增 |
+| `leftAfter` | {name} 已離開房間，無法再來一局。 | {name} has left the room, so a rematch isn’t available. | 新增；rematch_available false |
+| `gameOffline` | 連線中斷，正在重新連線… | Connection lost — reconnecting… | 新增 |
+| `gameOfflineBody` | 恢復前棋盤暫停操作，棋局會保留。 | The board is paused until you’re back. The game is kept. | 新增 |
+| `otherTab` | 已在其他分頁開啟 | Open in another tab | 新增 |
+| `otherTabBody` | 這局正在另一個分頁進行。一次只能有一個分頁連線；在這裡繼續，另一個分頁就會中斷。 | This game is running in another tab. Only one tab can be connected at a time; continuing here disconnects the other tab. | 新增 |
+| `continueHere` | 在這裡繼續 | Continue here | 新增 |
+| `waitedFor` | 已等待 {t} | Waiting {t} | 新增 |
+| `waitingFriendBody` | 分享邀請或房號，朋友加入後立即開局。 | Share the invite or the code. The game starts as soon as they join. | 改寫 |
+| `scanToJoin` | 用手機掃描加入 | Scan to join on a phone | 新增 |
+| `errNickname` | 暱稱需為 1–18 個字。 | Nickname must be 1–18 characters. | 新增（invalid_nickname) |
+
+## 13. Artboard 索引（68 張畫面＋10 張分鏡）
+
+| ID | 檔名（design/artboards/round2/，副檔名 .png） |
+|---|---|
+| L01 | `L01-lobby-zh-desktop-1440x900`<br>`L01-lobby-zh-desktop-1366x768` |
+| L02 | `L02-lobby-en-desktop-en-1440x900`<br>`L02-lobby-en-mobile-en-430x932` |
+| L03 | `L03-lobby-tablet-tablet-768x1024` |
+| L04 | `L04-lobby-collapsed-mobile-430x932`<br>`L04-lobby-collapsed-safari-430x739`<br>`L04-lobby-collapsed-landscape-892x412` |
+| L05 | `L05-lobby-friends-expanded-mobile-430x932` |
+| L06 | `L06-lobby-matchmaking-expanded-mobile-430x932` |
+| L07 | `L07-lobby-offline-desktop-1440x900`<br>`L07-lobby-offline-mobile-430x932`<br>`L07-lobby-offline-mobile-en-430x932` |
+| L08 | `L08-lobby-error-toast-desktop-1440x900`<br>`L08-lobby-error-toast-mobile-430x932` |
+| L09 | `L09-profile-modal-desktop-1440x900` |
+| L10 | `L10-profile-sheet-error-mobile-430x932`<br>`L10-profile-sheet-error-keyboard-430x932` |
+| L11 | `L11-lobby-invite-link-desktop-1440x900`<br>`L11-lobby-invite-link-mobile-430x932` |
+| P01 | `P01-play-searching-desktop-1440x900`<br>`P01-play-searching-mobile-430x932` |
+| P02 | `P02-play-waiting-friend-desktop-1440x900`<br>`P02-play-waiting-friend-mobile-430x932` |
+| P03 | `P03-play-your-turn-desktop-1440x900`<br>`P03-play-your-turn-desktop-1366x768`<br>`P03-play-your-turn-mobile-430x932`<br>`P03-play-your-turn-safari-430x739`<br>`P03-play-your-turn-landscape-892x412` |
+| P04 | `P04-play-opponent-turn-desktop-1440x900`<br>`P04-play-opponent-turn-mobile-430x932`<br>`P04-play-opponent-turn-landscape-892x412` |
+| P05 | `P05-play-ai-thinking-desktop-1440x900`<br>`P05-play-ai-thinking-mobile-430x932` |
+| P06 | `P06-play-opponent-paused-desktop-1440x900`<br>`P06-play-opponent-paused-mobile-430x932`<br>`P06-play-opponent-paused-mobile-en-430x932` |
+| P07 | `P07-play-win-desktop-1440x900`<br>`P07-play-win-desktop-1366x768`<br>`P07-play-win-mobile-430x932`<br>`P07-play-win-safari-430x739`<br>`P07-play-win-landscape-892x412` |
+| P08 | `P08-play-lose-ai-desktop-1440x900`<br>`P08-play-lose-ai-mobile-430x932` |
+| P09 | `P09-play-draw-desktop-1440x900`<br>`P09-play-draw-mobile-430x932` |
+| P10 | `P10-play-forfeit-win-desktop-1440x900`<br>`P10-play-forfeit-win-mobile-430x932`<br>`P10-play-forfeit-win-mobile-en-430x932` |
+| P11 | `P11-play-opponent-left-desktop-1440x900`<br>`P11-play-opponent-left-mobile-430x932`<br>`P11-play-opponent-left-mobile-en-430x932` |
+| P12 | `P12-play-solver-error-desktop-1440x900`<br>`P12-play-solver-error-mobile-430x932`<br>`P12-play-solver-error-mobile-en-430x932` |
+| P13 | `P13-play-rematch-sent-desktop-1440x900`<br>`P13-play-rematch-sent-mobile-430x932` |
+| P14 | `P14-play-offline-desktop-1440x900`<br>`P14-play-offline-mobile-430x932` |
+| P15 | `P15-play-other-tab-desktop-1440x900`<br>`P15-play-other-tab-mobile-430x932`<br>`P15-play-other-tab-mobile-en-430x932` |
+| P16 | `P16-play-forfeit-lose-desktop-1440x900`<br>`P16-play-forfeit-lose-mobile-430x932` |
+| P17 | `P17-play-rematch-incoming-desktop-1440x900`<br>`P17-play-rematch-incoming-mobile-430x932` |
+| P18 | `P18-play-opponent-left-after-finish-desktop-1440x900`<br>`P18-play-opponent-left-after-finish-mobile-430x932` |
+| A01 | `A01-drop-gravity-bounce-storyboard` |
+| A02 | `A02-column-preview-storyboard` |
+| A03 | `A03-win-line-result-panel-storyboard` |
+| A04 | `A04-ai-thinking-sweep-storyboard` |
+| A05 | `A05-paused-countdown-storyboard` |
+| A06 | `A06-waiting-feedback-storyboard` |
+| A07 | `A07-lobby-to-play-transition-storyboard` |
+| A08 | `A08-reduced-motion-alternatives-storyboard` |
+| A09 | `A09-keyboard-play-storyboard` |
+| A10 | `A10-lobby-mini-board-demo-storyboard` |

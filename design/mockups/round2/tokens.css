@@ -1,0 +1,81 @@
+/* Direction C「粗線派對」design tokens — the values design/spec.md refers to.
+   RD can copy this block into frontend/src/styles.css :root as-is. */
+
+@font-face {
+  font-family: "Space Grotesk";
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("../../fonts/SpaceGrotesk-700-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+2013-2014, U+2018-201D, U+2026, U+2190-2193;
+}
+
+:root {
+  /* colour */
+  --paper: #fff4dc;
+  --paper-dot: rgb(226 196 130 / 55%);
+  --ink: #1b1b1f;
+  --muted: #5d584f;
+  --white: #ffffff;
+  --sun: #ffd23f;
+  --sun-soft: #fff0b3;
+  --mint: #3ddc97;
+  --mint-soft: #c8f5df;
+  --pink: #ff5fa2;
+  --pink-soft: #ffd3e6;
+  --online: #1fae6c;
+  --disabled: #d9d2c3;
+  --scrim: rgb(27 27 31 / 45%);
+
+  /* type — CJK stays on system fonts; Space Grotesk covers Latin + digits */
+  --font-ui:
+    "PingFang TC", "Noto Sans CJK TC", "Microsoft JhengHei", system-ui,
+    sans-serif;
+  --font-display: "Space Grotesk", var(--font-ui);
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-15: 15px;
+  --fs-17: 17px;
+  --fs-19: 19px;
+  --fs-22: 22px;
+  --fs-28: 28px;
+  --fs-40: 40px;
+  --fs-56: 56px;
+
+  /* line, radius, shadow (desktop; phone overrides below) */
+  --bw: 3px;
+  --bw-thin: 2px;
+  --r-pill: 999px;
+  --r-card: 20px;
+  --r-btn: 15px;
+  --r-input: 13px;
+  --r-board: 24px;
+  --sh-card: 6px 6px 0 var(--ink);
+  --sh-btn: 4px 4px 0 var(--ink);
+  --sh-btn-pressed: 1px 1px 0 var(--ink);
+  --sh-board: 8px 8px 0 var(--ink);
+
+  /* board geometry: slot diameter, gap, padding */
+  --slot: 84px;
+  --slot-gap: 12px;
+  --board-pad: 14px;
+
+  /* motion */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 320ms;
+}
+
+@media (max-width: 620px), (orientation: landscape) and (max-height: 500px) {
+  :root {
+    --bw: 2px;
+    --r-card: 18px;
+    --r-board: 18px;
+    --sh-card: 4px 4px 0 var(--ink);
+    --sh-btn: 3px 3px 0 var(--ink);
+    --sh-board: 5px 5px 0 var(--ink);
+  }
+}

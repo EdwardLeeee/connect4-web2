@@ -1,0 +1,271 @@
+/* Direction C — 粗線派對 Bold Pop (keeps green / pink hues, brighter values). */
+:root {
+  --bg-base: #fff4dc;
+  --ink: #1b1b1f;
+  --muted: #5d584f;
+  --line: #1b1b1f;
+  --card-bg: #ffffff;
+  --sun: #ffd23f;
+  --mint: #3ddc97;
+  --mint-soft: #c8f5df;
+  --pink: #ff5fa2;
+  --pink-soft: #ffd3e6;
+  --online: #1fae6c;
+  --cue: var(--ink);
+  --g-pattern: var(--ink);
+  --p-pattern: var(--ink);
+  --safe-guide: rgb(27 27 31 / 22%);
+  --font-display: "Space Grotesk", var(--font-ui);
+  --hard: 6px 6px 0 var(--ink);
+  --bg:
+    radial-gradient(rgb(226 196 130 / 55%) 1.3px, transparent 1.6px) 0 0 / 20px 20px,
+    var(--bg-base);
+}
+
+.brand {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.profile {
+  border: 2px solid var(--ink);
+  background: #fff;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.avatar {
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  background: var(--pink);
+}
+
+.token.g,
+.token.p {
+  border: 3px solid var(--ink);
+}
+
+.token.g {
+  background: var(--mint);
+}
+
+.token.p {
+  background: var(--pink);
+}
+
+/* flat sticker gloss */
+.token::before {
+  position: absolute;
+  top: 12%;
+  left: 18%;
+  width: 26%;
+  height: 16%;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 70%);
+  content: "";
+  transform: rotate(-30deg);
+}
+
+.token.mini::before,
+.token.stat-token::before,
+.token.ghost::before {
+  display: none;
+}
+
+.token.mini,
+.token.stat-token {
+  border-width: 2px;
+}
+
+.token.mini::after,
+.token.stat-token::after {
+  display: none;
+}
+
+.board {
+  border: 3px solid var(--ink);
+  border-radius: 24px;
+  background: var(--sun);
+  box-shadow: 8px 8px 0 var(--ink);
+}
+
+.board {
+  width: calc(var(--bw) + 6px);
+}
+
+.cell {
+  border: 3px solid var(--ink);
+  background: var(--bg-base);
+  box-shadow: inset 0 5px 0 rgb(27 27 31 / 14%);
+}
+
+.cell > .token {
+  inset: -3px;
+}
+
+.col-hover {
+  background: rgb(255 255 255 / 45%);
+  outline: 2px dashed var(--ink);
+  outline-offset: -2px;
+}
+
+.token.ghost {
+  border: 3px dashed var(--ink);
+  background: rgb(61 220 151 / 45%);
+}
+
+.token.ghost::after {
+  border-color: rgb(27 27 31 / 40%);
+}
+
+.cell.is-last {
+  box-shadow: 0 0 0 4px var(--ink);
+}
+
+.token.in-hand {
+  box-shadow: 5px 5px 0 var(--ink);
+  transform: rotate(-10deg);
+}
+
+.turn-status {
+  padding: 4px 14px 4px 6px;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: var(--mint);
+  box-shadow: 4px 4px 0 var(--ink);
+  transform: rotate(-1.5deg);
+}
+
+.turn-status strong {
+  font-weight: 900;
+}
+
+.turn-status .hint {
+  color: var(--ink);
+}
+
+.move-chip {
+  border: 3px solid var(--ink);
+  background: #fff;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.card {
+  border: 3px solid var(--ink);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: var(--hard);
+}
+
+.mode-label {
+  display: inline-block;
+  padding: 3px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--sun);
+  color: var(--ink);
+  letter-spacing: 0.04em;
+}
+
+.player.is-current {
+  border: 2px solid var(--ink);
+  background: var(--mint-soft);
+}
+
+.player-copy strong {
+  font-weight: 900;
+}
+
+.turn-tag {
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  background: var(--mint);
+  transform: rotate(3deg);
+}
+
+.stats strong {
+  font-weight: 900;
+}
+
+.stats > div + div {
+  border-left: 2px dashed var(--ink);
+}
+
+.versus::before {
+  height: 2px;
+  background: var(--ink);
+}
+
+.btn.secondary {
+  border: 3px solid var(--ink);
+  background: #fff;
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+kbd {
+  border: 2px solid var(--ink);
+  background: #fff;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+@media (max-width: 620px) {
+  .mode-label {
+    display: none;
+  }
+
+  :root {
+    --c: 48px; /* 3px ink borders + hard shadow need a slightly narrower board */
+    --g: 6px;
+    --p: 9px;
+  }
+
+  .board {
+    border-radius: 18px;
+    box-shadow: 5px 5px 0 var(--ink);
+  }
+
+  .cell {
+    border-width: 2px;
+  }
+
+  .cell > .token {
+    inset: -2px;
+  }
+
+  .token.g,
+  .token.p {
+    border-width: 2px;
+  }
+
+  .token.g::after,
+  .token.p::after {
+    --pattern-w: 2px;
+  }
+
+  .token.ghost {
+    border-width: 2px;
+  }
+
+  .card {
+    border-width: 2px;
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+
+  .turn-status {
+    padding: 2px 11px 2px 4px;
+    border-width: 2px;
+    box-shadow: 3px 3px 0 var(--ink);
+  }
+
+  .move-chip {
+    border-width: 2px;
+  }
+
+  .btn.secondary {
+    border-width: 2px;
+  }
+}
+
+/* the board's 3px ink border shifts the slots right */
+.hand {
+  margin-left: 3px;
+}

@@ -1,0 +1,227 @@
+/* Direction A — 溫室桌遊 Greenhouse Tabletop (keeps green / pink). */
+:root {
+  --bg-base: #f5f0e8;
+  --ink: #21332d;
+  --muted: #66766f;
+  --line: #e4ddd1;
+  --card-bg: #fffdf9;
+  --sage: #365e56;
+  --sage-dark: #264840;
+  --sage-soft: #ddebe5;
+  --mint: #66d3a3;
+  --mint-dark: #176747;
+  --pink: #f38fae;
+  --pink-dark: #973a5a;
+  --gold: #f4c95d;
+  --online: #2fb277;
+  --cue: #2f5a50;
+  --g-pattern: rgb(255 255 255 / 82%);
+  --p-pattern: rgb(255 255 255 / 78%);
+  --safe-guide: rgb(33 51 45 / 18%);
+  --bg:
+    radial-gradient(circle at 6% 12%, rgb(102 211 163 / 16%), transparent 26rem),
+    radial-gradient(circle at 94% 86%, rgb(243 143 174 / 13%), transparent 28rem),
+    var(--bg-base);
+}
+
+.brand-text {
+  letter-spacing: -0.03em;
+}
+
+.profile {
+  border: 1px solid var(--line);
+  background: rgb(255 255 255 / 72%);
+}
+
+.avatar {
+  color: #fff;
+  background: var(--sage);
+}
+
+/* tokens: moulded plastic with a rim and a soft top-left highlight */
+.token.g {
+  border: 3px solid #1d7a53;
+  background: radial-gradient(
+    circle at 34% 28%,
+    #c4f3dc 0 7%,
+    #86dfb8 20%,
+    #62cf9f 55%,
+    #43b184 100%
+  );
+  box-shadow:
+    inset 0 -5px 0 rgb(23 103 71 / 30%),
+    inset 0 3px 0 rgb(255 255 255 / 35%),
+    0 2px 3px rgb(20 44 38 / 28%);
+}
+
+.token.p {
+  border: 3px solid #a4466a;
+  background: radial-gradient(
+    circle at 34% 28%,
+    #ffd9e4 0 7%,
+    #f9a7c1 20%,
+    #f28bac 55%,
+    #dc6e93 100%
+  );
+  box-shadow:
+    inset 0 -5px 0 rgb(151 58 90 / 28%),
+    inset 0 3px 0 rgb(255 255 255 / 35%),
+    0 2px 3px rgb(20 44 38 / 28%);
+}
+
+.token.mini,
+.token.stat-token {
+  border-width: 2px;
+  box-shadow: none;
+}
+
+.token.mini::after,
+.token.stat-token::after {
+  display: none;
+}
+
+/* board: thick moulded frame standing on a plinth */
+.board {
+  border-radius: 30px;
+  background: linear-gradient(180deg, #41736a 0%, #365e56 40%, #2e544b 100%);
+  box-shadow:
+    inset 0 2px 0 rgb(255 255 255 / 20%),
+    inset 0 -3px 0 rgb(0 0 0 / 16%),
+    0 8px 0 #264840,
+    0 30px 44px rgb(39 66 57 / 26%);
+}
+
+.cell {
+  background: #efe8dc;
+  box-shadow:
+    inset 0 6px 9px rgb(20 44 38 / 34%),
+    inset 0 -2px 0 rgb(255 255 255 / 60%);
+}
+
+.col-hover {
+  background: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 16%),
+    rgb(255 255 255 / 5%)
+  );
+}
+
+.token.ghost {
+  border: 3px dashed rgb(23 103 71 / 75%);
+  background: rgb(102 211 163 / 30%);
+  box-shadow: none;
+}
+
+.token.ghost::after {
+  border-color: rgb(23 103 71 / 35%);
+}
+
+.cell.is-last > .token {
+  outline: 3px solid rgb(255 255 255 / 92%);
+  outline-offset: 3px;
+}
+
+.token.in-hand {
+  box-shadow:
+    inset 0 -5px 0 rgb(23 103 71 / 30%),
+    inset 0 3px 0 rgb(255 255 255 / 35%),
+    0 10px 14px rgb(20 44 38 / 22%);
+}
+
+.board-foot {
+  height: 16px;
+  margin: 8px 34px 0;
+  border-radius: 0 0 18px 18px;
+  background: linear-gradient(180deg, #264840, #1f3d36);
+  box-shadow: 0 10px 18px rgb(39 66 57 / 20%);
+}
+
+/* status line on top of the board */
+.turn-status strong {
+  color: var(--ink);
+}
+
+.move-chip {
+  color: var(--sage-dark);
+  background: var(--sage-soft);
+}
+
+/* sidebar */
+.card {
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--card-bg);
+  box-shadow: 0 10px 30px rgb(39 66 57 / 7%);
+}
+
+.mode-label {
+  color: var(--mint-dark);
+}
+
+.player.is-current {
+  background: #eaf5ef;
+  box-shadow: inset 4px 0 0 var(--mint);
+}
+
+.turn-tag {
+  color: #fff;
+  background: var(--mint-dark);
+}
+
+.btn.secondary {
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+kbd {
+  border: 1px solid var(--line);
+  background: #fff;
+  box-shadow: 0 1px 0 var(--line);
+}
+
+@media (max-width: 620px) {
+  .board {
+    border-radius: 22px;
+    box-shadow:
+      inset 0 2px 0 rgb(255 255 255 / 20%),
+      inset 0 -3px 0 rgb(0 0 0 / 16%),
+      0 6px 0 #264840,
+      0 22px 30px rgb(39 66 57 / 24%);
+  }
+
+  .board-foot {
+    height: 11px;
+    margin: 6px 22px 0;
+  }
+
+  .token.g,
+  .token.p {
+    border-width: 2px;
+  }
+
+  .token.g::after,
+  .token.p::after {
+    --pattern-w: 2px;
+  }
+
+  .token.ghost {
+    border-width: 2px;
+  }
+
+  .cell.is-last > .token {
+    outline-width: 2px;
+    outline-offset: 2px;
+  }
+
+  .player.is-current {
+    box-shadow: inset 3px 0 0 var(--mint);
+  }
+
+  .match-card {
+    border-radius: 20px;
+  }
+
+  .stats {
+    border-radius: 18px;
+  }
+}

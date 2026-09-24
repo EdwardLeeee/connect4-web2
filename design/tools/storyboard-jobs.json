@@ -1,0 +1,92 @@
+[
+ {
+  "url": "mockups/round2/story.html?id=A01",
+  "out": "A01-drop-gravity-bounce-storyboard.png",
+  "width": 1440,
+  "height": 900,
+  "fullPage": true,
+  "freezeAt": false,
+  "dpr": 1.5
+ },
+ {
+  "url": "mockups/round2/story.html?id=A02",
+  "out": "A02-column-preview-storyboard.png",
+  "width": 1440,
+  "height": 900,
+  "fullPage": true,
+  "freezeAt": false,
+  "dpr": 1.5
+ },
+ {
+  "url": "mockups/round2/story.html?id=A03",
+  "out": "A03-win-line-result-panel-storyboard.png",
+  "width": 1440,
+  "height": 900,
+  "fullPage": true,
+  "freezeAt": false,
+  "dpr": 1.5
+ },
+ {
+  "url": "mockups/round2/story.html?id=A04",
+  "out": "A04-ai-thinking-sweep-storyboard.png",
+  "width": 1440,
+  "height": 900,
+  "fullPage": true,
+  "freezeAt": false,
+  "dpr": 1.5
+ },
+ {
+  "url": "mockups/round2/story.html?id=A05",
+  "out": "A05-paused-countdown-storyboard.png",
+  "width": 1440,
+  "height": 900,
+  "fullPage": true,
+  "freezeAt": false,
+  "dpr": 1.5
+ },
+ {
+  "url": "mockups/round2/story.html?id=A06",
+  "out": "A06-waiting-feedback-storyboard.png",
+  "width": 1440,
+  "height": 900,
+  "fullPage": true,
+  "freezeAt": false,
+  "dpr": 1.5
+ },
+ {
+  "url": "mockups/round2/story.html?id=A07",
+  "out": "A07-lobby-to-play-transition-storyboard.png",
+  "width": 1440,
+  "height": 900,
+  "fullPage": true,
+  "freezeAt": false,
+  "dpr": 1.5
+ },
+ {
+  "url": "mockups/round2/story.html?id=A08",
+  "out": "A08-reduced-motion-alternatives-storyboard.png",
+  "width": 1440,
+  "height": 900,
+  "fullPage": true,
+  "freezeAt": false,
+  "dpr": 1.5
+ },
+ {
+  "url": "mockups/round2/story.html?id=A09",
+  "out": "A09-keyboard-play-storyboard.png",
+  "width": 1440,
+  "height": 900,
+  "fullPage": true,
+  "freezeAt": false,
+  "dpr": 1.5
+ },
+ {
+  "url": "mockups/round2/story.html?id=A10",
+  "out": "A10-lobby-mini-board-demo-storyboard.png",
+  "width": 1440,
+  "height": 900,
+  "fullPage": true,
+  "freezeAt": false,
+  "dpr": 1.5
+ }
+]

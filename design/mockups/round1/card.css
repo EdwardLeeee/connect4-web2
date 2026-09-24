@@ -1,0 +1,192 @@
+.direction-card {
+  width: 1120px;
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 56px 0 40px;
+  display: flex;
+  flex-direction: column;
+}
+
+.direction-card header {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.letter {
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+  border-radius: 28px;
+  font-family: var(--font-display);
+  font-size: 56px;
+  font-weight: 800;
+  color: var(--card-bg);
+  background: var(--ink);
+}
+
+.en {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.direction-card h1 {
+  margin: 2px 0 4px;
+  font-size: 56px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.colour {
+  margin: 0;
+  font-size: 18px;
+  color: var(--muted);
+}
+
+.badge {
+  margin-left: auto;
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  background: #176747;
+}
+
+.keywords {
+  margin: 30px 0 0;
+  padding: 0;
+  display: flex;
+  gap: 12px;
+  list-style: none;
+}
+
+.keywords li {
+  padding: 8px 18px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 17px;
+  font-weight: 600;
+  background: var(--card-bg);
+}
+
+.direction-card .body {
+  margin-top: 34px;
+  display: grid;
+  grid-template-columns: 520px 1fr;
+  gap: 44px;
+}
+
+.specimen,
+.notes {
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--card-bg);
+}
+
+.tokens {
+  display: flex;
+  gap: 22px;
+}
+
+.token.big {
+  width: 104px;
+  height: 104px;
+}
+
+.swatches {
+  margin-top: 26px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px 14px;
+}
+
+.swatches div {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  column-gap: 10px;
+  align-items: center;
+}
+
+.swatches span {
+  grid-row: span 2;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgb(128 128 128 / 35%);
+  border-radius: 12px;
+}
+
+.swatches b {
+  font-family: var(--font-display);
+  font-size: 14px;
+}
+
+.swatches small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.font-sample {
+  margin: 26px 0 0;
+  font-family: var(--font-display);
+  font-size: 24px;
+  white-space: nowrap;
+  font-weight: 800;
+}
+
+.notes dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 16px 18px;
+}
+
+.notes dt {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.notes dd {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.notes ul {
+  margin: 0;
+  padding-left: 1.1em;
+}
+
+.direction-card footer {
+  margin-top: auto;
+  padding-top: 28px;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+/* direction-specific accents */
+[data-dir="b"] .letter {
+  color: #0c1230;
+  background: var(--yellow);
+  box-shadow: 0 0 30px rgb(255 201 60 / 50%);
+}
+
+[data-dir="c"] .letter,
+[data-dir="c"] .specimen,
+[data-dir="c"] .notes,
+[data-dir="c"] .keywords li {
+  border: 3px solid var(--ink);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+
+[data-dir="c"] .letter {
+  color: var(--ink);
+  background: var(--sun);
+}

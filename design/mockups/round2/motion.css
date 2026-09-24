@@ -1,0 +1,288 @@
+/* Direction C motion spec. Every animation here is the one the storyboards
+   (A01–A10) freeze frame-by-frame; RD copies the keyframes as-is.
+   Under prefers-reduced-motion each one is replaced as listed in A08. */
+
+@property --p {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+@property --col {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+/* A01 — gravity drop, a squash, one 12% rebound and a small 3% settle.
+   --fall: distance from the rail to the landing slot,
+           (rows fallen + 1) × (slot + gap);
+   --drop-dur: 260ms + 30ms × rows fallen (6 rows → 440ms). */
+@keyframes c4-drop {
+  0% {
+    transform: translateY(calc(-1 * var(--fall)));
+    animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45);
+  }
+  62% {
+    transform: translateY(0) scale(1, 1);
+    animation-timing-function: ease-out;
+  }
+  70% {
+    transform: translateY(4%) scale(1.1, 0.86);
+    animation-timing-function: ease-out;
+  }
+  82% {
+    transform: translateY(-12%) scale(0.98, 1.03);
+    animation-timing-function: ease-in;
+  }
+  92% {
+    transform: translateY(0) scale(1.03, 0.97);
+    animation-timing-function: ease-out;
+  }
+  96% {
+    transform: translateY(-3%) scale(1);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+.token.is-dropping {
+  z-index: 5;
+  transform-origin: 50% 100%;
+  animation: c4-drop var(--drop-dur, 440ms) both;
+}
+
+/* A02 — preview: the hand slides, the column lights up, the ghost appears */
+@keyframes c4-fade-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+
+.hand {
+  transition: left 140ms var(--ease-out);
+}
+
+.col-hover,
+.token.ghost {
+  animation: c4-fade-scale-in 100ms var(--ease-out) both;
+}
+
+/* A03 — win: tokens pop in sequence, ink line draws, stars burst, panel in */
+@keyframes c4-win-pop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1.06);
+  }
+}
+
+.cell.is-win > .token {
+  animation: c4-win-pop 240ms var(--ease-back) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+@keyframes c4-line-draw {
+  from {
+    stroke-dashoffset: var(--len, 400);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.win-line line {
+  stroke-dasharray: var(--len, 400);
+  animation: c4-line-draw 320ms var(--ease-out) 300ms both;
+}
+
+@keyframes c4-star {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) rotate(0);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.1) rotate(20deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.6) rotate(45deg);
+  }
+}
+
+.star {
+  animation: c4-star 420ms var(--ease-out) 520ms both;
+}
+
+@keyframes c4-panel-in {
+  from {
+    opacity: 0;
+    transform: translate(var(--from-x, 24px), var(--from-y, 0));
+  }
+}
+
+.result-card {
+  animation: c4-panel-in 360ms var(--ease-back) 650ms both;
+}
+
+@media (max-width: 620px) {
+  .result-card {
+    --from-x: 0;
+    --from-y: 40px;
+  }
+}
+
+/* A04 — someone is thinking: three dots bounce next to the status label.
+   PvP: whenever it is the opponent's turn. AI: only if the solver has not
+   answered 300ms after status became "thinking" (it usually answers at once). */
+@keyframes c4-dots {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-5px);
+  }
+}
+
+.thinking-dots i {
+  animation: c4-dots 900ms ease-in-out infinite;
+}
+
+.thinking-dots i:nth-child(2) {
+  animation-delay: 150ms;
+}
+
+.thinking-dots i:nth-child(3) {
+  animation-delay: 300ms;
+}
+
+.status-thinking .board-head {
+  animation: c4-fade 120ms linear 300ms both;
+}
+
+/* A05 — paused: the ring empties over 30 s; the last 10 s turn pink and pulse */
+@keyframes c4-ring {
+  from {
+    --p: 1;
+  }
+  to {
+    --p: 0;
+  }
+}
+
+.countdown .ring,
+.token-ring {
+  animation: c4-ring 30s linear both;
+}
+
+@keyframes c4-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+.countdown.is-urgent {
+  background: var(--pink);
+  animation: c4-pulse 1000ms ease-in-out infinite;
+}
+
+/* A06 — waiting: hopping tokens; copied feedback pop */
+@keyframes c4-pop {
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+.btn.is-done {
+  animation: c4-pop 180ms var(--ease-back);
+}
+
+/* A07 — lobby → play */
+@keyframes c4-view-out {
+  to {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@keyframes c4-view-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+
+@keyframes c4-chip-pop {
+  from {
+    transform: scale(0.9) rotate(-1.5deg);
+  }
+}
+
+.view-leave {
+  animation: c4-view-out 160ms var(--ease-in) both;
+}
+
+.view-enter {
+  animation: c4-view-in 240ms var(--ease-out) 160ms both;
+}
+
+.view-enter .turn-status {
+  animation: c4-chip-pop 160ms var(--ease-back) 400ms both;
+}
+
+/* A08 — reduced motion: every movement becomes an instant state change,
+   opacity-only fades ≤120ms are kept, loops stop. */
+@media (prefers-reduced-motion: reduce) {
+  .token.is-dropping,
+  .cell.is-win > .token,
+  .star,
+  .thinking-dots i,
+  .countdown.is-urgent,
+  .searching-anim .token,
+  .btn.is-done,
+  .view-enter .turn-status {
+    animation: none;
+  }
+
+  .win-line line {
+    animation: none;
+    stroke-dasharray: none;
+  }
+
+  .result-card,
+  .view-enter,
+  .view-leave,
+  .col-hover,
+  .token.ghost {
+    animation-name: c4-fade;
+    animation-duration: 120ms;
+  }
+
+  .hand {
+    transition: none;
+  }
+
+  .countdown .ring,
+  .token-ring {
+    animation-timing-function: steps(30, end);
+  }
+}
+
+@keyframes c4-fade {
+  from {
+    opacity: 0;
+  }
+}

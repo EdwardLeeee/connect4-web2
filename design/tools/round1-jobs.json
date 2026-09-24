@@ -1,0 +1,59 @@
+[
+ {
+  "url": "mockups/round1/card.html?dir=a",
+  "out": "R1-A0-greenhouse-direction-card.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round1/p03.html?dir=a",
+  "out": "R1-A1-greenhouse-P03-play-your-turn-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round1/p03.html?dir=a",
+  "out": "R1-A2-greenhouse-P03-play-your-turn-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round1/card.html?dir=b",
+  "out": "R1-B0-midnight-arcade-direction-card.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round1/p03.html?dir=b",
+  "out": "R1-B1-midnight-arcade-P03-play-your-turn-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round1/p03.html?dir=b",
+  "out": "R1-B2-midnight-arcade-P03-play-your-turn-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round1/card.html?dir=c",
+  "out": "R1-C0-bold-pop-direction-card.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round1/p03.html?dir=c",
+  "out": "R1-C1-bold-pop-P03-play-your-turn-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round1/p03.html?dir=c",
+  "out": "R1-C2-bold-pop-P03-play-your-turn-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ }
+]
