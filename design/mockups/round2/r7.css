@@ -1,0 +1,1723 @@
+/* Round 7 proposals (2026-09-25): longer win celebrations, a loss animation,
+   and the AI-thinking label timing. Nothing here is part of the approved
+   baseline until the user picks an option. */
+
+/* label printed on every round-7 image (item + option + one line) */
+.r7-tag {
+  position: fixed;
+  z-index: 100;
+  top: 14px;
+  left: 14px;
+  max-width: 70%;
+  padding: 8px 14px;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  background: var(--sun);
+  box-shadow: 4px 4px 0 var(--ink);
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.r7-tag small {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* clock + timeline strip at the bottom of animation frames */
+.r7-clock {
+  position: fixed;
+  z-index: 100;
+  right: 16px;
+  bottom: 14px;
+  left: 16px;
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--font-display), var(--font-ui);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.r7-clock .track {
+  position: relative;
+  height: 22px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--white);
+  overflow: hidden;
+}
+
+.r7-clock .seg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--pink-soft);
+  border-right: 2px dashed var(--ink);
+}
+
+.r7-clock .seg.label {
+  top: 5px;
+  bottom: 5px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--pink);
+}
+
+.r7-clock .head {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 3px;
+  background: var(--ink);
+}
+
+/* ---------- 03 win A: full-screen confetti rain (~4.5 s) ---------- */
+.confetti-full {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.confetti-full .confetti {
+  top: -30px;
+  animation-duration: var(--dur, 2600ms);
+}
+
+@keyframes r7-trophy-big {
+  0% {
+    transform: scale(0.3) rotate(-30deg);
+  }
+  60% {
+    transform: scale(1.6) rotate(10deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes r7-wiggle {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  25% {
+    transform: rotate(-12deg) scale(1.1);
+  }
+  75% {
+    transform: rotate(12deg) scale(1.1);
+  }
+}
+
+.r7-win-a .result-card .emblem-icon {
+  animation:
+    r7-trophy-big 700ms var(--ease-back) 1700ms both,
+    r7-wiggle 600ms ease-in-out 2700ms 2;
+}
+
+/* ---------- 03 win B: board flash + shake, gold line (~4 s) ---------- */
+@keyframes r7-flash {
+  0% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes r7-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  15% {
+    transform: translateX(-10px) rotate(-0.6deg);
+  }
+  30% {
+    transform: translateX(10px) rotate(0.6deg);
+  }
+  45% {
+    transform: translateX(-8px);
+  }
+  60% {
+    transform: translateX(8px);
+  }
+  75% {
+    transform: translateX(-4px);
+  }
+}
+
+.board-flash {
+  position: absolute;
+  z-index: 7;
+  inset: 0;
+  border-radius: inherit;
+  background: #fff;
+  pointer-events: none;
+  animation: r7-flash 450ms ease-out 0ms both;
+}
+
+.r7-win-b .board {
+  animation: r7-shake 500ms ease-in-out 0ms both;
+}
+
+.r7-win-b .cell.is-win > .token {
+  animation:
+    c4-win-pop 300ms var(--ease-back) calc(150ms + var(--i, 0) * 120ms) both,
+    c4-win-glow 1000ms ease-in-out 2200ms 2;
+}
+
+.r7-win-b .win-line line.gold {
+  stroke: var(--sun);
+  stroke-width: 9;
+  filter: none;
+  animation:
+    c4-line-draw 500ms var(--ease-out) 500ms both,
+    r7-line-glow 800ms ease-in-out 1000ms 3;
+}
+
+.r7-win-b .win-line line.under {
+  stroke-width: 17;
+  animation: c4-line-draw 500ms var(--ease-out) 500ms both;
+}
+
+@keyframes r7-line-glow {
+  50% {
+    filter: drop-shadow(0 0 10px #ffd23f) drop-shadow(0 0 4px #fff);
+  }
+}
+
+.r7-win-b .star {
+  width: 38px;
+  height: 38px;
+  animation: c4-star 800ms var(--ease-out) 1000ms both;
+}
+
+.r7-win-b .result-card {
+  animation-delay: 1500ms;
+}
+
+.r7-win-b .result-card .emblem-icon {
+  animation-delay: 1800ms;
+}
+
+/* ---------- 03 win C: big trophy sticker + confetti cannons (~5 s) ---------- */
+.sticker-scrim {
+  position: fixed;
+  z-index: 55;
+  inset: 0;
+  background: rgb(27 27 31 / 18%);
+  pointer-events: none;
+  animation: r7-scrim 2100ms linear 700ms both;
+}
+
+@keyframes r7-scrim {
+  0% {
+    opacity: 0;
+  }
+  8%,
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.win-sticker {
+  position: fixed;
+  z-index: 60;
+  top: 50%;
+  left: 50%;
+  width: 460px;
+  margin: -190px 0 0 -230px;
+  padding: 30px 30px 20px;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  border: 5px solid var(--ink);
+  border-radius: 32px;
+  background: var(--white);
+  box-shadow: 12px 12px 0 var(--ink);
+  text-align: center;
+  animation:
+    r7-slap 380ms var(--ease-back) 700ms both,
+    r7-fly 520ms cubic-bezier(0.55, 0, 0.8, 0.4) 2300ms forwards;
+}
+
+.win-sticker .big-trophy {
+  width: 130px;
+  height: 130px;
+  display: grid;
+  place-items: center;
+  border: 5px solid var(--ink);
+  border-radius: 50%;
+  background:
+    repeating-conic-gradient(from 0deg, var(--sun) 0 12deg, #ffe38a 12deg 24deg);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+
+.win-sticker .big-trophy .icon {
+  width: 72px;
+  height: 72px;
+  stroke-width: 2.2;
+}
+
+.win-sticker strong {
+  font-size: 66px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.win-sticker span {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.win-sticker small {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+@keyframes r7-slap {
+  0% {
+    opacity: 0;
+    transform: scale(2.4) rotate(4deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(0.92) rotate(-7deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(-6deg);
+  }
+}
+
+@keyframes r7-fly {
+  to {
+    opacity: 0;
+    transform: translate(var(--fly-x, 400px), var(--fly-y, -200px)) scale(0.18) rotate(-12deg);
+  }
+}
+
+.cannon {
+  position: fixed;
+  z-index: 58;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.cannon .shot {
+  position: absolute;
+  bottom: -20px;
+  width: 14px;
+  height: 18px;
+  border: 2px solid var(--ink);
+  background: var(--c);
+  animation: r7-shot var(--dur) cubic-bezier(0.2, 0.7, 0.4, 1) var(--d) both;
+}
+
+.cannon .shot.round {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+}
+
+.cannon .shot.strip {
+  width: 9px;
+  height: 24px;
+  border-radius: 3px;
+}
+
+@keyframes r7-shot {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0);
+  }
+  6% {
+    opacity: 1;
+  }
+  45% {
+    transform: translate(var(--dx), var(--up)) rotate(calc(var(--r) * 0.5));
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(var(--dx) * 1.35), calc(var(--up) + 420px)) rotate(var(--r));
+  }
+}
+
+.r7-win-c .result-card {
+  animation-delay: 2600ms;
+}
+
+.r7-win-c .result-card .emblem-icon {
+  animation-delay: 2800ms;
+}
+
+.r7-win-c .cell.is-win > .token {
+  animation:
+    c4-win-pop 300ms var(--ease-back) calc(var(--i, 0) * 120ms) both,
+    c4-win-glow 900ms ease-in-out 3000ms 2;
+}
+
+/* ---------- 04 loss A: my pieces grey out and sink (~2.5 s) ---------- */
+@keyframes r7-sink {
+  to {
+    filter: grayscale(0.9) brightness(0.9);
+    transform: translateY(7%);
+  }
+}
+
+@keyframes r7-desat {
+  to {
+    filter: saturate(0.55);
+  }
+}
+
+@keyframes r7-sway {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  30% {
+    transform: rotate(-2.5deg);
+  }
+  65% {
+    transform: rotate(1.5deg);
+  }
+}
+
+@keyframes r7-flag {
+  0%,
+  100% {
+    transform: skewY(0);
+  }
+  50% {
+    transform: skewY(-12deg) translateY(-2px);
+  }
+}
+
+.r7-lose-a .cell.is-mine > .token {
+  animation: r7-sink 600ms ease-in calc(1000ms + var(--k, 0) * 70ms) both;
+}
+
+.r7-lose-a .board {
+  animation: r7-desat 700ms ease-out 1000ms both;
+}
+
+.r7-lose-a .result-card {
+  transform-origin: 50% 0;
+  animation:
+    c4-panel-in 420ms var(--ease-out) 1600ms both,
+    r7-sway 900ms ease-in-out 2020ms 1;
+}
+
+.r7-lose-a .result-card .emblem-icon {
+  animation: none;
+}
+
+.r7-lose-a .result-card .emblem-icon .icon {
+  animation: r7-flag 600ms ease-in-out 2100ms 2;
+}
+
+/* ---------- 04 loss B: the board droops like a deflated balloon (~2 s) ---------- */
+@keyframes r7-droop {
+  0% {
+    transform: none;
+  }
+  35% {
+    transform: translateY(16px) rotate(1.4deg) scaleY(0.98);
+  }
+  65% {
+    transform: translateY(8px) rotate(-0.5deg);
+  }
+  100% {
+    transform: translateY(10px) rotate(0.4deg);
+  }
+}
+
+.r7-lose-b .board {
+  transform-origin: 50% 0;
+  animation: r7-droop 900ms cubic-bezier(0.3, 0.1, 0.3, 1) 950ms both;
+}
+
+.r7-lose-b .result-card {
+  animation-delay: 1100ms;
+}
+
+.r7-lose-b .result-card .emblem-icon {
+  animation: none;
+}
+
+.r7-lose-b .result-card .emblem-icon .icon {
+  animation: r7-flag 600ms ease-in-out 1500ms 2;
+}
+
+/* ---------- 02 AI thinking: frames are switched by r7.js ---------- */
+.r7-hidden {
+  visibility: hidden !important;
+}
+
+/* ================= round 8 variants (2026-09-25) ================= */
+
+/* 03 C2: sticker + full-screen confetti rain (no corner cannons) */
+.r7-win-c2 .confetti-full {
+  z-index: 62;
+}
+
+/* 03 C3: sticker with a spinning sunburst behind it */
+.sticker-rays {
+  position: fixed;
+  z-index: 57;
+  top: 50%;
+  left: 50%;
+  width: 1100px;
+  height: 1100px;
+  margin: -550px 0 0 -550px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgb(255 210 63 / 85%) 0 10deg,
+    rgb(255 244 220 / 0%) 10deg 20deg
+  );
+  -webkit-mask: radial-gradient(circle, #000 18%, transparent 62%);
+  mask: radial-gradient(circle, #000 18%, transparent 62%);
+  pointer-events: none;
+  animation:
+    r7-rays-in 2400ms linear 650ms both,
+    r7-spin 6000ms linear 650ms infinite;
+}
+
+@keyframes r7-rays-in {
+  0% {
+    opacity: 0;
+    scale: 0.4;
+  }
+  12%,
+  78% {
+    opacity: 1;
+    scale: 1;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.1;
+  }
+}
+
+@keyframes r7-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+.r7-win-c3 .win-sticker {
+  animation:
+    r7-slap 380ms var(--ease-back) 700ms both,
+    r7-bob 700ms ease-in-out 1100ms 2,
+    r7-fly 520ms cubic-bezier(0.55, 0, 0.8, 0.4) 2600ms forwards;
+}
+
+@keyframes r7-bob {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -10px;
+  }
+}
+
+.r7-win-c3 .sticker-scrim {
+  animation-duration: 2400ms;
+}
+
+.r7-win-c3 .result-card {
+  animation-delay: 2900ms;
+}
+
+.r7-win-c3 .result-card .emblem-icon {
+  animation-delay: 3100ms;
+}
+
+/* 03 C4: board flash + shake + gold line first, sticker lands after */
+.r7-win-c4 .board {
+  animation: r7-shake 500ms ease-in-out 0ms both;
+}
+
+.r7-win-c4 .win-line line.gold {
+  stroke: var(--sun);
+  stroke-width: 9;
+  filter: none;
+  animation:
+    c4-line-draw 500ms var(--ease-out) 450ms both,
+    r7-line-glow 800ms ease-in-out 950ms 4;
+}
+
+.r7-win-c4 .win-line line.under {
+  stroke-width: 17;
+  animation: c4-line-draw 500ms var(--ease-out) 450ms both;
+}
+
+.r7-win-c4 .win-sticker {
+  animation:
+    r7-slap 380ms var(--ease-back) 1100ms both,
+    r7-fly 520ms cubic-bezier(0.55, 0, 0.8, 0.4) 2700ms forwards;
+}
+
+.r7-win-c4 .sticker-scrim {
+  animation-delay: 1100ms;
+}
+
+.r7-win-c4 .cannon .shot {
+  animation-delay: calc(var(--d) + 400ms);
+}
+
+.r7-win-c4 .result-card {
+  animation-delay: 3000ms;
+}
+
+.r7-win-c4 .result-card .emblem-icon {
+  animation-delay: 3200ms;
+}
+
+/* 04 A2: keep the pieces' colour; they sink, the board dims a little */
+@keyframes r7-sink-keep {
+  0% {
+    transform: none;
+  }
+  60% {
+    transform: translateY(9%) scale(1.02, 0.95);
+  }
+  100% {
+    transform: translateY(7%);
+  }
+}
+
+@keyframes r7-dim {
+  to {
+    filter: brightness(0.86);
+  }
+}
+
+.r7-lose-a2 .cell.is-mine > .token {
+  animation: r7-sink-keep 600ms ease-in-out calc(1000ms + var(--k, 0) * 70ms) both;
+}
+
+.r7-lose-a2 .board .cell:not(.is-win) {
+  animation: r7-dim 700ms ease-out 1000ms both;
+}
+
+.r7-lose-a2 .result-card {
+  transform-origin: 50% 0;
+  animation:
+    c4-panel-in 420ms var(--ease-out) 1600ms both,
+    r7-sway 900ms ease-in-out 2020ms 1;
+}
+
+.r7-lose-a2 .result-card .emblem-icon {
+  animation: none;
+}
+
+.r7-lose-a2 .result-card .emblem-icon .icon {
+  animation: r7-flag 600ms ease-in-out 2100ms 2;
+}
+
+/* 04 D: white flag */
+@keyframes r7-wave {
+  0%,
+  100% {
+    transform: skewY(0) scaleX(1);
+  }
+  25% {
+    transform: skewY(-7deg) scaleX(0.96);
+  }
+  50% {
+    transform: skewY(0) scaleX(1.02);
+  }
+  75% {
+    transform: skewY(6deg) scaleX(0.97);
+  }
+}
+
+.cloth {
+  transform-box: fill-box;
+  transform-origin: 0 50%;
+}
+
+.r7-lose-d .result-card .emblem-icon {
+  animation: none;
+}
+
+/* D1: a white-flag sticker in the middle, like the win sticker but calmer */
+.sticker-scrim.lose {
+  animation: r7-scrim 2100ms linear 1000ms both;
+}
+
+.lose-sticker {
+  width: 400px;
+  margin: -200px 0 0 -200px;
+  animation:
+    r7-slap-soft 420ms var(--ease-out) 1000ms both,
+    r7-fly 520ms cubic-bezier(0.55, 0, 0.8, 0.4) 2600ms forwards;
+}
+
+.lose-sticker .big-flag {
+  width: 130px;
+  height: 160px;
+}
+
+.lose-sticker .big-flag .cloth {
+  animation: r7-wave 900ms ease-in-out 1300ms 2;
+}
+
+.lose-sticker strong {
+  font-size: 54px;
+}
+
+@keyframes r7-slap-soft {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.9) rotate(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(-3deg);
+  }
+}
+
+.r7-lose-d1 .result-card {
+  animation-delay: 2900ms;
+}
+
+/* D2: a white flag rises from behind the board and waves */
+.rising-flag {
+  position: absolute;
+  z-index: 0;
+  top: 40px;
+  right: 60px;
+  width: 150px;
+  height: 190px;
+  pointer-events: none;
+  animation: r7-rise 700ms var(--ease-back) 1000ms both;
+}
+
+.rising-flag .rise-flag {
+  width: 100%;
+  height: 100%;
+}
+
+.rising-flag .cloth {
+  animation: r7-wave 900ms ease-in-out 1700ms 3;
+}
+
+@keyframes r7-rise {
+  0% {
+    transform: translateY(170px);
+  }
+  100% {
+    transform: translateY(-80px);
+  }
+}
+
+.r7-lose-d2 .board {
+  position: relative;
+  z-index: 1;
+}
+
+.r7-lose-d2 .result-card {
+  animation-delay: 1900ms;
+}
+
+/* ================= round 9 combinations (2026-09-25) ================= */
+
+/* 03 C5 = C4 + C3: flash, shake and gold line, then the sticker lands with
+   spinning rays behind it and bounces twice before flying to the panel */
+.r7-win-c5 .board {
+  animation: r7-shake 500ms ease-in-out 0ms both;
+}
+
+.r7-win-c5 .win-line line.gold {
+  stroke: var(--sun);
+  stroke-width: 9;
+  filter: none;
+  animation:
+    c4-line-draw 500ms var(--ease-out) 450ms both,
+    r7-line-glow 800ms ease-in-out 950ms 4;
+}
+
+.r7-win-c5 .win-line line.under {
+  stroke-width: 17;
+  animation: c4-line-draw 500ms var(--ease-out) 450ms both;
+}
+
+.r7-win-c5 .win-sticker {
+  animation:
+    r7-slap 380ms var(--ease-back) 1100ms both,
+    r7-bob 700ms ease-in-out 1500ms 2,
+    r7-fly 520ms cubic-bezier(0.55, 0, 0.8, 0.4) 3000ms forwards;
+}
+
+.r7-win-c5 .sticker-scrim {
+  animation: r7-scrim 2400ms linear 1100ms both;
+}
+
+.r7-win-c5 .sticker-rays {
+  animation:
+    r7-rays-in 2400ms linear 1050ms both,
+    r7-spin 6000ms linear 1050ms infinite;
+}
+
+.r7-win-c5 .cannon .shot {
+  animation-delay: calc(var(--d) + 400ms);
+}
+
+.r7-win-c5 .result-card {
+  animation-delay: 3300ms;
+}
+
+.r7-win-c5 .result-card .emblem-icon {
+  animation-delay: 3500ms;
+}
+
+/* 04 E = A2 + D2: pieces keep their colour and sink, the board dims, and a
+   white flag rises from behind the board and waves */
+.r7-lose-e .cell.is-mine > .token {
+  animation: r7-sink-keep 600ms ease-in-out calc(1000ms + var(--k, 0) * 70ms) both;
+}
+
+.r7-lose-e .board .cell:not(.is-win) {
+  animation: r7-dim 700ms ease-out 1000ms both;
+}
+
+.r7-lose-e .board {
+  position: relative;
+  z-index: 1;
+}
+
+.r7-lose-e .rising-flag {
+  animation-delay: 1400ms;
+}
+
+.r7-lose-e .rising-flag .cloth {
+  animation: r7-wave 900ms ease-in-out 2100ms 3;
+}
+
+.r7-lose-e .result-card {
+  animation: c4-panel-in 420ms var(--ease-out) 2500ms both;
+}
+
+/* ================= round 10: centre stickers for losing and drawing ================= */
+
+/* shared: a calmer sticker than the win one */
+.sticker-scrim.soft {
+  animation: r7-scrim 2200ms linear 1200ms both;
+}
+
+.soft-sticker {
+  width: 420px;
+  margin: -215px 0 0 -210px;
+  animation:
+    r7-slap-soft 420ms var(--ease-back) 1200ms both,
+    r7-fly 520ms cubic-bezier(0.55, 0, 0.8, 0.4) 3000ms forwards;
+}
+
+.soft-sticker .face {
+  width: 150px;
+  height: 140px;
+  overflow: visible;
+}
+
+.soft-sticker strong {
+  font-size: 56px;
+}
+
+/* 04 F: board keeps colours, my pieces sink, board dims (same as E, no flag) */
+.r7-lose-f .cell.is-mine > .token {
+  animation: r7-sink-keep 600ms ease-in-out calc(1000ms + var(--k, 0) * 70ms) both;
+}
+
+.r7-lose-f .board .cell:not(.is-win) {
+  animation: r7-dim 700ms ease-out 1000ms both;
+}
+
+.r7-lose-f .result-card {
+  animation: c4-panel-in 420ms var(--ease-out) 3300ms both;
+}
+
+.r7-lose-f .result-card .emblem-icon {
+  animation: none;
+}
+
+/* F1 crying face: tears roll down, the face sobs */
+@keyframes r7-tear {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(46px);
+  }
+}
+
+@keyframes r7-sob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  25% {
+    transform: translateY(3px) rotate(-3deg);
+  }
+  75% {
+    transform: translateY(3px) rotate(3deg);
+  }
+}
+
+.cry .tear {
+  transform-box: fill-box;
+  animation: r7-tear 700ms ease-in 1500ms infinite;
+}
+
+.cry .t3,
+.cry .t4 {
+  animation-delay: 1850ms;
+}
+
+.cry-sticker .face {
+  animation: r7-sob 500ms ease-in-out 1600ms 3;
+}
+
+/* F2 rain cloud: drops fall, the cloud bobs */
+@keyframes r7-drop {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+}
+
+.cloud .drop {
+  fill: #a8dcff;
+  stroke: var(--ink);
+  stroke-width: 3;
+  transform-box: fill-box;
+  animation: r7-drop 600ms ease-in 1500ms infinite;
+}
+
+.cloud .d2 {
+  animation-delay: 1650ms;
+}
+
+.cloud .d3 {
+  animation-delay: 1800ms;
+}
+
+.cloud .d4 {
+  animation-delay: 1950ms;
+}
+
+.cloud-sticker .face {
+  animation: r7-bob 900ms ease-in-out 1600ms 2;
+}
+
+/* F3 cheer: the face pumps up twice, sparkles twinkle */
+@keyframes r7-pump {
+  0%,
+  100% {
+    transform: scale(1) rotate(0);
+  }
+  40% {
+    transform: scale(1.14) rotate(-6deg);
+  }
+}
+
+@keyframes r7-twinkle {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(0.5) rotate(45deg);
+  }
+}
+
+.cheer-sticker .face {
+  animation: r7-pump 520ms var(--ease-back) 1600ms 2;
+}
+
+.cheer .spark {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: r7-twinkle 700ms ease-in-out 1500ms infinite;
+}
+
+.cheer .s2 {
+  animation-delay: 1750ms;
+}
+
+.cheer .s3 {
+  animation-delay: 2000ms;
+}
+
+/* 07 draw G: shared timing — the board is full, no line; sticker at 0.5 s */
+.r7-draw-g .sticker-scrim.soft {
+  animation: r7-scrim 2200ms linear 500ms both;
+}
+
+.r7-draw-g .soft-sticker {
+  animation:
+    r7-slap-soft 420ms var(--ease-back) 500ms both,
+    r7-fly 520ms cubic-bezier(0.55, 0, 0.8, 0.4) 2500ms forwards;
+}
+
+.r7-draw-g .result-card {
+  animation: c4-panel-in 420ms var(--ease-out) 2800ms both;
+}
+
+.r7-draw-g .result-card .emblem-icon {
+  animation: none;
+}
+
+/* G1 green and pink pieces bump into each other */
+.bump {
+  position: relative;
+  width: 260px;
+  height: 120px;
+  display: block;
+}
+
+.bump .token {
+  position: absolute;
+  top: 12px;
+  width: 96px;
+  height: 96px;
+  border-width: 4px;
+  --pattern-w: 4px;
+}
+
+.bump-l {
+  left: 26px;
+  animation: r7-bump-l 900ms cubic-bezier(0.3, 0, 0.3, 1) 900ms both;
+}
+
+.bump-r {
+  right: 26px;
+  animation: r7-bump-r 900ms cubic-bezier(0.3, 0, 0.3, 1) 900ms both;
+}
+
+@keyframes r7-bump-l {
+  0% {
+    transform: translateX(-60px) rotate(-20deg);
+  }
+  45% {
+    transform: translateX(10px) rotate(0) scale(1.05, 0.95);
+  }
+  70% {
+    transform: translateX(-8px) rotate(-6deg);
+  }
+  100% {
+    transform: translateX(0) rotate(-4deg);
+  }
+}
+
+@keyframes r7-bump-r {
+  0% {
+    transform: translateX(60px) rotate(20deg);
+  }
+  45% {
+    transform: translateX(-10px) rotate(0) scale(1.05, 0.95);
+  }
+  70% {
+    transform: translateX(8px) rotate(6deg);
+  }
+  100% {
+    transform: translateX(0) rotate(4deg);
+  }
+}
+
+.bump-star {
+  position: absolute;
+  z-index: 2;
+  top: 34px;
+  left: 50%;
+  width: 52px;
+  height: 52px;
+  margin-left: -26px;
+  background: var(--sun);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  animation: c4-star 700ms var(--ease-out) 1290ms both;
+}
+
+/* G2 balance scale sways and settles level */
+@keyframes r7-balance {
+  0% {
+    transform: rotate(-16deg);
+  }
+  30% {
+    transform: rotate(11deg);
+  }
+  55% {
+    transform: rotate(-6deg);
+  }
+  78% {
+    transform: rotate(3deg);
+  }
+  100% {
+    transform: rotate(0);
+  }
+}
+
+.scale .beam {
+  transform-box: view-box;
+  transform-origin: 90px 30px;
+  animation: r7-balance 1500ms ease-in-out 900ms both;
+}
+
+.scale-sticker .face {
+  width: 190px;
+  height: 150px;
+}
+
+/* ================= round 11: F2 cloud + full-screen storm (~5.5 s) ================= */
+.storm {
+  position: fixed;
+  z-index: 56;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.storm-dim {
+  position: absolute;
+  inset: 0;
+  background: #2c3345;
+  animation: r7-storm-dim 5200ms linear 800ms both;
+}
+
+@keyframes r7-storm-dim {
+  0% {
+    opacity: 0;
+  }
+  10%,
+  80% {
+    opacity: 0.38;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.storm .streak {
+  position: absolute;
+  top: -40px;
+  width: 3px;
+  height: 34px;
+  border-radius: 2px;
+  background: linear-gradient(rgb(168 220 255 / 0%), rgb(168 220 255 / 95%));
+  transform: rotate(14deg);
+  animation:
+    r7-rain var(--dur) linear var(--d) infinite,
+    r7-rain-life 5400ms linear 800ms both;
+}
+
+@keyframes r7-rain {
+  from {
+    translate: 0 0;
+  }
+  to {
+    translate: -230px 980px;
+  }
+}
+
+@keyframes r7-rain-life {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  8%,
+  80% {
+    opacity: 1;
+  }
+}
+
+.storm-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  animation:
+    r7-lightning 420ms linear 1550ms both,
+    r7-lightning 420ms linear 2750ms both;
+}
+
+@keyframes r7-lightning {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.85;
+  }
+  25% {
+    opacity: 0.1;
+  }
+  40% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.bolt {
+  position: absolute;
+  width: 110px;
+  height: 220px;
+  opacity: 0;
+  filter: drop-shadow(0 0 14px rgb(255 210 63 / 90%));
+}
+
+.bolt.b1 {
+  top: 60px;
+  left: 18%;
+  animation: r7-bolt 520ms linear 1550ms both;
+}
+
+.bolt.b2 {
+  top: 40px;
+  right: 16%;
+  animation: r7-bolt 520ms linear 2750ms both;
+}
+
+@keyframes r7-bolt {
+  0% {
+    opacity: 0;
+    transform: scaleY(0.2);
+    transform-origin: 50% 0;
+  }
+  15%,
+  60% {
+    opacity: 1;
+    transform: scaleY(1);
+    transform-origin: 50% 0;
+  }
+  100% {
+    opacity: 0;
+    transform: scaleY(1);
+    transform-origin: 50% 0;
+  }
+}
+
+.bolt.b2.strike {
+  right: auto;
+  width: 130px;
+  height: 260px;
+}
+
+/* the cloud flickers dark with each thunderclap */
+@keyframes r7-cloud-thunder {
+  0%,
+  100% {
+    fill: #fff;
+  }
+  20%,
+  60% {
+    fill: #c9cfdc;
+  }
+}
+
+.r7-storm .cloud .puff {
+  animation:
+    r7-cloud-thunder 600ms linear 1550ms both,
+    r7-cloud-thunder 600ms linear 2750ms both;
+}
+
+.r7-storm .sticker-scrim.soft {
+  display: none;
+}
+
+.r7-storm .soft-sticker {
+  z-index: 60;
+  animation:
+    r7-slap-soft 420ms var(--ease-back) 1200ms both,
+    r7-sob 500ms ease-in-out 1600ms 2,
+    r7-sob 500ms ease-in-out 2800ms 2,
+    r7-fly 520ms cubic-bezier(0.55, 0, 0.8, 0.4) 3700ms forwards;
+}
+
+.r7-storm .result-card {
+  animation: c4-panel-in 420ms var(--ease-out) 4000ms both;
+}
+
+/* F5: the second bolt strikes the board, which shakes */
+.r7-lose-f5 .board {
+  animation: r7-shake 500ms ease-in-out 2800ms both;
+}
+
+.r7-lose-f5 .board .cell:not(.is-win) {
+  animation: r7-dim 700ms ease-out 1000ms both;
+}
+
+/* ================= round 12: G1 draw stretched to ~5.5 s ================= */
+@keyframes r7-hop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  45% {
+    transform: translateY(-14%) scale(1.04);
+  }
+}
+
+.r7-draw-long .board .cell > .token {
+  animation: r7-hop 420ms var(--ease-out) calc(250ms + var(--row, 0) * 90ms) both;
+}
+
+.r7-draw-long .sticker-scrim.soft {
+  animation: r7-scrim 2800ms linear 1200ms both;
+}
+
+.r7-draw-long .soft-sticker {
+  animation:
+    r7-slap-soft 420ms var(--ease-back) 1200ms both,
+    r7-fly 520ms cubic-bezier(0.55, 0, 0.8, 0.4) 3900ms forwards;
+}
+
+.r7-draw-long .bump-l {
+  animation:
+    r7-bump-l 900ms cubic-bezier(0.3, 0, 0.3, 1) 1500ms both,
+    r7-bump-l 900ms cubic-bezier(0.3, 0, 0.3, 1) 2600ms none;
+}
+
+.r7-draw-long .bump-r {
+  animation:
+    r7-bump-r 900ms cubic-bezier(0.3, 0, 0.3, 1) 1500ms both,
+    r7-bump-r 900ms cubic-bezier(0.3, 0, 0.3, 1) 2600ms none;
+}
+
+.r7-draw-long .bump-star {
+  animation:
+    c4-star 700ms var(--ease-out) 1890ms both,
+    c4-star 700ms var(--ease-out) 2990ms none;
+}
+
+.r7-draw-long .draw-rain {
+  z-index: 62;
+}
+
+.r7-draw-long .result-card {
+  animation: c4-panel-in 420ms var(--ease-out) 4200ms both;
+}
+
+/* ================= round 13: more 5.5 s draw animations ================= */
+/* G2 long: the scale sways several times and settles level */
+@keyframes r7-balance-long {
+  0% {
+    transform: rotate(-18deg);
+  }
+  18% {
+    transform: rotate(14deg);
+  }
+  36% {
+    transform: rotate(-10deg);
+  }
+  54% {
+    transform: rotate(7deg);
+  }
+  72% {
+    transform: rotate(-4deg);
+  }
+  88% {
+    transform: rotate(2deg);
+  }
+  100% {
+    transform: rotate(0);
+  }
+}
+
+.r7-draw-long .scale .beam {
+  animation: r7-balance-long 2400ms ease-in-out 1500ms both;
+}
+
+/* G4 tug of war: the rope marker swings and stops on the centre line */
+@keyframes r7-tug {
+  0% {
+    transform: translateX(0);
+  }
+  14% {
+    transform: translateX(-16px);
+  }
+  30% {
+    transform: translateX(13px);
+  }
+  46% {
+    transform: translateX(-10px);
+  }
+  62% {
+    transform: translateX(7px);
+  }
+  78% {
+    transform: translateX(-3px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes r7-lean-l {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  20%,
+  80% {
+    transform: rotate(-14deg);
+  }
+}
+
+@keyframes r7-lean-r {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  20%,
+  80% {
+    transform: rotate(14deg);
+  }
+}
+
+.tug .pull {
+  animation: r7-tug 2400ms ease-in-out 1500ms both;
+}
+
+.tug .lean-l {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: r7-lean-l 2400ms ease-in-out 1500ms both;
+}
+
+.tug .lean-r {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: r7-lean-r 2400ms ease-in-out 1500ms both;
+}
+
+.tug-sticker .face {
+  width: 250px;
+  height: 136px;
+}
+
+/* ================= round 14: tug-of-war variants ================= */
+.tug-sticker {
+  width: 520px;
+  margin: -230px 0 0 -260px;
+}
+
+.tug-sticker .face {
+  width: 400px;
+  height: 200px;
+}
+
+.tug2 .pull {
+  animation: r7-tug2 2600ms ease-in-out 1500ms both;
+}
+
+@keyframes r7-tug2 {
+  0% {
+    transform: translateX(0);
+  }
+  12% {
+    transform: translateX(-22px);
+  }
+  28% {
+    transform: translateX(18px);
+  }
+  44% {
+    transform: translateX(-14px);
+  }
+  60% {
+    transform: translateX(10px);
+  }
+  76% {
+    transform: translateX(-5px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.tug2 .lean-l,
+.tug2 .lean-r {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.tug2 .lean-l {
+  animation: r7-lean-l 2600ms ease-in-out 1500ms both;
+}
+
+.tug2 .lean-r {
+  animation: r7-lean-r 2600ms ease-in-out 1500ms both;
+}
+
+/* when the bow settles on the centre line, the line lights up */
+@keyframes r7-mid-glow {
+  0%,
+  100% {
+    transform: scaleY(1);
+    fill: #ffd23f;
+  }
+  50% {
+    transform: scaleY(1.35);
+    fill: #fff;
+  }
+}
+
+.tug2 .mid {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: r7-mid-glow 500ms ease-in-out 4100ms 2;
+}
+
+.tug2 .sweat {
+  transform-box: fill-box;
+  animation: r7-tear 700ms ease-in 1700ms infinite;
+}
+
+/* T4: the rope snaps at the peak, both fall back, a star pops in the middle */
+.r7-draw-t4 .tug2 .pull {
+  animation: r7-tug2 1300ms ease-in-out 1500ms both;
+}
+
+@keyframes r7-fall-l {
+  0% {
+    transform: translate(0, 0) rotate(0);
+  }
+  100% {
+    transform: translate(-28px, 10px) rotate(-38deg);
+  }
+}
+
+@keyframes r7-fall-r {
+  0% {
+    transform: translate(0, 0) rotate(0);
+  }
+  100% {
+    transform: translate(28px, 10px) rotate(38deg);
+  }
+}
+
+@keyframes r7-rope-l {
+  to {
+    transform: translateX(-26px) rotate(12deg);
+  }
+}
+
+@keyframes r7-rope-r {
+  to {
+    transform: translateX(26px) rotate(-12deg);
+  }
+}
+
+.r7-draw-t4 .tug2 .lean-l {
+  animation: r7-fall-l 450ms var(--ease-back) 2850ms both;
+}
+
+.r7-draw-t4 .tug2 .lean-r {
+  animation: r7-fall-r 450ms var(--ease-back) 2850ms both;
+}
+
+.r7-draw-t4 .tug2 .rope-l {
+  transform-box: fill-box;
+  transform-origin: 0 50%;
+  animation: r7-rope-l 400ms ease-out 2850ms both;
+}
+
+.r7-draw-t4 .tug2 .rope-r {
+  transform-box: fill-box;
+  transform-origin: 100% 50%;
+  animation: r7-rope-r 400ms ease-out 2850ms both;
+}
+
+.r7-draw-t4 .tug2 .snap-star {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: c4-star 700ms var(--ease-out) 2800ms both;
+}
+
+.r7-draw-t4 .tug2 .mid {
+  animation: none;
+}
+
+/* T3: a big full-screen tug first, then a plain "draw" sticker */
+.tug-stage {
+  position: fixed;
+  z-index: 59;
+  top: 50%;
+  left: 50%;
+  width: 1100px;
+  height: 550px;
+  margin: -300px 0 0 -550px;
+  pointer-events: none;
+  animation: r7-stage 3400ms ease-in-out 900ms both;
+}
+
+.tug-stage .big {
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes r7-stage {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  10%,
+  88% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+.r7-draw-t3 .tug2 .pull,
+.r7-draw-t3 .tug2 .lean-l,
+.r7-draw-t3 .tug2 .lean-r {
+  animation-delay: 1250ms;
+}
+
+.r7-draw-t3 .tug2 .mid {
+  animation-delay: 3900ms;
+}
+
+.r7-draw-t3 .tug-scrim {
+  animation: r7-scrim 3600ms linear 900ms both;
+}
+
+.r7-draw-t3 .tug-end-sticker {
+  width: 360px;
+  margin: -110px 0 0 -180px;
+  animation:
+    r7-slap-soft 420ms var(--ease-back) 4300ms both,
+    r7-fly 520ms cubic-bezier(0.55, 0, 0.8, 0.4) 5000ms forwards;
+}
+
+.r7-draw-t3 .sticker-scrim.soft:not(.tug-scrim) {
+  display: none;
+}
+
+.r7-draw-t3 .result-card {
+  animation-delay: 5300ms;
+}
+
+/* tug variants (not T3): hold the sticker until the bow has settled */
+.r7-tug:not(.r7-draw-t3) .soft-sticker {
+  animation:
+    r7-slap-soft 420ms var(--ease-back) 1200ms both,
+    r7-fly 520ms cubic-bezier(0.55, 0, 0.8, 0.4) 4600ms forwards;
+}
+
+.r7-tug:not(.r7-draw-t3) .sticker-scrim.soft {
+  animation: r7-scrim 3500ms linear 1200ms both;
+}
+
+.r7-tug:not(.r7-draw-t3) .result-card {
+  animation: c4-panel-in 420ms var(--ease-out) 4900ms both;
+}
+
+/* ================= round 15: T5 = T3 full-screen tug + T4 rope snap ================= */
+.r7-draw-t5 .tug2 .pull {
+  animation: r7-tug2 1300ms ease-in-out 1250ms both;
+}
+
+.r7-draw-t5 .tug2 .lean-l {
+  animation:
+    r7-lean-l 1300ms ease-in-out 1250ms both,
+    r7-fall-l 450ms var(--ease-back) 2600ms forwards;
+}
+
+.r7-draw-t5 .tug2 .lean-r {
+  animation:
+    r7-lean-r 1300ms ease-in-out 1250ms both,
+    r7-fall-r 450ms var(--ease-back) 2600ms forwards;
+}
+
+.r7-draw-t5 .tug2 .rope-l {
+  transform-box: fill-box;
+  transform-origin: 0 50%;
+  animation: r7-rope-l 400ms ease-out 2600ms both;
+}
+
+.r7-draw-t5 .tug2 .rope-r {
+  transform-box: fill-box;
+  transform-origin: 100% 50%;
+  animation: r7-rope-r 400ms ease-out 2600ms both;
+}
+
+.r7-draw-t5 .tug2 .snap-star {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: c4-star 800ms var(--ease-out) 2550ms both;
+}
+
+.r7-draw-t5 .tug2 .mid {
+  animation: none;
+}
+
+.r7-draw-t5 .tug-scrim {
+  animation: r7-scrim 3600ms linear 900ms both;
+}
+
+.r7-tug.r7-draw-t5 .tug-end-sticker {
+  width: 400px;
+  margin: -110px 0 0 -200px;
+  animation:
+    r7-slap-soft 420ms var(--ease-back) 4300ms both,
+    r7-fly 520ms cubic-bezier(0.55, 0, 0.8, 0.4) 5000ms forwards;
+}
+
+.r7-draw-t5 .sticker-scrim.soft:not(.tug-scrim) {
+  display: none;
+}
+
+.r7-tug.r7-draw-t5 .result-card {
+  animation: c4-panel-in 420ms var(--ease-out) 5300ms both;
+}
+
+/* keep the fallen pieces on screen: the stage scales with the viewport */
+.tug-stage {
+  width: min(960px, 92vw);
+  height: auto;
+  aspect-ratio: 2 / 1;
+  margin: 0;
+  translate: -50% -55%;
+}
+
+/* the fallen pieces move outside the SVG viewBox; let them show */
+.tug2 {
+  overflow: visible;
+}

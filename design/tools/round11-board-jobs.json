@@ -1,0 +1,112 @@
+[
+ {
+  "url": "mockups/round2/screen.html?state=P03&vp=mobile",
+  "name": "R11-08-窄機棋盤-0-現況被切掉-390",
+  "tag": "08 窄機棋盤｜現況（390 寬）",
+  "sub": "棋盤固定 394px，加左邊距 14 共 408px，右邊被切掉 18px",
+  "still": true,
+  "width": 390,
+  "height": 844,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P03&vp=mobile",
+  "name": "R11-08-窄機棋盤-0-現況被切掉-393",
+  "tag": "08 窄機棋盤｜現況（393 寬）",
+  "sub": "棋盤固定 394px，加左邊距 14 共 408px，右邊被切掉 15px",
+  "still": true,
+  "width": 393,
+  "height": 852,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P03&vp=mobile",
+  "name": "R11-08-窄機棋盤-0-現況被切掉-402",
+  "tag": "08 窄機棋盤｜現況（402 寬）",
+  "sub": "棋盤固定 394px，加左邊距 14 共 408px，右邊被切掉 6px",
+  "still": true,
+  "width": 402,
+  "height": 874,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P03&vp=mobile&nb=a",
+  "name": "R11-08-窄機棋盤-A-格徑縮放-390",
+  "tag": "08 窄機棋盤｜A 格徑縮放 ★推薦（390 寬）",
+  "sub": "邊距 14、間距 6 不變，只讓格子變小；棋盤置中｜格徑 43.4px",
+  "still": true,
+  "width": 390,
+  "height": 844,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P03&vp=mobile&nb=a",
+  "name": "R11-08-窄機棋盤-A-格徑縮放-393",
+  "tag": "08 窄機棋盤｜A 格徑縮放 ★推薦（393 寬）",
+  "sub": "邊距 14、間距 6 不變，只讓格子變小；棋盤置中｜格徑 43.9px",
+  "still": true,
+  "width": 393,
+  "height": 852,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P03&vp=mobile&nb=a",
+  "name": "R11-08-窄機棋盤-A-格徑縮放-402",
+  "tag": "08 窄機棋盤｜A 格徑縮放 ★推薦（402 寬）",
+  "sub": "邊距 14、間距 6 不變，只讓格子變小；棋盤置中｜格徑 45.1px",
+  "still": true,
+  "width": 402,
+  "height": 874,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P03&vp=mobile&nb=a",
+  "name": "R11-08-窄機棋盤-A-格徑縮放-430",
+  "tag": "08 窄機棋盤｜A 格徑縮放 ★推薦（430 寬）",
+  "sub": "邊距 14、間距 6 不變，只讓格子變小；棋盤置中｜格徑 48.0px（430 不變）",
+  "still": true,
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P03&vp=mobile&nb=b",
+  "name": "R11-08-窄機棋盤-B-縮小邊距與間距-390",
+  "tag": "08 窄機棋盤｜B 縮小邊距與間距（390 寬）",
+  "sub": "邊距 14→8、間距 6→4，格子幾乎維持 48｜格徑 47.7px",
+  "still": true,
+  "width": 390,
+  "height": 844,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P03&vp=mobile&nb=b",
+  "name": "R11-08-窄機棋盤-B-縮小邊距與間距-393",
+  "tag": "08 窄機棋盤｜B 縮小邊距與間距（393 寬）",
+  "sub": "邊距 14→8、間距 6→4，格子幾乎維持 48｜格徑 48.0px",
+  "still": true,
+  "width": 393,
+  "height": 852,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P03&vp=mobile&nb=b",
+  "name": "R11-08-窄機棋盤-B-縮小邊距與間距-402",
+  "tag": "08 窄機棋盤｜B 縮小邊距與間距（402 寬）",
+  "sub": "邊距 14→8、間距 6→4，格子幾乎維持 48｜格徑 48.0px",
+  "still": true,
+  "width": 402,
+  "height": 874,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P03&vp=mobile&nb=b",
+  "name": "R11-08-窄機棋盤-B-縮小邊距與間距-430",
+  "tag": "08 窄機棋盤｜B 縮小邊距與間距（430 寬）",
+  "sub": "邊距 14→8、間距 6→4，格子幾乎維持 48｜格徑 48.0px（430 不變）",
+  "still": true,
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ }
+]
