@@ -2787,3 +2787,61 @@ input.has-error:focus-visible {
 
 /* focus frames (user ruling 2026-09-24): every text field, room code included,
    shows the ink frame while typing; only a field in error drops it (above) */
+
+/* round 7 proposal: nickname field on the invite page (L12 v2) */
+.invite-name {
+  width: 100%;
+  display: grid;
+  gap: 6px;
+  text-align: left;
+}
+
+.invite-name .field-label {
+  margin: 0;
+  font-size: var(--fs-15);
+}
+
+.invite-name input {
+  height: 56px;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.invite-name-msg {
+  width: 100%;
+  margin: -6px 0 2px;
+  text-align: left;
+}
+
+.invite-name-msg.hint {
+  color: var(--muted);
+  font-size: var(--fs-13);
+}
+
+/* ================= round 11 proposal: narrow phones (item 08) =================
+   7 × 48 + 6 × 6 + 2 × 9 + 2 × 2 = 394px board; with 14px side margins it
+   needs a 422px screen, so 390–402px phones clip the last column. */
+@media (max-width: 620px) {
+  /* both options centre the board and its rail under the match card */
+  [data-nb] .board,
+  [data-nb] .rail {
+    width: var(--board-w);
+    margin-inline: auto;
+  }
+
+  /* A: keep margins, gaps and padding; the cell shrinks with the screen */
+  [data-nb="a"] {
+    --slot: min(48px, calc((100vw - 28px - 58px) / 7));
+  }
+}
+
+/* B: below 422px, tighten margins (14 -> 8), gaps (6 -> 4) and padding
+   (9 -> 6) so the cells stay close to 48px */
+@media (max-width: 421px) {
+  [data-nb="b"] {
+    --sx: 8px;
+    --slot-gap: 4px;
+    --board-pad: 6px;
+    --slot: min(48px, calc((100vw - 16px - 24px - 12px - 4px) / 7));
+  }
+}

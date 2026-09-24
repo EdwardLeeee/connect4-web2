@@ -31,6 +31,9 @@ window.STRINGS = {
     lobbyOffline: "連線恢復前無法開始對局。", // NEW
     inviteEyebrow: "邀請", // NEW
     inviteTitle: "朋友邀請你一起玩", // NEW
+    inviteBodyName: "填好你的暱稱，按「加入房間」就開始對戰。", // NEW (round 7, L12 v2)
+    inviteNameLabel: "你的暱稱", // NEW (round 7)
+    inviteNameHint: "你的朋友會看到這個名字呦", // NEW (round 7, user wording)
     inviteBody: "按下「加入房間」，朋友那邊就會開始對戰。", // NEW
     inviteRoom: "房間", // NEW
     inviteAs: "你的暱稱：{name}", // NEW
@@ -147,6 +150,9 @@ window.STRINGS = {
     lobbyOffline: "You can start a game once the connection is back.",
     inviteEyebrow: "Invite",
     inviteTitle: "A friend invited you to play",
+    inviteBodyName: "Fill in your nickname and tap \"Join room\" to start.",
+    inviteNameLabel: "Your nickname",
+    inviteNameHint: "Your friend will see this name!",
     inviteBody: "Tap \"Join room\" and the game starts for both of you.",
     inviteRoom: "Room",
     inviteAs: "Playing as {name}",

@@ -14,6 +14,9 @@ const T = window.STRINGS[lang];
 document.documentElement.lang = lang === "en" ? "en" : "zh-Hant";
 document.documentElement.dataset.vp = vp;
 document.documentElement.dataset.state = stateId;
+// round 11 proposal (item 08): narrow-phone board — a = cells shrink with the
+// screen, b = tighter margins and gaps below 422px; unset = current behaviour
+if (params.get("nb")) document.documentElement.dataset.nb = params.get("nb");
 // fo=1 draws the main text field focused (round 5 check of focus frames)
 const focusDemo = params.get("fo") === "1";
 
@@ -194,16 +197,29 @@ function waiting() {
   </section>`;
 }
 
+// round 7 proposal (L12 v2): the invite page asks for the nickname directly
+const inviteV2 = params.get("iv2") === "1";
+const inviteName = params.get("nm") ?? "玩家 4821";
+
+function inviteNameField() {
+  const empty = inviteName.trim() === "";
+  return `<label class="invite-name">
+      <span class="field-label">${t("inviteNameLabel")}</span>
+      <input class="is-focused${empty ? " has-error" : ""}" value="${esc(inviteName)}" maxlength="18" autocomplete="nickname"${empty ? ' aria-invalid="true"' : ""} />
+    </label>
+    ${empty ? `<p class="form-error invite-name-msg" role="alert">${ICON.warn}${t("errNicknameEmpty")}</p>` : `<p class="invite-name-msg hint">${t("inviteNameHint")}</p>`}`;
+}
+
 function inviteCard() {
   const gone = S.error === "gone";
   return `<div class="center-card invite-card${gone ? " is-gone" : ""}">
       <span class="big-icon">${gone ? ICON.warn : ICON.friends}</span>
       <p class="eyebrow">${t("inviteEyebrow")}</p>
       <h1>${gone ? t("inviteGone") : t("inviteTitle")}</h1>
-      <p class="lead">${gone ? t("inviteGoneBody", { code: esc(S.code) }) : t("inviteBody")}</p>
+      <p class="lead">${gone ? t("inviteGoneBody", { code: esc(S.code) }) : inviteV2 ? t("inviteBodyName") : t("inviteBody")}</p>
       ${gone ? "" : `<div class="room-code-block"><span>${t("inviteRoom")}</span><strong>${esc(S.code)}</strong></div>
-      <p class="invite-as">${ICON.user}<span>${t("inviteAs", { name: "曜宇" })}</span><button class="link-btn" type="button">${t("editName")}</button></p>`}
-      ${gone ? btn(t("backToLobby"), "primary big", { icon: ICON.back }) : btn(t("joinRoom"), "primary big", { icon: ICON.arrow })}
+      ${inviteV2 ? inviteNameField() : `<p class="invite-as">${ICON.user}<span>${t("inviteAs", { name: "曜宇" })}</span><button class="link-btn" type="button">${t("editName")}</button></p>`}`}
+      ${gone ? btn(t("backToLobby"), "primary big", { icon: ICON.back }) : btn(t("joinRoom"), "primary big", { icon: ICON.arrow, disabled: inviteV2 && inviteName.trim() === "" })}
       ${gone ? "" : btn(t("notNow"), "ghost")}
     </div>`;
 }
