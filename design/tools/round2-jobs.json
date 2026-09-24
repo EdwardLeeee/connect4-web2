@@ -112,15 +112,29 @@
   "mobile": false
  },
  {
+  "url": "mockups/round2/screen.html?state=L10&vp=desktop&lang=zh-TW",
+  "out": "L10-profile-nickname-empty-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
   "url": "mockups/round2/screen.html?state=L10&vp=mobile&lang=zh-TW",
-  "out": "L10-profile-sheet-error-mobile-430x932.png",
+  "out": "L10-profile-nickname-empty-mobile-430x932.png",
   "width": 430,
   "height": 932,
   "mobile": true
  },
  {
   "url": "mockups/round2/screen.html?state=L10&vp=keyboard&lang=zh-TW",
-  "out": "L10-profile-sheet-error-keyboard-430x932.png",
+  "out": "L10-profile-nickname-empty-keyboard-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L10&vp=mobile&lang=en",
+  "out": "L10-profile-nickname-empty-mobile-en-430x932.png",
   "width": 430,
   "height": 932,
   "mobile": true

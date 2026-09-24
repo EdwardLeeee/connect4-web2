@@ -480,6 +480,9 @@ function toast() {
 function profileSheet() {
   if (!S.profile) return "";
   const P = S.profile;
+  // an empty (or all-space) nickname is caught while typing: pink field,
+  // "enter a nickname first", Save disabled (user ruling 2026-09-24)
+  const empty = P.error && P.nickname.trim() === "";
   return `<div class="scrim">
     <form class="profile-sheet" role="dialog" aria-modal="true">
       <div class="sheet-handle" aria-hidden="true"></div>
@@ -487,11 +490,11 @@ function profileSheet() {
       <label><span class="field-label">${t("nickname")}</span>
         <input class="${P.error ? "has-error" : ""}${vp === "keyboard" || focusDemo ? " is-focused" : ""}" value="${esc(P.nickname)}" maxlength="18" />
       </label>
-      ${P.error ? `<p class="form-error">${ICON.warn}${t("errNickname")}</p>` : ""}
+      ${P.error ? `<p class="form-error" id="nickname-error" role="alert">${ICON.warn}${empty ? t("errNicknameEmpty") : t("errNickname")}</p>` : ""}
       <label><span class="field-label">${t("language")}</span>
         <span class="select-field"><select><option>${lang === "en" ? t("english") : t("chinese")}</option></select>${ICON.chevron}</span>
       </label>
-      <div class="sheet-actions">${btn(t("cancel"), "secondary")}${btn(t("save"), "primary")}</div>
+      <div class="sheet-actions">${btn(t("cancel"), "secondary")}${btn(t("save"), "primary", { disabled: empty })}</div>
     </form>
   </div>`;
 }

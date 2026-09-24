@@ -36,7 +36,7 @@ PAGES = [
     ("L07", "lobby-offline", [D, M, MEN]),
     ("L08", "lobby-error-toast", [D, M]),
     ("L09", "profile-modal", [D]),
-    ("L10", "profile-sheet-error", [M, KB]),
+    ("L10", "profile-nickname-empty", [D, M, KB, MEN]),
     ("L12", "invite-page", [D, M, MEN]),
     ("L13", "invite-room-gone", [D, M]),
     ("L14", "lobby-join-empty-code", [D, M]),

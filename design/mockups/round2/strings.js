@@ -114,6 +114,7 @@ window.STRINGS = {
     errRoomNotFound: "找不到這個房間。",
     errRoomCodeEmpty: "請先輸入房號", // NEW (join with an empty code)
     errNickname: "暱稱需為 1–18 個字。", // NEW (invalid_nickname)
+    errNicknameEmpty: "請先輸入暱稱", // NEW (empty nickname, checked while typing)
     close: "關閉",
   },
   en: {
@@ -233,6 +234,7 @@ window.STRINGS = {
     errRoomNotFound: "That room does not exist.",
     errRoomCodeEmpty: "Enter a room code first",
     errNickname: "Nickname must be 1–18 characters.",
+    errNicknameEmpty: "Enter a nickname first",
     close: "Close",
   },
 };

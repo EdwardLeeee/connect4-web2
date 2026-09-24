@@ -1,6 +1,6 @@
 # Connect 4 UI 規格：方向 C「粗線派對」（第二階段）
 
-- **狀態**：使用者 2026-09-24 核准，並做了第 0 節列的調整。這份文件和 `design/artboards/round2/` 的 83 張圖（外加一張勝利動畫 GIF）就是 RD 實作的規格、QA 的基準。
+- **狀態**：使用者 2026-09-24 核准，並做了第 0 節列的調整。這份文件和 `design/artboards/round2/` 的 85 張圖（外加一張勝利動畫 GIF）就是 RD 實作的規格、QA 的基準。
   圖只存在本機，不進 git；要看就在本機重現或用 eog 開。
 - **方向**：使用者 2026-09-24 選 C，不做亮／暗切換，等待畫面加 QR code 與分享連結。
 - **協定**：以 `docs/protocol.md` 為準（connect4-back 已定案）。線上／排隊人數（presence）這一輪不做，畫面上也沒有。
@@ -69,6 +69,9 @@
   - 所有欄位（房號、暱稱）正常輸入時都有薄荷色 3px 框、間距 2px，保持原樣。
   - 只有錯誤狀態不加框，只顯示粉紅外環（L14、L10）。
   - 按鈕的焦點框維持墨色。
+- **暱稱空白**（第六輪，使用者 2026-09-24 核准 `design/artboards/round6/`）：
+  - 欄位一清空就變成和房號空白一樣的粉紅錯誤樣式，下方顯示「請先輸入暱稱」／「Enter a nickname first」。
+  - 「儲存」按鈕停用，開始輸入就恢復（L10）。
 - **手機「分享邀請」**只在 HTTPS 正式站出現（iOS Safari 只在安全連線提供系統分享）。區網 http 測試時退回「複製邀請連結」是預期行為，等部署後再驗。
 
 ## 1. 怎麼看這套圖
@@ -153,7 +156,7 @@
 - 手機大廳的「立即對戰」大按鈕是 56。
 - 等朋友畫面的文字按鈕「離開」至少 44。
 - profile 欄位高 48、字級 16。
-- 83 張圖（外加一張勝利動畫 GIF）的水平溢位全部是 0。
+- 85 張圖（外加一張勝利動畫 GIF）的水平溢位全部是 0。
 
 ## 4. 頁面 × 狀態（觸發條件以 snapshot 判斷）
 
@@ -168,7 +171,7 @@
 | L07 | 大廳離線 | `connection = offline` | 頂列顯示連線狀態；下方加一條粉紅橫幅；所有開始按鈕停用，以斜紋表示 |
 | L08 | 錯誤 toast | `error` 事件 | 粉紅貼紙 toast，有 44px 關閉鈕；桌機在右下，手機橫跨底部 |
 | L09 | 個人設定（桌機 modal） | 點頭像 | 欄位高 48，語言用原生 select 加自畫箭頭 |
-| L10 | 個人設定（手機 sheet） | 點頭像；422 `invalid_nickname` | 欄位錯誤時底色轉粉紅、外框加粗，錯誤文字放在欄位下方；鍵盤彈出時 sheet 貼在鍵盤上方（keyboard 圖） |
+| L10 | 個人設定：暱稱空白 | 暱稱欄位清空或只剩空白時（輸入當下就判斷） | 欄位粉紅底加粉紅外環（沒有綠框），下方「請先輸入暱稱」，「儲存」停用（灰色斜紋）；開始輸入就恢復。桌機是 modal，手機是底部 sheet，鍵盤彈出時 sheet 貼在鍵盤上方。後端 422 `invalid_nickname` 仍顯示「暱稱需為 1–18 個字。」 |
 | L12 | 邀請頁 | 網址帶 `/?room=CODE` | 專屬頁：「朋友邀請你一起玩」、房號、你的暱稱（可修改，開 L09／L10）、一顆大的「加入房間」、文字按鈕「不加入，先去大廳」。**不自動加入** |
 | L13 | 邀請頁：無法加入 | 按下加入後收到 `room_not_found`／`room_full`／`host_disconnected` | 同一頁改成警示圖示和原因說明（三種錯誤各有文案：`inviteGoneBody`／`inviteFullBody`／`inviteHostOffBody`），只有「回到大廳」 |
 | L14 | 房號空白就按加入 | 按「加入房間」或 Enter 時 trim 後為空 | 欄位粉紅底加粉紅外環（沒有綠色焦點框），下方「請先輸入房號」，focus 欄位，開始輸入就清除；不送 `room.join` |
@@ -264,7 +267,7 @@
 
 | 項目 | 誰 | 說明 |
 |---|---|---|
-| 樣式、元件、版面、動效 | front | 以本規格和 83 張圖（外加一張勝利動畫 GIF）為準 |
+| 樣式、元件、版面、動效 | front | 以本規格和 85 張圖（外加一張勝利動畫 GIF）為準 |
 | 深連結 `/?room=CODE` | front（新路由） | 開啟後顯示專屬邀請頁（L12），按「加入房間」才送 `room.join`；錯誤顯示在同一頁（L13） |
 | QR code | front（新依賴） | 候選 `qrcode-generator` 或同級、可產 SVG 的套件；實作時量體積，預估 gzip 後在 10KB 內（未量測）。QR 內容就是深連結 |
 | 分享 | front | 手機唯一的按鈕「分享邀請」用 `navigator.share({ title, text, url })`；不支援時同一顆按鈕改成「複製邀請連結」 |
@@ -389,6 +392,7 @@
 | `scanToJoin` | 用手機掃描加入 | Scan to join on a phone | 新增 |
 | `errRoomCodeEmpty` | 請先輸入房號 | Enter a room code first | 新增（join with an empty code) |
 | `errNickname` | 暱稱需為 1–18 個字。 | Nickname must be 1–18 characters. | 新增（invalid_nickname) |
+| `errNicknameEmpty` | 請先輸入暱稱 | Enter a nickname first | 新增（empty nickname, checked while typing) |
 
 **front 實作時補上的文案**（2026-09-24 回報，規格同意採用）：
 - `movesTotal`：共 {n} 手／{n} moves。
@@ -399,7 +403,7 @@
   - `youDropped`：你在第 N 欄落子。
   - `opponentDropped`：對手在第 N 欄落子。
 
-## 13. Artboard 索引（73 張畫面＋10 張分鏡＋1 張 GIF）
+## 13. Artboard 索引（75 張畫面＋10 張分鏡＋1 張 GIF）
 
 | ID | 檔名（design/artboards/round2/，副檔名 .png） |
 |---|---|
@@ -412,7 +416,7 @@
 | L07 | `L07-lobby-offline-desktop-1440x900`<br>`L07-lobby-offline-mobile-430x932`<br>`L07-lobby-offline-mobile-en-430x932` |
 | L08 | `L08-lobby-error-toast-desktop-1440x900`<br>`L08-lobby-error-toast-mobile-430x932` |
 | L09 | `L09-profile-modal-desktop-1440x900` |
-| L10 | `L10-profile-sheet-error-mobile-430x932`<br>`L10-profile-sheet-error-keyboard-430x932` |
+| L10 | `L10-profile-nickname-empty-desktop-1440x900`<br>`L10-profile-nickname-empty-mobile-430x932`<br>`L10-profile-nickname-empty-keyboard-430x932`<br>`L10-profile-nickname-empty-mobile-en-430x932` |
 | L12 | `L12-invite-page-desktop-1440x900`<br>`L12-invite-page-mobile-430x932`<br>`L12-invite-page-mobile-en-430x932` |
 | L13 | `L13-invite-room-gone-desktop-1440x900`<br>`L13-invite-room-gone-mobile-430x932` |
 | L14 | `L14-lobby-join-empty-code-desktop-1440x900`<br>`L14-lobby-join-empty-code-mobile-430x932` |

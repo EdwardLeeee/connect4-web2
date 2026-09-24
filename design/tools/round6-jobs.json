@@ -1,0 +1,36 @@
+[
+ {
+  "url": "mockups/round2/screen.html?state=L10&vp=desktop&ne=1",
+  "out": "R6-1-nickname-empty-L10-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L10&vp=mobile&ne=1",
+  "out": "R6-2-nickname-empty-L10-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L10&vp=keyboard&ne=1",
+  "out": "R6-3-nickname-empty-L10-keyboard-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L10&vp=mobile&lang=en&ne=1",
+  "out": "R6-4-nickname-empty-L10-mobile-en-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L14&vp=mobile",
+  "out": "R6-5-for-reference-L14-room-code-empty-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ }
+]
