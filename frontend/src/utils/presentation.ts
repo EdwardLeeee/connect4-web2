@@ -12,7 +12,15 @@ export interface Text {
 }
 
 export interface HeadModel {
-  tone: "mine" | "theirs" | "thinking" | "paused" | "error" | "muted" | "over";
+  tone:
+    | "mine"
+    | "back"
+    | "theirs"
+    | "thinking"
+    | "paused"
+    | "error"
+    | "muted"
+    | "over";
   token: Color | "draw" | null;
   icon: "warn" | null;
   title: Text;
@@ -109,7 +117,8 @@ export function statusHead(input: HeadInput): HeadModel | null {
   if (input.reconnectedName) {
     return {
       ...base,
-      tone: "mine",
+      // Keeps the mint "back" chip; only your own turn follows your colour.
+      tone: "back",
       token: opponentOf(game.you),
       title: { key: "game.reconnected", args: { name: input.reconnectedName } },
       chip: next,
@@ -259,6 +268,27 @@ export interface Move {
   row: number;
   column: number;
   colour: Color;
+}
+
+/**
+ * Cells of the moves after the first `from` in history, oldest first. Each
+ * move's column is its history digit; the new tokens are the top ones of
+ * their columns on the current board, the latest highest.
+ */
+export function movesSince(game: GameState, from: number): Move[] {
+  const moves = game.history.slice(from);
+  const second = opponentOf(game.first);
+  return [...moves].map((digit, index) => {
+    const column = Number(digit) - 1;
+    const top = game.board.findIndex((cells) => cells[column] !== null);
+    const above = [...moves.slice(index + 1)].filter((d) => d === digit).length;
+    const number = from + index + 1;
+    return {
+      row: top + above,
+      column,
+      colour: number % 2 === 1 ? game.first : second,
+    };
+  });
 }
 
 /** The last move: its column is history's last digit, its cell the top token. */

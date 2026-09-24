@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { pageSnapshot, type PageId } from "../e2e/states";
-import type { GameState } from "../src/types";
+import type { Cell, Color, GameState } from "../src/types";
 import {
   lastMove,
+  movesSince,
+  opponentOf,
   resultPanel,
   statusHead,
   type RoomMode,
@@ -42,6 +44,23 @@ describe("status chip (design/spec.md §4)", () => {
       tone: "mine",
       title: { key: "game.yourTurn" },
       chip: { key: "game.moveNo", args: { n: 7 } },
+    });
+  });
+
+  it("shows your own colour on your turn when you play pink", () => {
+    const game = { ...page("P04").game, turn: "pink" as const };
+    expect(head("P04", { game })).toMatchObject({
+      tone: "mine",
+      token: "pink",
+      title: { key: "game.yourTurn" },
+    });
+  });
+
+  it("keeps the reconnected chip apart from your turn", () => {
+    expect(head("P03", { reconnectedName: "小安" })).toMatchObject({
+      tone: "back",
+      token: "pink",
+      title: { key: "game.reconnected", args: { name: "小安" } },
     });
   });
 
@@ -111,5 +130,42 @@ describe("last move", () => {
     expect(lastMove({ ...game, first: "pink" })).toMatchObject({
       colour: "pink",
     });
+  });
+});
+
+/** A game after playing `history` from an empty board. */
+function played(history: string, first: Color = "green"): GameState {
+  const board: Cell[][] = Array.from({ length: 6 }, () =>
+    Array<Cell>(7).fill(null),
+  );
+  [...history].forEach((digit, index) => {
+    const column = Number(digit) - 1;
+    let row = board.length - 1;
+    while (board[row][column] !== null) row -= 1;
+    board[row][column] = index % 2 === 0 ? first : opponentOf(first);
+  });
+  return { ...page("P03").game, board, history, first };
+}
+
+describe("moves since", () => {
+  it("places every new move, stacked ones included, oldest first", () => {
+    expect(movesSince(played("4454"), 1)).toEqual([
+      { row: 4, column: 3, colour: "pink" },
+      { row: 5, column: 4, colour: "green" },
+      { row: 3, column: 3, colour: "pink" },
+    ]);
+  });
+
+  it("follows the first mover's colour", () => {
+    expect(movesSince(played("45", "pink"), 0)).toEqual([
+      { row: 5, column: 3, colour: "pink" },
+      { row: 5, column: 4, colour: "green" },
+    ]);
+  });
+
+  it("ends with the last move", () => {
+    const game = played("3344");
+    expect(movesSince(game, 3)).toEqual([lastMove(game)]);
+    expect(movesSince(game, 4)).toEqual([]);
   });
 });

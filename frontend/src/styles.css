@@ -860,7 +860,8 @@ select {
   transform: rotate(-1.5deg);
 }
 
-.mine .turn-status {
+.mine .turn-status,
+.back .turn-status {
   background: var(--mint);
 }
 
@@ -3307,4 +3308,23 @@ select:focus-visible {
 input.has-error:focus-visible,
 input.has-error:focus {
   outline: none;
+}
+
+/* ================= round 7 (feedback 2026-09-25) ================= */
+
+/* A01: moves that arrive together drop in turn; a waiting token stays hidden
+   in its cell, and the result panel keeps its place until the last lands. */
+.token.is-queued,
+.result-card.is-held {
+  visibility: hidden;
+}
+
+/* "Your turn" follows your own piece colour; green players keep mint. */
+.you-pink .mine .turn-status,
+.you-pink .turn-tag {
+  background: var(--pink);
+}
+
+.you-pink .player.is-current.is-me {
+  background: var(--pink-soft);
 }

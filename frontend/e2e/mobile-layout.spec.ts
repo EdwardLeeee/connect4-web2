@@ -1,4 +1,5 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { dropDuration } from "../src/composables/useDropQueue";
 import type { Snapshot } from "../src/types";
 import { pageSnapshot, SERVER_TIME, type PageId } from "./states";
 
@@ -939,9 +940,40 @@ test("AI thinking is only announced after 300ms", async ({ page }) => {
   );
 });
 
+/** Drops need motion and a clock the test controls (A01). */
+async function playDrops(page: Page) {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.clock.install({ time: SERVER_TIME * 1000 });
+  await page.clock.pauseAt(SERVER_TIME * 1000 + 30_000);
+}
+
+function cell(page: Page, row: number, column: number) {
+  return page.locator(".grid .cell").nth(row * 7 + column);
+}
+
+/** P03 after your move in column 5 and, optionally, the AI's in column 2. */
+function afterMoves(start: Snapshot, reply: boolean): Snapshot {
+  const game = start.game!;
+  const board = game.board.map((row) => [...row]);
+  board[3][4] = "green";
+  if (reply) board[5][1] = "pink";
+  return {
+    ...start,
+    game: {
+      ...game,
+      revision: game.revision + (reply ? 2 : 1),
+      status: reply ? "playing" : "thinking",
+      turn: reply ? "green" : "pink",
+      board,
+      history: `${game.history}${reply ? "52" : "5"}`,
+    },
+  };
+}
+
 test("a live move drops in and is announced; the first snapshot is static", async ({
   page,
 }) => {
+  await playDrops(page);
   const start = snapshotFor("P03");
   const app = await mockApp(page, start);
   await page.goto("/play");
@@ -949,22 +981,124 @@ test("a live move drops in and is announced; the first snapshot is static", asyn
   await expect(page.locator(".token.is-dropping")).toHaveCount(0);
   await expect(page.locator(".cell.is-last")).toHaveCount(1);
 
-  const game = start.game!;
+  app.send(afterMoves(start, false));
+  await expect(cell(page, 3, 4).locator(".token")).toHaveClass(/is-dropping/);
+  await expect(page.locator(".game > .sr-only")).toHaveText("你在第 5 欄落子");
+  // The last-move frame waits until the token has landed.
+  await expect(page.locator(".cell.is-last")).toHaveCount(0);
+  await page.clock.runFor(dropDuration(3) + 50);
+  await expect(page.locator(".token.is-dropping")).toHaveCount(0);
+  await expect(cell(page, 3, 4)).toHaveClass(/is-last/);
+});
+
+test("moves that arrive together drop one after another", async ({ page }) => {
+  await playDrops(page);
+  const start = snapshotFor("P03");
+  const app = await mockApp(page, start);
+  await page.goto("/play");
+  await expect(page.locator(".board")).toBeVisible();
+
+  // An instant AI reply 5ms after your move waits for your token to land.
+  const yours = cell(page, 3, 4).locator(".token");
+  const reply = cell(page, 5, 1).locator(".token");
+  app.send(afterMoves(start, false));
+  await expect(yours).toHaveClass(/is-dropping/);
+  await page.clock.runFor(5);
+  app.send(afterMoves(start, true));
+  await expect(reply).toHaveClass(/is-queued/);
+  await expect(reply).toBeHidden();
+  await expect(yours).toHaveClass(/is-dropping/);
+
+  await page.clock.runFor(dropDuration(3) - 5 + 50);
+  await expect(reply).toHaveClass(/is-dropping/);
+  await expect(yours).not.toHaveClass(/is-dropping/);
+  await page.clock.runFor(dropDuration(5));
+  await expect(
+    page.locator(".token.is-dropping, .token.is-queued"),
+  ).toHaveCount(0);
+  await expect(cell(page, 5, 1)).toHaveClass(/is-last/);
+});
+
+test("the winning move lands before the celebration starts", async ({
+  page,
+}) => {
+  await playDrops(page);
+  const finished = snapshotFor("P07");
+  const game = finished.game!;
   const board = game.board.map((row) => [...row]);
-  board[3][4] = "green";
-  app.send({
-    ...start,
+  board[2][4] = null;
+  const app = await mockApp(page, {
+    ...finished,
     game: {
       ...game,
-      revision: game.revision + 1,
-      status: "thinking",
-      turn: "pink",
+      revision: game.revision - 1,
+      status: "playing",
+      turn: "green",
       board,
-      history: `${game.history}5`,
+      history: game.history.slice(0, -1),
+      winner: null,
+      result_reason: null,
+      winning_cells: [],
+      series: { you: 0, opponent: 0, draws: 0 },
     },
   });
-  await expect(page.locator(".token.is-dropping")).toHaveCount(1);
-  await expect(page.locator(".game > .sr-only")).toHaveText("你在第 5 欄落子");
+  await page.goto("/play");
+  await expect(page.locator(".board")).toBeVisible();
+
+  app.send(finished);
+  const card = page.locator(".result-card");
+  await expect(cell(page, 2, 4).locator(".token")).toHaveClass(/is-dropping/);
+  await expect(page.locator(".board")).not.toHaveClass(/is-celebrating/);
+  await expect(card).toHaveClass(/is-held/);
+  await expect(card).toBeHidden();
+
+  await page.clock.runFor(dropDuration(2) + 50);
+  await expect(page.locator(".board")).toHaveClass(/is-celebrating/);
+  await expect(card).toHaveClass(/is-entering/);
+  await expect(card).toBeVisible();
+});
+
+test("your turn follows your own colour when you play pink", async ({
+  page,
+}, testInfo) => {
+  const base = snapshotFor("P04");
+  await mockApp(page, { ...base, game: { ...base.game!, turn: "pink" } });
+  await page.goto("/play");
+  const head = page.locator(".board-head:visible");
+  await expect(head).toContainText("輪到你了");
+
+  const colours = await page.evaluate(() => {
+    const probe = document.createElement("i");
+    document.body.append(probe);
+    const resolve = (value: string) => {
+      probe.style.backgroundColor = value;
+      return getComputedStyle(probe).backgroundColor;
+    };
+    const result = {
+      pink: resolve("var(--pink)"),
+      pinkSoft: resolve("var(--pink-soft)"),
+    };
+    probe.remove();
+    return result;
+  });
+  await expect(head.locator(".turn-status")).toHaveCSS(
+    "background-color",
+    colours.pink,
+  );
+  await expect(head.locator(".status-token")).toHaveClass(/pink/);
+
+  if (kind(testInfo) !== "desktop") return;
+  // The match card and the hand only show on the desktop sidebar and mouse.
+  await expect(page.locator(".player.is-me.is-current")).toHaveCSS(
+    "background-color",
+    colours.pinkSoft,
+  );
+  await expect(page.locator(".turn-tag")).toHaveCSS(
+    "background-color",
+    colours.pink,
+  );
+  await page.locator(".col-target").nth(1).hover();
+  await expect(page.locator(".hand .token")).toHaveClass(/pink/);
 });
 
 test("the keyboard plays through one tab stop on the board", async ({

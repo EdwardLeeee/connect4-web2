@@ -4,6 +4,7 @@
 // line (A03). The server decides every move; this only reports the column.
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { dropDuration, type DropState } from "../composables/useDropQueue";
 import type { Cell, Color } from "../types";
 import { measureWinLine, winOrder, type WinLine } from "../utils/winLine";
 import AppIcon from "./AppIcon.vue";
@@ -15,8 +16,8 @@ const props = defineProps<{
   interactive: boolean;
   winningCells: Array<{ row: number; column: number }>;
   last: { row: number; column: number } | null;
-  /** The move to animate, keyed by move number so each plays once. */
-  dropping: { row: number; column: number; move: number } | null;
+  /** Drops in progress or waiting their turn, keyed by "row:column". */
+  drops: Record<string, DropState>;
   celebrating: boolean;
   /** You won: confetti joins the celebration (A03). */
   confetti: boolean;
@@ -223,7 +224,7 @@ const confettiPieces = computed(() => {
 function dropStyle(row: number) {
   return {
     "--fall": `calc(${row} * (var(--slot) + var(--slot-gap)) + var(--slot) + 25px)`,
-    "--drop-dur": `${260 + 30 * row}ms`,
+    "--drop-dur": `${dropDuration(row)}ms`,
   };
 }
 </script>
@@ -275,7 +276,12 @@ function dropStyle(row: number) {
           class="cell"
           :class="{
             'is-preview': preview?.row === row && preview?.column === column,
-            'is-last': cell && last?.row === row && last?.column === column,
+            // A01: the last-move frame appears once the token has landed.
+            'is-last':
+              cell &&
+              last?.row === row &&
+              last?.column === column &&
+              !drops[`${row}:${column}`],
             'is-win': winKeys.has(`${row}:${column}`),
           }"
           :style="
@@ -284,22 +290,19 @@ function dropStyle(row: number) {
               : undefined
           "
         >
+          <!-- No key tied to the drop: changing another cell's drop must not
+               recreate this token and cut its animation. -->
           <i
             v-if="cell"
-            :key="`${cell}-${dropping?.row === row && dropping?.column === column ? dropping.move : 0}`"
             class="token"
             :class="[
               cell,
               {
-                'is-dropping':
-                  dropping?.row === row && dropping?.column === column,
+                'is-dropping': drops[`${row}:${column}`] === 'dropping',
+                'is-queued': drops[`${row}:${column}`] === 'queued',
               },
             ]"
-            :style="
-              dropping?.row === row && dropping?.column === column
-                ? dropStyle(row)
-                : undefined
-            "
+            :style="drops[`${row}:${column}`] ? dropStyle(row) : undefined"
           />
           <i
             v-else-if="preview?.row === row && preview?.column === column"

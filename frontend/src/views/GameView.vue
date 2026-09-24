@@ -8,10 +8,13 @@ import ResultCard from "../components/ResultCard.vue";
 import SearchingScreen from "../components/SearchingScreen.vue";
 import WaitingScreen from "../components/WaitingScreen.vue";
 import { useCountdown } from "../composables/useCountdown";
+import { useDropQueue } from "../composables/useDropQueue";
+import { useMedia } from "../composables/useMedia";
 import { useGameStore } from "../stores/game";
 import type { Color } from "../types";
 import {
   lastMove,
+  movesSince,
   opponentOf,
   resultPanel,
   statusHead,
@@ -46,12 +49,15 @@ const opponentCountdown = computed(() =>
 
 // Changes seen live on this connection animate; the state a connection starts
 // with (first load, reconnect) is shown as it is (A01, A03).
-const dropping = ref<{ row: number; column: number; move: number } | null>(
-  null,
-);
+const reducedMotion = useMedia("(prefers-reduced-motion: reduce)");
+const drops = useDropQueue(reducedMotion);
 const celebrating = ref(false);
 const confetti = ref(false);
 const resultEntering = ref(false);
+// A03 starts once the last token has landed; until then the result panel
+// keeps its place but stays hidden.
+const resultHeld = ref(false);
+let celebrateTimer: number | null = null;
 const thinkingVisible = ref(false);
 const reconnectedName = ref<string | null>(null);
 const announcement = ref("");
@@ -71,34 +77,29 @@ watch(
     const live =
       store.room?.id === oldRoom && store.connectionEpoch === oldEpoch;
     if (!game || !live) {
-      dropping.value = null;
-      celebrating.value = false;
-      confetti.value = false;
-      resultEntering.value = false;
+      drops.reset();
+      stopCelebration();
       return;
     }
 
     if (
       history !== null &&
       oldHistory !== null &&
-      history.length === oldHistory.length + 1 &&
+      history.length > oldHistory.length &&
       history.startsWith(oldHistory)
     ) {
-      const move = lastMove(game);
-      if (move) {
-        dropping.value = {
-          row: move.row,
-          column: move.column,
-          move: history.length,
-        };
-        const column = move.column + 1;
-        announcement.value =
-          move.colour === game.you
-            ? t("game.youDropped", { column })
-            : t("game.opponentDropped", { column });
-      }
+      // Every new move drops in turn, even when several arrive together.
+      const moves = movesSince(game, oldHistory.length);
+      drops.enqueue(moves);
+      announcement.value = moves
+        .map(({ column, colour }) =>
+          colour === game.you
+            ? t("game.youDropped", { column: column + 1 })
+            : t("game.opponentDropped", { column: column + 1 }),
+        )
+        .join(" ");
     } else if (history !== oldHistory) {
-      dropping.value = null;
+      drops.reset();
     }
 
     // A forfeit ends a paused game, so a live finish can come from "paused".
@@ -106,17 +107,13 @@ watch(
       oldStatus === "playing" ||
       oldStatus === "thinking" ||
       oldStatus === "paused";
-    if (status === "finished" && wasLive) {
-      celebrating.value = game.winning_cells.length >= 4;
-      // A03: confetti whenever you win: four in a row, a forfeit, or a leave.
-      confetti.value = game.winner === game.you;
-      resultEntering.value = true;
-    } else if (status === "error" && wasLive) {
-      resultEntering.value = true;
+    if ((status === "finished" || status === "error") && wasLive) {
+      const won = status === "finished" && game.winner === game.you;
+      const fourInARow =
+        status === "finished" && game.winning_cells.length >= 4;
+      startCelebration(fourInARow, won, drops.idleIn());
     } else if (status !== oldStatus) {
-      celebrating.value = false;
-      confetti.value = false;
-      resultEntering.value = false;
+      stopCelebration();
     }
 
     if (oldStatus === "paused" && status === "playing") {
@@ -147,7 +144,35 @@ watch(
   { immediate: true },
 );
 
+function stopCelebration() {
+  if (celebrateTimer !== null) window.clearTimeout(celebrateTimer);
+  celebrateTimer = null;
+  celebrating.value = false;
+  confetti.value = false;
+  resultEntering.value = false;
+  resultHeld.value = false;
+}
+
+function startCelebration(fourInARow: boolean, won: boolean, wait: number) {
+  stopCelebration();
+  const begin = () => {
+    celebrateTimer = null;
+    resultHeld.value = false;
+    celebrating.value = fourInARow;
+    // A03: confetti whenever you win: four in a row, a forfeit, or a leave.
+    confetti.value = won;
+    resultEntering.value = true;
+  };
+  if (wait <= 0) {
+    begin();
+    return;
+  }
+  resultHeld.value = true;
+  celebrateTimer = window.setTimeout(begin, wait);
+}
+
 onUnmounted(() => {
+  if (celebrateTimer !== null) window.clearTimeout(celebrateTimer);
   if (thinkingTimer !== null) window.clearTimeout(thinkingTimer);
   if (reconnectedTimer !== null) window.clearTimeout(reconnectedTimer);
 });
@@ -201,6 +226,7 @@ function onAction(action: ResultAction) {
     class="game"
     :class="[
       `status-${store.game.status}`,
+      `you-${store.game.you}`,
       {
         'is-finished': store.game.status === 'finished',
         'is-offline': !online,
@@ -221,7 +247,7 @@ function onAction(action: ResultAction) {
         :interactive="store.canMove"
         :winning-cells="store.game.winning_cells"
         :last="last"
-        :dropping="dropping"
+        :drops="drops.states.value"
         :celebrating="celebrating"
         :confetti="confetti"
         :finished="store.game.status === 'finished'"
@@ -247,6 +273,7 @@ function onAction(action: ResultAction) {
         :opponent-name="opponentName"
         :you-move-first="store.game.you === store.game.first"
         :entering="resultEntering"
+        :held="resultHeld"
         @action="onAction"
       />
       <MatchCard

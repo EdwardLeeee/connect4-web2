@@ -16,6 +16,8 @@ const props = defineProps<{
   /** You moved first this game, so the opponent moves first in the next. */
   youMoveFirst: boolean;
   entering: boolean;
+  /** Hidden in place until the last token lands (A03). */
+  held: boolean;
 }>();
 const emit = defineEmits<{ action: [action: ResultAction] }>();
 const { t } = useI18n();
@@ -51,7 +53,7 @@ function icon(action: ResultAction) {
 <template>
   <div
     class="card result-card"
-    :class="[result.tone, { 'is-entering': entering }]"
+    :class="[result.tone, { 'is-entering': entering, 'is-held': held }]"
     role="status"
   >
     <div class="result-top">

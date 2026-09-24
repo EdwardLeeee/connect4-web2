@@ -1,6 +1,7 @@
-import { createApp, nextTick, type App } from "vue";
+import { createApp, h, nextTick, reactive, type App } from "vue";
 import { afterEach, describe, expect, it } from "vitest";
 import ConnectBoard from "../src/components/ConnectBoard.vue";
+import type { DropState } from "../src/composables/useDropQueue";
 import { i18n } from "../src/i18n";
 import type { Cell } from "../src/types";
 
@@ -19,7 +20,7 @@ function mountBoard(options: { interactive: boolean; board?: Cell[][] }) {
     interactive: options.interactive,
     winningCells: [],
     last: null,
-    dropping: null,
+    drops: {},
     celebrating: false,
     confetti: false,
     finished: false,
@@ -35,6 +36,38 @@ function mountBoard(options: { interactive: boolean; board?: Cell[][] }) {
     ...host.querySelectorAll<HTMLButtonElement>(".col-target"),
   ];
   return { host, moves, announcements, targets };
+}
+
+/** A board whose moves and drops change while it stays mounted. */
+function mountLiveBoard() {
+  const state = reactive({
+    board: empty(),
+    last: null as { row: number; column: number } | null,
+    drops: {} as Record<string, DropState>,
+  });
+  const host = document.createElement("div");
+  document.body.append(host);
+  const app = createApp({
+    render: () =>
+      h(ConnectBoard, {
+        board: state.board,
+        you: "green",
+        interactive: false,
+        winningCells: [],
+        last: state.last,
+        drops: state.drops,
+        celebrating: false,
+        confetti: false,
+        finished: false,
+        overlay: null,
+      }),
+  });
+  app.use(i18n);
+  app.mount(host);
+  mountedApps.push(app);
+  const cell = (row: number, column: number) =>
+    host.querySelectorAll<HTMLElement>(".grid .cell")[row * 7 + column];
+  return { state, cell };
 }
 
 function pointer(type: string, x: number, pointerType = "touch") {
@@ -145,5 +178,31 @@ describe("ConnectBoard", () => {
     await nextTick();
     expect(moves).toEqual([5]);
     expect(host.querySelector(".hand")).toBeNull();
+  });
+
+  it("keeps a falling token when the next move arrives (A01)", async () => {
+    const { state, cell } = mountLiveBoard();
+    state.board[5][3] = "green";
+    state.last = { row: 5, column: 3 };
+    state.drops = { "5:3": "dropping" };
+    await nextTick();
+    const yours = cell(5, 3).querySelector(".token")!;
+    expect(yours.classList).toContain("is-dropping");
+
+    state.board[4][3] = "pink";
+    state.last = { row: 4, column: 3 };
+    state.drops = { "5:3": "dropping", "4:3": "queued" };
+    await nextTick();
+    expect(cell(5, 3).querySelector(".token")).toBe(yours);
+    expect(yours.classList).toContain("is-dropping");
+    const reply = cell(4, 3).querySelector(".token")!;
+    expect(reply.classList).toContain("is-queued");
+    // The last-move frame waits until the token has landed.
+    expect(cell(4, 3).classList).not.toContain("is-last");
+
+    state.drops = {};
+    await nextTick();
+    expect(reply.classList).not.toContain("is-queued");
+    expect(cell(4, 3).classList).toContain("is-last");
   });
 });
