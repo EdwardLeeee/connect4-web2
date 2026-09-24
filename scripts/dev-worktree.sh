@@ -7,7 +7,8 @@
 #   scripts/dev-worktree.sh back                      # branch defaults to back/work
 #
 # The worktree lives next to the repo in ../connect4-web2-worktrees/<name> with its own
-# .venv and node_modules. Playwright browsers are shared through PLAYWRIGHT_BROWSERS_PATH.
+# .venv and node_modules. Playwright browsers come from the per-user ~/.cache/ms-playwright,
+# which every worktree already shares; install them once with npx playwright install --with-deps.
 set -euo pipefail
 
 name="${1:?usage: scripts/dev-worktree.sh <name> [branch]}"
@@ -38,7 +39,6 @@ cat <<EOF
 
 ready: ${DIR} on branch ${branch}
   cd ${DIR}
-  export PLAYWRIGHT_BROWSERS_PATH=${ROOT}/.playwright   # shared browsers for e2e
   export CARGO_HOME=${ROOT}/.cargo RUSTUP_HOME=${ROOT}/.rustup PATH=${ROOT}/.cargo/bin:\$PATH
 when done: commit, git push -u origin ${branch}, gh pr create --fill, then ask the ceo to review
 EOF
