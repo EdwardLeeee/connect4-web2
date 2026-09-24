@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 from connect4_app.domain import Game
-from connect4_app.manager import CLOSE_REPLACED, GameManager
+from connect4_app.manager import AI_MIN_THINK_SECONDS, CLOSE_REPLACED, GameManager
 from connect4_app.sessions import SessionStore
 
 FIRST_MOVER_WINS = [0, 1, 0, 1, 0, 1, 0]
@@ -476,3 +476,8 @@ async def test_ai_moves_after_player_disconnects_while_thinking() -> None:
     replacement = FakeSocket()
     await manager.connect(player, replacement)  # type: ignore[arg-type]
     assert replacement.messages[-1]["payload"]["game"]["history"] == "34"
+
+
+def test_ai_waits_one_second_by_default() -> None:
+    assert AI_MIN_THINK_SECONDS == 1.0
+    assert GameManager(solver=CentreSolver()).ai_min_think_seconds == 1.0  # type: ignore[arg-type]
