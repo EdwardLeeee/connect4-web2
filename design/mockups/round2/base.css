@@ -2760,3 +2760,25 @@ input.is-focused {
     min-height: 56px;
   }
 }
+
+/* ================= round 4 ================= */
+
+/* join with an empty room code: same field-error look as L10 */
+.join-error {
+  margin: -4px 0 0;
+}
+
+/* desktop: the sidebar column sinks so its bottom edge meets the board's
+   bottom edge (user feedback 2026-09-24, option A) */
+@media (min-width: 901px) {
+  .game {
+    align-items: end;
+  }
+}
+
+/* a field in error shows the pink ring only, no green focus outline
+   (user feedback 2026-09-24) */
+input.has-error.is-focused,
+input.has-error:focus-visible {
+  outline: none;
+}

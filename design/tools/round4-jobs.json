@@ -1,0 +1,159 @@
+[
+ {
+  "url": "mockups/round2/screen.html?state=P03&vp=desktop&sa=a",
+  "out": "R4-1-sidebar-A-whole-column-down-P03-play-your-turn-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P03&vp=desktop&sa=a",
+  "out": "R4-1-sidebar-A-whole-column-down-P03-play-your-turn-desktop-1366x768.png",
+  "width": 1366,
+  "height": 768
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P04&vp=desktop&sa=a",
+  "out": "R4-1-sidebar-A-whole-column-down-P04-play-opponent-turn-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P05&vp=desktop&sa=a",
+  "out": "R4-1-sidebar-A-whole-column-down-P05-play-ai-thinking-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P06&vp=desktop&sa=a",
+  "out": "R4-1-sidebar-A-whole-column-down-P06-play-opponent-paused-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P07&vp=desktop&sa=a",
+  "out": "R4-1-sidebar-A-whole-column-down-P07-play-win-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P07&vp=desktop&sa=a",
+  "out": "R4-1-sidebar-A-whole-column-down-P07-play-win-desktop-1366x768.png",
+  "width": 1366,
+  "height": 768
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P08&vp=desktop&sa=a",
+  "out": "R4-1-sidebar-A-whole-column-down-P08-play-lose-ai-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P09&vp=desktop&sa=a",
+  "out": "R4-1-sidebar-A-whole-column-down-P09-play-draw-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P10&vp=desktop&sa=a",
+  "out": "R4-1-sidebar-A-whole-column-down-P10-play-forfeit-win-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P11&vp=desktop&sa=a",
+  "out": "R4-1-sidebar-A-whole-column-down-P11-play-opponent-left-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P12&vp=desktop&sa=a",
+  "out": "R4-1-sidebar-A-whole-column-down-P12-play-solver-error-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P03&vp=desktop&sa=b",
+  "out": "R4-2-sidebar-B-card-top-actions-bottom-P03-play-your-turn-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P03&vp=desktop&sa=b",
+  "out": "R4-2-sidebar-B-card-top-actions-bottom-P03-play-your-turn-desktop-1366x768.png",
+  "width": 1366,
+  "height": 768
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P04&vp=desktop&sa=b",
+  "out": "R4-2-sidebar-B-card-top-actions-bottom-P04-play-opponent-turn-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P05&vp=desktop&sa=b",
+  "out": "R4-2-sidebar-B-card-top-actions-bottom-P05-play-ai-thinking-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P06&vp=desktop&sa=b",
+  "out": "R4-2-sidebar-B-card-top-actions-bottom-P06-play-opponent-paused-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P07&vp=desktop&sa=b",
+  "out": "R4-2-sidebar-B-card-top-actions-bottom-P07-play-win-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P07&vp=desktop&sa=b",
+  "out": "R4-2-sidebar-B-card-top-actions-bottom-P07-play-win-desktop-1366x768.png",
+  "width": 1366,
+  "height": 768
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P08&vp=desktop&sa=b",
+  "out": "R4-2-sidebar-B-card-top-actions-bottom-P08-play-lose-ai-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P09&vp=desktop&sa=b",
+  "out": "R4-2-sidebar-B-card-top-actions-bottom-P09-play-draw-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P10&vp=desktop&sa=b",
+  "out": "R4-2-sidebar-B-card-top-actions-bottom-P10-play-forfeit-win-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P11&vp=desktop&sa=b",
+  "out": "R4-2-sidebar-B-card-top-actions-bottom-P11-play-opponent-left-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P12&vp=desktop&sa=b",
+  "out": "R4-2-sidebar-B-card-top-actions-bottom-P12-play-solver-error-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L14&vp=desktop",
+  "out": "R4-3-join-empty-code-L14-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L14&vp=mobile",
+  "out": "R4-3-join-empty-code-L14-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ }
+]

@@ -39,6 +39,7 @@ PAGES = [
     ("L10", "profile-sheet-error", [M, KB]),
     ("L12", "invite-page", [D, M, MEN]),
     ("L13", "invite-room-gone", [D, M]),
+    ("L14", "lobby-join-empty-code", [D, M]),
     ("P01", "play-searching", [D, M]),
     ("P02", "play-waiting-friend", [D, M]),
     ("P03", "play-your-turn", [D, D1366, M, SAF, LAND]),

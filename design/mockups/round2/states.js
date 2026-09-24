@@ -94,6 +94,7 @@ window.STATES = {
   L10: { ...lobby({}), profile: { nickname: "", error: true } },
 
   L12: { view: "invite", code: "LAN427" },
+  L14: lobby({ expanded: "friends", code: "", joinError: true }),
   L13: { view: "invite", code: "LAN427", error: "gone" },
 
   P01: { view: "searching", waited: "0:12" },

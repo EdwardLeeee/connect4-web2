@@ -5,6 +5,7 @@ window.STRINGS = {
     brand: "CONNECT 4",
     leave: "離開",
     restart: "重新開始",
+    challengeAgain: "再次挑戰", // NEW (AI result panel; P12 keeps restart)
     rematch: "再來一局",
     backToLobby: "回到大廳", // NEW
     copied: "已複製",
@@ -111,6 +112,7 @@ window.STRINGS = {
     scanToJoin: "用手機掃描加入", // NEW
 
     errRoomNotFound: "找不到這個房間。",
+    errRoomCodeEmpty: "請先輸入房號", // NEW (join with an empty code)
     errNickname: "暱稱需為 1–18 個字。", // NEW (invalid_nickname)
     close: "關閉",
   },
@@ -118,6 +120,7 @@ window.STRINGS = {
     brand: "CONNECT 4",
     leave: "Leave",
     restart: "Restart",
+    challengeAgain: "Challenge again",
     rematch: "Rematch",
     backToLobby: "Back to lobby",
     copied: "Copied",
@@ -228,6 +231,7 @@ window.STRINGS = {
     scanToJoin: "Scan to join on a phone",
 
     errRoomNotFound: "That room does not exist.",
+    errRoomCodeEmpty: "Enter a room code first",
     errNickname: "Nickname must be 1–18 characters.",
     close: "Close",
   },

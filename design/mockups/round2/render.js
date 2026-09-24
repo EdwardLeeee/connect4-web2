@@ -130,9 +130,10 @@ function lobby() {
         <div class="card-panel" id="friends-panel">
           ${btn(t("createRoom"), "secondary", { disabled: offline })}
           <form class="join-row">
-            <input class="code-input${L.code ? " filled" : ""}" value="${esc(L.code)}" placeholder="${t("roomCode")}" maxlength="6" aria-label="${t("roomCode")}" />
+            <input class="code-input${L.code ? " filled" : ""}${L.joinError ? " has-error is-focused" : ""}" value="${esc(L.code)}" placeholder="${t("roomCode")}" maxlength="6" aria-label="${t("roomCode")}"${L.joinError ? ' aria-invalid="true" aria-describedby="join-error"' : ""} />
             ${btn(t("joinRoom"), "dark", { disabled: offline })}
           </form>
+          ${L.joinError ? `<p class="form-error join-error" id="join-error" role="alert">${ICON.warn}${t("errRoomCodeEmpty")}</p>` : ""}
         </div>
       </article>
       <article class="mode-card match-card-lobby collapsible${ex("matchmaking")}">
@@ -381,7 +382,7 @@ function game() {
     let tone;
     let emblem = token(G.winner ?? G.you, "emblem");
     let actions = [];
-    const again = mode === "ai" ? t("restart") : t("rematch");
+    const again = mode === "ai" ? t("challengeAgain") : t("rematch");
     if (G.status === "error") {
       title = t("solverError");
       sub = t("solverErrorBody");

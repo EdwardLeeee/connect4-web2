@@ -1,6 +1,6 @@
 # Connect 4 UI 規格：方向 C「粗線派對」（第二階段）
 
-- **狀態**：使用者 2026-09-24 核准，並做了第 0 節列的調整。這份文件和 `design/artboards/round2/` 的 81 張圖（外加一張勝利動畫 GIF）就是 RD 實作的規格、QA 的基準。
+- **狀態**：使用者 2026-09-24 核准，並做了第 0 節列的調整。這份文件和 `design/artboards/round2/` 的 83 張圖（外加一張勝利動畫 GIF）就是 RD 實作的規格、QA 的基準。
   圖只存在本機，不進 git；要看就在本機重現或用 eog 開。
 - **方向**：使用者 2026-09-24 選 C，不做亮／暗切換，等待畫面加 QR code 與分享連結。
 - **協定**：以 `docs/protocol.md` 為準（connect4-back 已定案）。線上／排隊人數（presence）這一輪不做，畫面上也沒有。
@@ -43,7 +43,7 @@
   - 上一局後下的人，下一局先下；每位玩家的顏色整場不變。
   - 使用者 2026-09-24 補充：原本後端固定綠方先手，只取消換色會讓同一個人永遠先手，這不是想要的結果。
   - 後端已改：先手不再綁定綠色，snapshot 用 `game.first`（"green" | "pink"）告訴前端這局誰先手（connect4-back 已定案，見 `docs/protocol.md`）。
-  - AI 局不變：玩家一律綠色、先手，「重新開始」也不換。
+  - AI 局不變：玩家一律綠色、先手，結局面板的「再次挑戰」也不換。
 - **邀請連結**：打開後進入**專屬邀請頁**（L12），整頁只有一顆大按鈕「加入房間」；按一下才加入，不自動加入。
   - 房間無法加入時，在同一頁說明原因（L13），只有「回到大廳」一顆按鈕。
 - **挑戰 AI 的描述**改成「挑戰者，你能想出擊敗 AI 的戰術嗎？」（第三輪）。
@@ -55,6 +55,17 @@
 - **勝利慶祝**加長到約 3 秒（第三輪）：依序是連線棋子彈起、墨線、星星、彩紙、獎盃、結局面板，最後勝利棋子脈動 3 次（A03）。
   - 對手離線判負、對手離開而獲勝時也灑彩紙（使用者 2026-09-24 確認）。這兩種沒有連線，所以只有彩紙、獎盃和結局面板。
 - **設計圖檔**：只存本機，不 push。規格與 mockup 原始檔可以進 git。
+
+### 第四輪（2026-09-24，實機驗收後；`docs/briefs/2026-09-24-feedback.md`、`design/round4.md`）
+
+- **桌機右側資訊欄往下對齊**（選 A 整欄下沉）：
+  - `.game { align-items: end }`，右欄整體底緣對齊棋盤底緣，上方留白。
+  - 矮桌機（1366×768）同樣適用。
+- **房號空白按「加入房間」**（新增 L14）：
+  - 欄位轉粉紅底加粉紅外環，下方出現「請先輸入房號」／「Enter a room code first」，游標停在欄位裡，開始輸入就消失。
+  - **錯誤狀態不顯示綠色焦點框**（使用者要求），只留粉紅外環；L10 的暱稱錯誤也一樣。
+- **AI 局結局面板按鈕**改成「再次挑戰」／「Challenge again」，勝、敗、平一律；P12 求解器故障維持「重新開始」。
+- **手機「分享邀請」**只在 HTTPS 正式站出現（iOS Safari 只在安全連線提供系統分享）。區網 http 測試時退回「複製邀請連結」是預期行為，等部署後再驗。
 
 ## 1. 怎麼看這套圖
 
@@ -121,7 +132,7 @@
 2. **落子軌道**：高度為一個格徑加 18px。輪到自己時，手上的棋子浮在指到的欄上方。
 3. **棋盤**。
 
-**桌機側欄由上到下**
+**桌機側欄由上到下**（整欄底緣對齊棋盤底緣，第四輪）
 1. 結局面板（只在結束時出現）。
 2. 對局卡：模式籤、雙方、比分。
 3. 資訊卡：先手、上一手。
@@ -138,7 +149,7 @@
 - 手機大廳的「立即對戰」大按鈕是 56。
 - 等朋友畫面的文字按鈕「離開」至少 44。
 - profile 欄位高 48、字級 16。
-- 81 張圖（外加一張勝利動畫 GIF）的水平溢位全部是 0。
+- 83 張圖（外加一張勝利動畫 GIF）的水平溢位全部是 0。
 
 ## 4. 頁面 × 狀態（觸發條件以 snapshot 判斷）
 
@@ -156,6 +167,7 @@
 | L10 | 個人設定（手機 sheet） | 點頭像；422 `invalid_nickname` | 欄位錯誤時底色轉粉紅、外框加粗，錯誤文字放在欄位下方；鍵盤彈出時 sheet 貼在鍵盤上方（keyboard 圖） |
 | L12 | 邀請頁 | 網址帶 `/?room=CODE` | 專屬頁：「朋友邀請你一起玩」、房號、你的暱稱（可修改，開 L09／L10）、一顆大的「加入房間」、文字按鈕「不加入，先去大廳」。**不自動加入** |
 | L13 | 邀請頁：無法加入 | 按下加入後收到 `room_not_found`／`room_full`／`host_disconnected` | 同一頁改成警示圖示和原因說明（三種錯誤各有文案：`inviteGoneBody`／`inviteFullBody`／`inviteHostOffBody`），只有「回到大廳」 |
+| L14 | 房號空白就按加入 | 按「加入房間」或 Enter 時 trim 後為空 | 欄位粉紅底加粉紅外環（沒有綠色焦點框），下方「請先輸入房號」，focus 欄位，開始輸入就清除；不送 `room.join` |
 | P01 | 配對中 | `queue.searching` | 三顆棋子跳動，顯示「已等待 m:ss」和取消按鈕 |
 | P02 | 等朋友 | `game.status = waiting` | 大字房號、QR code，加上一顆主要按鈕：桌機是「複製邀請連結」（按過後維持「已複製邀請連結」）；手機是「分享邀請」（`navigator.share`，瀏覽器不支援時改成「複製邀請連結」）；另有文字按鈕「離開」 |
 | P03 | 我的回合 | `playing && turn == you` | 軌道上的棋子、欄位亮框、預覽落點、上一手框、鍵盤提示 |
@@ -163,8 +175,8 @@
 | P05 | AI 思考 | `thinking` 持續超過 300ms | 狀態籤「AI 正在思考」加三點；300ms 內就落子則不顯示；沒有秒數、沒有超時 |
 | P06 | 對手離線 | `paused`（只在真人局；AI 局沒有斷線倒數，玩家回來就接著下） | 狀態籤「{name} 離線了」；倒數籤；對手頭像外加倒數環與「離線」標 |
 | P07 | 勝（私人房） | `finished && winner == you`，`connect_four` | 連線高亮加墨線；結局面板在側欄（手機在棋盤下）；本場比分 |
-| P08 | 敗（AI） | `finished && winner != you`，AI 模式 | 「Super AI 拿下這局」、「挑戰者別氣餒，再挑戰一次？」和「重新開始」 |
-| P09 | 平手 | `result_reason = draw` | 面板用向日葵色，圖示是綠粉雙棋 |
+| P08 | 敗（AI） | `finished && winner != you`，AI 模式 | 「Super AI 拿下這局」、「挑戰者別氣餒，再挑戰一次？」和「再次挑戰」（AI 局勝、敗、平的按鈕都是「再次挑戰」） |
+| P09 | 平手 | `result_reason = draw` | 面板白底、下緣虛線，徽章是等號 |
 | P10 | 對手離線判負（你勝） | `forfeit && winner == you` | `rematch_available` 為 true，仍可再來一局；對手顯示離線 |
 | P11 | 對手中途離開 | `result_reason = left` | 只有「回到大廳」按鈕 |
 | P12 | 求解器故障 | `status = error` | 棋盤蓋上斜紋；說明文字寫明「不會改用較弱的備援 AI」；「重新開始」 |
@@ -248,7 +260,7 @@
 
 | 項目 | 誰 | 說明 |
 |---|---|---|
-| 樣式、元件、版面、動效 | front | 以本規格和 81 張圖（外加一張勝利動畫 GIF）為準 |
+| 樣式、元件、版面、動效 | front | 以本規格和 83 張圖（外加一張勝利動畫 GIF）為準 |
 | 深連結 `/?room=CODE` | front（新路由） | 開啟後顯示專屬邀請頁（L12），按「加入房間」才送 `room.join`；錯誤顯示在同一頁（L13） |
 | QR code | front（新依賴） | 候選 `qrcode-generator` 或同級、可產 SVG 的套件；實作時量體積，預估 gzip 後在 10KB 內（未量測）。QR 內容就是深連結 |
 | 分享 | front | 手機唯一的按鈕「分享邀請」用 `navigator.share({ title, text, url })`；不支援時同一顆按鈕改成「複製邀請連結」 |
@@ -308,6 +320,7 @@
 
 | key | zh-TW | en | 備註 |
 |---|---|---|---|
+| `challengeAgain` | 再次挑戰 | Challenge again | 新增（AI result panel; P12 keeps restart) |
 | `backToLobby` | 回到大廳 | Back to lobby | 新增 |
 | `shareInvite` | 分享邀請 | Share invite | 新增 |
 | `copyLink` | 複製邀請連結 | Copy invite link | 新增 |
@@ -370,6 +383,7 @@
 | `waitedFor` | 已等待 {t} | Waiting {t} | 新增 |
 | `waitingFriendBody` | 分享邀請或房號，朋友加入後立即開局。 | Share the invite or the code. The game starts as soon as they join. | 改寫 |
 | `scanToJoin` | 用手機掃描加入 | Scan to join on a phone | 新增 |
+| `errRoomCodeEmpty` | 請先輸入房號 | Enter a room code first | 新增（join with an empty code) |
 | `errNickname` | 暱稱需為 1–18 個字。 | Nickname must be 1–18 characters. | 新增（invalid_nickname) |
 
 **front 實作時補上的文案**（2026-09-24 回報，規格同意採用）：
@@ -381,7 +395,7 @@
   - `youDropped`：你在第 N 欄落子。
   - `opponentDropped`：對手在第 N 欄落子。
 
-## 13. Artboard 索引（71 張畫面＋10 張分鏡＋1 張 GIF）
+## 13. Artboard 索引（73 張畫面＋10 張分鏡＋1 張 GIF）
 
 | ID | 檔名（design/artboards/round2/，副檔名 .png） |
 |---|---|
@@ -397,6 +411,7 @@
 | L10 | `L10-profile-sheet-error-mobile-430x932`<br>`L10-profile-sheet-error-keyboard-430x932` |
 | L12 | `L12-invite-page-desktop-1440x900`<br>`L12-invite-page-mobile-430x932`<br>`L12-invite-page-mobile-en-430x932` |
 | L13 | `L13-invite-room-gone-desktop-1440x900`<br>`L13-invite-room-gone-mobile-430x932` |
+| L14 | `L14-lobby-join-empty-code-desktop-1440x900`<br>`L14-lobby-join-empty-code-mobile-430x932` |
 | P01 | `P01-play-searching-desktop-1440x900`<br>`P01-play-searching-mobile-430x932` |
 | P02 | `P02-play-waiting-friend-desktop-1440x900`<br>`P02-play-waiting-friend-mobile-430x932` |
 | P03 | `P03-play-your-turn-desktop-1440x900`<br>`P03-play-your-turn-desktop-1366x768`<br>`P03-play-your-turn-mobile-430x932`<br>`P03-play-your-turn-safari-430x739`<br>`P03-play-your-turn-landscape-892x412` |
