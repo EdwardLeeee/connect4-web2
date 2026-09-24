@@ -160,7 +160,8 @@ curl --fail https://connect4.oraclelee.com/api/health
 journalctl --user-unit connect4.service --follow
 ```
 
-只有原生精確求解器自測通過，`GET /api/health` 才回傳 HTTP 200。更新版本的順序是：
+只有原生精確求解器自測通過，`GET /api/health` 才回傳 HTTP 200；回應裡的 `version`
+是上線的應用程式版本，部署後用它確認換版成功（`deploy.sh` 結尾也會印出）。更新版本的順序是：
 開發機 `scripts/release.sh patch|minor` → 等 GitHub Actions 全綠 → 正式主機
 `deploy/deploy.sh vX.Y.Z`（或從原始碼重建相同 production tag 再
 `systemctl --user restart connect4.service`）。程序重啟會清除進行中的房間與配對。
