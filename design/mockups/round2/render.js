@@ -314,7 +314,8 @@ function game() {
   const player = (colour) => {
     const p = G.players[colour] ?? { nickname: "", connected: true };
     const isMe = colour === G.you;
-    const seat = colour === "green" ? t("first") : t("second");
+    // protocol: who moves first is no longer tied to colour (rematch alternates it)
+    const seat = colour === (G.first ?? "green") ? t("first") : t("second");
     const meta = isMe ? `${t("you")} · ${seat}` : p.is_ai ? `${seat} · ${t("solver")}` : seat;
     const current = G.status === "playing" && G.turn === colour;
     const away = !p.connected;
@@ -346,7 +347,7 @@ function game() {
   const lastCol = G.last ? G.last.column + 1 : null;
   const lastColour = G.last ? G.board[G.last.row][G.last.column] : null;
   const infoCard = `<div class="card info-card">
-      <div><small>${t("first")}</small><strong>${G.you === "green" ? t("you") : esc(G.players.green?.nickname ?? "")}</strong></div>
+      <div><small>${t("first")}</small><strong>${G.you === (G.first ?? "green") ? t("you") : esc(G.players[G.first ?? "green"]?.nickname ?? "")}</strong></div>
       <div><small>${t("lastMove")}</small><strong>${lastCol ? `${token(lastColour, "stat-token")}${t("columnN", { n: lastCol })}` : "—"}</strong></div>
     </div>`;
 
@@ -414,7 +415,7 @@ function game() {
       rematchRow = `<div class="rematch-row"><span class="dots"><i></i><i></i><i></i></span><div><strong>${t("rematchSent", { name: oppName })}</strong><small>${t("rematchPending", { name: oppName })}</small></div></div>`;
     } else if (finished && theirs) {
       actions = [btn(t("rematchAccept"), "primary"), btn(t("leave"), "secondary")];
-      rematchRow = `<div class="rematch-row incoming">${token(opp, "stat-token")}<div><strong>${t("rematchIncoming", { name: oppName })}</strong><small>${t("rematchIncomingSub")}</small></div></div>`;
+      rematchRow = `<div class="rematch-row incoming">${token(opp, "stat-token")}<div><strong>${t("rematchIncoming", { name: oppName })}</strong><small>${t("rematchIncomingSub", { name: G.you === (G.first ?? "green") ? oppName : t("you") })}</small></div></div>`;
     }
     result = `<div class="card result-card ${tone}" role="status">
         <div class="result-top">${emblem}<div><h2>${title}</h2><p>${sub}</p></div></div>

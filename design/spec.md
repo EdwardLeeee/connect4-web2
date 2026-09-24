@@ -36,9 +36,11 @@
   - 真人對戰輪到對手時，改成「{name} 正在思考」加三點跳動（A04）。
 - **複製房號**：按過之後一直顯示「已複製」，不再變回「複製房號」，避免誤會（A06）。
 - **AI 局結算文案**：改成「挑戰者別氣餒，再挑戰一次？」。
-- **真人對戰再來一局**：**顏色不互換**，雙方維持原本的顏色。
-  - 這要改後端，目前 `manager.py` 在再來一局時會換座位。
-  - 所以先手永遠是同一個人（綠方先手）。
+- **真人對戰再來一局**：**顏色不互換，但先後手每局輪流**。
+  - 上一局後下的人，下一局先下；每位玩家的顏色整場不變。
+  - 使用者 2026-09-24 補充：原本後端固定綠方先手，只取消換色會讓同一個人永遠先手，這不是想要的結果。
+  - 這要改後端：先手不再綁定綠色；snapshot 要告訴前端這局誰先手（提案欄位 `game.first`，名稱以 back 定案為準）。
+  - AI 局不變：玩家一律綠色、先手，「重新開始」也不換。
 - **邀請連結**：打開後帶入房號，**按一下「加入房間」才加入**，不自動加入。
 - **設計圖檔**：只存本機，不 push。規格與 mockup 原始檔可以進 git。
 
@@ -155,7 +157,7 @@
 | P14 | 我離線 | `connection = offline` | 棋盤蓋上斜紋，並顯示「連線中斷，正在重新連線…」 |
 | P15 | 已在其他分頁開啟 | close code 4001 | 一顆主要按鈕「在這裡繼續」（front 的 `reclaim()`），加一段說明；不自動搶回 |
 | P16 | 自己離線判負 | `forfeit && winner != you` | 「離線逾時，這局判負」；和 P08 的連四敗是不同文案 |
-| P17 | 對手邀請再來一局 | `rematch[opponent] && !rematch[you]` | 「{name} 想再來一局！」「按下就開始下一局，雙方顏色不變。」；主按鈕「好，再來一局」 |
+| P17 | 對手邀請再來一局 | `rematch[opponent] && !rematch[you]` | 「{name} 想再來一局！」「按下就開始下一局：顏色不變，這局換 {下一局先手} 先下。」；主按鈕「好，再來一局」 |
 | P18 | 分出勝負後對手才離開 | `finished && rematch_available == false && result_reason != left` | 保留原本結果，加註「{name} 已離開房間，無法再來一局」；只有「回到大廳」 |
 
 ## 5. 元件
@@ -211,14 +213,14 @@
 | 畫面需要的資料 | 欄位 | 說明 |
 |---|---|---|
 | 手數、上一手 | `game.history` | 長度就是手數；最後一碼是上一手所在的欄，該欄最上面那顆就是上一手 |
-| 先後手 | 固定綠方先手 | 對局卡、資訊卡顯示「先手／後手」 |
+| 先後手 | `game.first`（提案，需後端） | 對局卡、資訊卡顯示「先手／後手」；不可再假設綠方先手。`history` 第 i 手的顏色也要從先手顏色推算 |
 | 倒數 | `players[c].grace_deadline`、`server_time` | 剩餘秒數 = `grace_deadline − (本機現在 + offset)`；值是 null 時只顯示文字 |
 | 再來一局 | `rematch {green, pink}`、`rematch_available` | P13、P17、P18、P10、P11 的按鈕與狀態列；不要用 `result_reason` 推導 |
 | 比分 | `series {you, opponent, draws}` | 對局卡底部；AI 模式不顯示 |
 | 對手連線 | `players[c].connected` | 「在線」「離線」標籤 |
 | 線上人數 | —（這一輪不做） | 大廳與配對畫面都沒有 |
 | AI 名稱 | `players[c].nickname`（`is_ai`） | 後端改成 `Super AI` |
-| 再來一局的顏色 | 後端換座位邏輯 | 真人對戰不換色（使用者裁示），後端要改；`docs/protocol.md` 的「再來一局時伺服器會換座位」也要一起改 |
+| 再來一局的顏色與先手 | 後端 | 真人對戰顏色不變、先後手輪流（使用者裁示）；`docs/protocol.md` 要一起改 |
 
 ## 8. 分工
 
@@ -233,7 +235,7 @@
 | 字型 | front | 自架 Space Grotesk 拉丁子集，`unicode-range` 限定拉丁字元 |
 | 協定欄位 | back（已完成） | 見第 7 節 |
 | AI 改名 | back | `manager.py` 裡 AI 的暱稱從 `Perfect AI` 改成 `Super AI` |
-| 再來一局不換色 | back | 真人對戰再來一局時維持原座位與顏色（目前 `manager.py` 會換座位）；同步更新 `docs/protocol.md` 和測試 |
+| 再來一局不換色、先手輪流 | back | 真人對戰再來一局時維持原座位與顏色，先手改由上一局的後手擔任；snapshot 加上本局先手（提案 `game.first`）；`history` 的顏色規則、`docs/protocol.md` 和測試一起改 |
 | 求解器 | 不變 | 不弱化、不加超時、不加備援 |
 
 ## 9. 品牌資產連動（C 保留綠／粉紅色相，只把色值調亮）
@@ -298,7 +300,7 @@
 | `first` | 先手 | First | 新增 |
 | `second` | 後手 | Second | 新增 |
 | `lastMove` | 上一手 | Last move | 新增；game.history |
-| `solver` | Super AI | Super AI | 新增；AI 那一列的身分標示，例如「後手 · Super AI」 |
+| `solver` | Super AI | Super AI | 新增；AI seat label, e.g. 後手 · Super AI |
 | `online` | 在線 | Online | 新增 |
 | `offlineTag` | 離線 | Offline | 新增 |
 | `kbdPick` | 選欄 | choose | 新增 |
@@ -325,7 +327,7 @@
 | `rematchPending` | {name} 還沒回應 | Waiting for {name} to answer | 新增；game.rematch[opponent] false |
 | `rematchWaitingBtn` | 等待對手回應… | Waiting for response… | 新增 |
 | `rematchIncoming` | {name} 想再來一局！ | {name} wants a rematch! | 新增；game.rematch[opponent] |
-| `rematchIncomingSub` | 按下就開始下一局，雙方顏色不變。 | Accept to start the next game. Colours stay the same. | 新增 |
+| `rematchIncomingSub` | 按下就開始下一局：顏色不變，這局換 {name} 先下。 | Accept to start the next game. Colours stay; {name} moves first this time. | 新增；next first mover |
 | `rematchAccept` | 好，再來一局 | Accept rematch | 新增 |
 | `leftAfter` | {name} 已離開房間，無法再來一局。 | {name} has left the room, so a rematch isn’t available. | 新增；rematch_available false |
 | `gameOffline` | 連線中斷，正在重新連線… | Connection lost — reconnecting… | 新增 |

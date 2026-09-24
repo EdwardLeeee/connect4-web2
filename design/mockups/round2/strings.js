@@ -82,7 +82,7 @@ window.STRINGS = {
     rematchPending: "{name} 還沒回應", // NEW — game.rematch[opponent] false
     rematchWaitingBtn: "等待對手回應…", // NEW
     rematchIncoming: "{name} 想再來一局！", // NEW — game.rematch[opponent]
-    rematchIncomingSub: "按下就開始下一局，雙方顏色不變。", // NEW
+    rematchIncomingSub: "按下就開始下一局：顏色不變，這局換 {name} 先下。", // NEW — next first mover
     rematchAccept: "好，再來一局", // NEW
     leftAfter: "{name} 已離開房間，無法再來一局。", // NEW — rematch_available false
     gameOffline: "連線中斷，正在重新連線…", // NEW
@@ -189,7 +189,7 @@ window.STRINGS = {
     rematchPending: "Waiting for {name} to answer",
     rematchWaitingBtn: "Waiting for response…",
     rematchIncoming: "{name} wants a rematch!",
-    rematchIncomingSub: "Accept to start the next game. Colours stay the same.",
+    rematchIncomingSub: "Accept to start the next game. Colours stay; {name} moves first this time.",
     rematchAccept: "Accept rematch",
     leftAfter: "{name} has left the room, so a rematch isn’t available.",
     gameOffline: "Connection lost — reconnecting…",

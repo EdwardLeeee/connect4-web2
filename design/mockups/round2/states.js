@@ -5,6 +5,7 @@
 //   game.rematch_available
 //   game.series {you, opponent, draws}
 //   players[c].grace_deadline - snapshot.server_time -> `graceLeft` seconds
+//   game.first (proposed): colour that moved first this game; defaults to green
 // Front can reuse these as e2e mocks; spec.md maps each one to its artboards.
 
 (() => {
