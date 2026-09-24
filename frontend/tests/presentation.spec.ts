@@ -26,7 +26,6 @@ function head(
     game: page(id).game,
     opponentName: "小安",
     online: true,
-    thinkingVisible: true,
     reconnectedName: null,
     countdownSeconds: null,
     ...extra,
@@ -68,9 +67,11 @@ describe("status chip (design/spec.md §4)", () => {
     expect(head("P04")).toMatchObject({ tone: "theirs", dots: true });
   });
 
-  it("hides the AI label until it has thought for 300ms", () => {
-    expect(head("P05", { thinkingVisible: false })).toBeNull();
-    expect(head("P05")).toMatchObject({ title: { key: "game.aiThinking" } });
+  it("announces the AI as soon as it is its turn", () => {
+    expect(head("P05")).toMatchObject({
+      tone: "thinking",
+      title: { key: "game.aiThinking" },
+    });
   });
 
   it("counts down only while there is a deadline", () => {

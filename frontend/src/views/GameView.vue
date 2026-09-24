@@ -58,10 +58,8 @@ const resultEntering = ref(false);
 // keeps its place but stays hidden.
 const resultHeld = ref(false);
 let celebrateTimer: number | null = null;
-const thinkingVisible = ref(false);
 const reconnectedName = ref<string | null>(null);
 const announcement = ref("");
-let thinkingTimer: number | null = null;
 let reconnectedTimer: number | null = null;
 
 watch(
@@ -128,22 +126,6 @@ watch(
   },
 );
 
-// A04: the AI usually answers at once; only a slow answer is announced.
-watch(
-  () => store.game?.status,
-  (status) => {
-    if (thinkingTimer !== null) window.clearTimeout(thinkingTimer);
-    thinkingTimer = null;
-    thinkingVisible.value = false;
-    if (status === "thinking") {
-      thinkingTimer = window.setTimeout(() => {
-        thinkingVisible.value = true;
-      }, 300);
-    }
-  },
-  { immediate: true },
-);
-
 function stopCelebration() {
   if (celebrateTimer !== null) window.clearTimeout(celebrateTimer);
   celebrateTimer = null;
@@ -173,7 +155,6 @@ function startCelebration(fourInARow: boolean, won: boolean, wait: number) {
 
 onUnmounted(() => {
   if (celebrateTimer !== null) window.clearTimeout(celebrateTimer);
-  if (thinkingTimer !== null) window.clearTimeout(thinkingTimer);
   if (reconnectedTimer !== null) window.clearTimeout(reconnectedTimer);
 });
 
@@ -183,7 +164,6 @@ const head = computed(() =>
         game: store.game,
         opponentName: opponentName.value,
         online: online.value,
-        thinkingVisible: thinkingVisible.value,
         reconnectedName: reconnectedName.value,
         countdownSeconds: opponentCountdown.value.seconds.value,
       })

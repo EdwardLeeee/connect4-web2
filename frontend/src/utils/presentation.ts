@@ -36,8 +36,6 @@ export interface HeadInput {
   game: GameState;
   opponentName: string;
   online: boolean;
-  /** AI thinking is only announced once it has lasted 300ms (A04). */
-  thinkingVisible: boolean;
   /** Shown for two seconds after the opponent reconnects (A05). */
   reconnectedName: string | null;
   countdownSeconds: number | null;
@@ -78,8 +76,8 @@ export function statusHead(input: HeadInput): HeadModel | null {
       chip: next,
     };
   }
+  // A04 (round 7): the AI is announced as soon as it is its turn.
   if (game.status === "thinking") {
-    if (!input.thinkingVisible) return null;
     return {
       ...base,
       tone: "thinking",
