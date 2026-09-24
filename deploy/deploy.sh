@@ -4,6 +4,8 @@
 #
 # Usage: deploy/deploy.sh v3.0.0            (a tag published by CI to GHCR)
 #        CONNECT4_IMAGE_REPO=... deploy/deploy.sh v3.0.0   (override the registry path)
+#        CONNECT4_ALLOW_MISMATCH=1 deploy/deploy.sh v3.0.0 (deploy even if the image
+#                                                           was not built from that tag)
 set -euo pipefail
 
 TAG="${1:?usage: deploy.sh <image tag, e.g. vX.Y.Z>}"
@@ -22,7 +24,12 @@ echo "image revision: ${revision:-(unknown)}"
 repo_dir="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd || true)"
 expected="$(git -C "${repo_dir:-.}" ls-remote --tags origin "refs/tags/${TAG}^{}" 2>/dev/null | cut -f1 || true)"
 if [ -n "${revision}" ] && [ -n "${expected}" ] && [ "${revision}" != "${expected}" ]; then
-    echo "WARNING: image revision ${revision} differs from tag ${TAG} on origin (${expected})" >&2
+    echo "image revision ${revision} differs from tag ${TAG} on origin (${expected})" >&2
+    if [ "${CONNECT4_ALLOW_MISMATCH:-0}" != 1 ]; then
+        echo "refusing to deploy an image that was not built from ${TAG}; set CONNECT4_ALLOW_MISMATCH=1 to override" >&2
+        exit 1
+    fi
+    echo "WARNING: deploying anyway because CONNECT4_ALLOW_MISMATCH=1" >&2
 fi
 if podman image exists "${PROD}"; then
     podman tag "${PROD}" "${PREV}"
