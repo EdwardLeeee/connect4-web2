@@ -6,7 +6,7 @@
 #        CONNECT4_IMAGE_REPO=... deploy/deploy.sh v3.0.0   (override the registry path)
 set -euo pipefail
 
-TAG="${1:?usage: deploy.sh <image tag, e.g. v3.0.0>}"
+TAG="${1:?usage: deploy.sh <image tag, e.g. vX.Y.Z>}"
 REPO="${CONNECT4_IMAGE_REPO:-ghcr.io/edwardleeee/connect4-web}"
 IMAGE="${REPO}:${TAG}"
 PROD="localhost/connect4-web:production"
