@@ -9,18 +9,18 @@ description = "Server-authoritative Connect Four with a native perfect-play solv
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-  "anyio==4.9.0",
-  "fastapi==0.116.1",
-  "pydantic==2.11.7",
-  "starlette==0.47.2",
-  "uvicorn[standard]==0.35.0",
+  "anyio==4.15.1",
+  "fastapi==0.141.1",
+  "pydantic==2.13.5",
+  "starlette==1.7.0",
+  "uvicorn[standard]==0.53.0",
 ]
 
 [project.optional-dependencies]
 dev = [
   "httpx==0.28.1",
-  "pytest>=8.4,<9",
-  "pytest-asyncio>=1.1,<2",
+  "pytest>=9.1,<10",
+  "pytest-asyncio>=1.4,<2",
   "ruff>=0.12,<1",
 ]
 
