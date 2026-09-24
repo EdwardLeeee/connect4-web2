@@ -47,7 +47,7 @@ window.STRINGS = {
     you: "你",
     lastMove: "上一手", // NEW — game.history
     columnN: "第 {n} 欄",
-    solver: "精確求解器", // NEW
+    solver: "Super AI", // NEW — AI seat label, e.g. 後手 · Super AI
     online: "在線", // NEW
     offlineTag: "離線", // NEW
     kbdPick: "選欄", // NEW
@@ -151,7 +151,7 @@ window.STRINGS = {
     you: "You",
     lastMove: "Last move",
     columnN: "Column {n}",
-    solver: "Exact solver",
+    solver: "Super AI",
     online: "Online",
     offlineTag: "Offline",
     kbdPick: "choose",

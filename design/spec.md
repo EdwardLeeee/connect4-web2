@@ -31,6 +31,7 @@
 - **AI 名稱**：改叫 **Super AI**。
   - 後端 `manager.py` 裡 AI 的暱稱要跟著改。
   - 等 AI 下子時，狀態列顯示「**AI 正在思考**」。
+  - 對局卡上 AI 那一列的標示從「後手 · 精確求解器」改成「**後手 · Super AI**」。
 - **AI 思考動效**：AI 幾乎都是立即落子，所以拿掉 AI 的巡行動畫、秒數和長說明。
   - 真人對戰輪到對手時，改成「{name} 正在思考」加三點跳動（A04）。
 - **複製房號**：按過之後一直顯示「已複製」，不再變回「複製房號」，避免誤會（A06）。
@@ -297,7 +298,7 @@
 | `first` | 先手 | First | 新增 |
 | `second` | 後手 | Second | 新增 |
 | `lastMove` | 上一手 | Last move | 新增；game.history |
-| `solver` | 精確求解器 | Exact solver | 新增 |
+| `solver` | Super AI | Super AI | 新增；AI 那一列的身分標示，例如「後手 · Super AI」 |
 | `online` | 在線 | Online | 新增 |
 | `offlineTag` | 離線 | Offline | 新增 |
 | `kbdPick` | 選欄 | choose | 新增 |
