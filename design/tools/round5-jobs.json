@@ -1,0 +1,47 @@
+[
+ {
+  "url": "mockups/round2/screen.html?state=L01&vp=desktop&fo=1&fr=green",
+  "out": "R5-1-typing-green-frame-L01-room-code-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L05&vp=mobile&fo=1&fr=green",
+  "out": "R5-1-typing-green-frame-L05-room-code-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L09&vp=desktop&fo=1&fr=green",
+  "out": "R5-1-typing-green-frame-L09-nickname-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L01&vp=desktop&fo=1&fr=ink",
+  "out": "R5-2-typing-black-frame-L01-room-code-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L05&vp=mobile&fo=1&fr=ink",
+  "out": "R5-2-typing-black-frame-L05-room-code-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L09&vp=desktop&fo=1&fr=ink",
+  "out": "R5-2-typing-black-frame-L09-nickname-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L14&vp=mobile",
+  "out": "R5-3-for-reference-L14-empty-code-error-no-green-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ }
+]

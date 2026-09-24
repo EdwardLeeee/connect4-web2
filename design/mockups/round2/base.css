@@ -2782,3 +2782,11 @@ input.has-error.is-focused,
 input.has-error:focus-visible {
   outline: none;
 }
+
+/* round 5 (user ruling 2026-09-24): the room-code field shows no focus frame
+   while typing (the caret marks it); other fields such as the nickname keep
+   the mint frame; any field in error shows only the pink ring */
+.code-input.is-focused,
+.code-input:focus-visible {
+  outline: none;
+}

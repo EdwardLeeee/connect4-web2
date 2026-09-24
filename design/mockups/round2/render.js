@@ -14,6 +14,8 @@ const T = window.STRINGS[lang];
 document.documentElement.lang = lang === "en" ? "en" : "zh-Hant";
 document.documentElement.dataset.vp = vp;
 document.documentElement.dataset.state = stateId;
+// fo=1 draws the main text field focused (round 5 check of focus frames)
+const focusDemo = params.get("fo") === "1";
 
 const t = (key, vars = {}) =>
   (T[key] ?? key).replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? "");
@@ -130,7 +132,7 @@ function lobby() {
         <div class="card-panel" id="friends-panel">
           ${btn(t("createRoom"), "secondary", { disabled: offline })}
           <form class="join-row">
-            <input class="code-input${L.code ? " filled" : ""}${L.joinError ? " has-error is-focused" : ""}" value="${esc(L.code)}" placeholder="${t("roomCode")}" maxlength="6" aria-label="${t("roomCode")}"${L.joinError ? ' aria-invalid="true" aria-describedby="join-error"' : ""} />
+            <input class="code-input${L.code ? " filled" : ""}${L.joinError ? " has-error is-focused" : ""}${focusDemo && !L.joinError ? " is-focused" : ""}" value="${esc(focusDemo && !L.code ? "LAN4" : L.code)}" placeholder="${t("roomCode")}" maxlength="6" aria-label="${t("roomCode")}"${L.joinError ? ' aria-invalid="true" aria-describedby="join-error"' : ""} />
             ${btn(t("joinRoom"), "dark", { disabled: offline })}
           </form>
           ${L.joinError ? `<p class="form-error join-error" id="join-error" role="alert">${ICON.warn}${t("errRoomCodeEmpty")}</p>` : ""}
@@ -483,7 +485,7 @@ function profileSheet() {
       <div class="sheet-handle" aria-hidden="true"></div>
       <h2>${t("profileTitle")}</h2>
       <label><span class="field-label">${t("nickname")}</span>
-        <input class="${P.error ? "has-error" : ""}${vp === "keyboard" ? " is-focused" : ""}" value="${esc(P.nickname)}" maxlength="18" />
+        <input class="${P.error ? "has-error" : ""}${vp === "keyboard" || focusDemo ? " is-focused" : ""}" value="${esc(P.nickname)}" maxlength="18" />
       </label>
       ${P.error ? `<p class="form-error">${ICON.warn}${t("errNickname")}</p>` : ""}
       <label><span class="field-label">${t("language")}</span>
