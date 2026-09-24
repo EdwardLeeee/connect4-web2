@@ -57,8 +57,15 @@ systemd user service、Nginx 與有效的 TLS 憑證；開發機不需要安裝�
 ### 取得映像
 
 每次推送 `v*` tag，GitHub Actions 會先跑完整測試，再把映像發布到
-`ghcr.io/edwardleeee/connect4-web:<tag>`（同時更新 `latest`；套件設為公開）。
-正式主機不必安裝 Rust 或 Node，直接拉映像部署：
+`ghcr.io/edwardleeee/connect4-web:<tag>`（同時更新 `latest`）。套件是私有的，
+正式主機要先用一個只有 `read:packages` 權限的 GitHub personal access token
+（classic）登入一次，憑證會存在 `~/.config/containers/auth.json`：
+
+```bash
+podman login ghcr.io --username <GitHub 帳號> --authfile ~/.config/containers/auth.json
+```
+
+之後正式主機不必安裝 Rust 或 Node，直接拉映像部署：
 
 ```bash
 deploy/deploy.sh v3.0.0
