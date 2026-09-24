@@ -327,7 +327,7 @@ function game() {
     if (current && isMe && !offline) tag = `<span class="turn-tag">${t("yourTurn")}</span>`;
     else if (away) tag = `<span class="presence-tag off">${t("offlineTag")}</span>`;
     else if (!isMe) tag = `<span class="presence-tag"><i></i>${t("online")}</span>`;
-    return `<div class="player${current ? " is-current" : ""}${away ? " is-away" : ""}${isMe ? " is-me" : ""}">
+    return `<div class="player${colour === "pink" ? " right" : ""}${current ? " is-current" : ""}${away ? " is-away" : ""}${isMe ? " is-me" : ""}">
         <span class="player-token-wrap">${token(colour, "player-token")}${ring}</span>
         <span class="player-copy"><strong>${esc(p.nickname)}</strong><small>${meta}</small></span>
         ${tag}

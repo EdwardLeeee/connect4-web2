@@ -2028,16 +2028,16 @@ input.is-focused {
     border-radius: 13px;
   }
 
-  .match-card > .player:last-of-type {
+  .match-card > .player.right {
     grid-template-columns: minmax(0, 1fr) 34px;
     text-align: right;
   }
 
-  .match-card > .player:last-of-type .player-token-wrap {
+  .match-card > .player.right .player-token-wrap {
     order: 2;
   }
 
-  .match-card > .player:last-of-type .presence-tag.off {
+  .match-card > .player.right .presence-tag.off {
     right: auto;
     left: 8px;
   }
@@ -2443,12 +2443,12 @@ input.is-focused {
     border-radius: 12px;
   }
 
-  .match-card > .player:last-of-type {
+  .match-card > .player.right {
     grid-template-columns: minmax(0, 1fr) 30px;
     text-align: right;
   }
 
-  .match-card > .player:last-of-type .player-token-wrap {
+  .match-card > .player.right .player-token-wrap {
     order: 2;
   }
 

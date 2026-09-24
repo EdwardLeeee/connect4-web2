@@ -110,6 +110,7 @@ window.STATES = {
       result_reason: null,
       players: { green: stranger, pink: me },
       rematch_requested: false,
+      series: { you: 0, opponent: 0, draws: 0 },
       last: { row: 3, column: 3 },
     },
   },

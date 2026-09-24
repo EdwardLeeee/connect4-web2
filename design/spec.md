@@ -144,7 +144,7 @@
 | P01 | 配對中 | `queue.searching` | 三顆棋子跳動，顯示「已等待 m:ss」和取消按鈕 |
 | P02 | 等朋友 | `game.status = waiting` | 大字房號、QR code。桌機的主按鈕是「複製邀請連結」，圖上畫的是按下後「已複製」的狀態，而且之後不會變回原字；手機的主按鈕是「分享邀請」（`navigator.share`），另有「複製房號」和「離開」 |
 | P03 | 我的回合 | `playing && turn == you` | 軌道上的棋子、欄位亮框、預覽落點、上一手框、鍵盤提示 |
-| P04 | 對手回合 | `playing && turn != you` | 狀態籤「{name} 正在思考」加三點跳動；軌道空白；棋盤不接受操作 |
+| P04 | 對手回合 | `playing && turn != you` | 狀態籤「{name} 正在思考」加三點跳動；軌道空白；棋盤不接受操作；隨機配對也顯示本場比分 |
 | P05 | AI 思考 | `thinking` 持續超過 300ms | 狀態籤「AI 正在思考」加三點；300ms 內就落子則不顯示；沒有秒數、沒有超時 |
 | P06 | 對手離線 | `paused`（只在真人局；AI 局沒有斷線倒數，玩家回來就接著下） | 狀態籤「{name} 離線了」；倒數籤；對手頭像外加倒數環與「離線」標 |
 | P07 | 勝（私人房） | `finished && winner == you`，`connect_four` | 連線高亮加墨線；結局面板在側欄（手機在棋盤下）；本場比分 |
@@ -190,6 +190,8 @@
   - 下半是按鈕：桌機直排，手機兩欄並排，主要按鈕在右。
 - **對局卡**：
   - 包含模式籤、兩列玩家（輪到的一方有墨框底色）、「對」、本場比分（`series`）。
+  - 本場比分在所有真人局都顯示（私人房、隨機配對），只有 AI 局不顯示。
+  - 手機直向與橫向時，第二位玩家（粉紅）一律左右鏡像：頭像在右、名字靠右；有沒有比分列都一樣。
   - 私人房的房號寫在模式籤上。
 - **QR 卡**：白卡轉 2°，QR 用墨色，下方寫「用手機掃描加入」。
 
@@ -339,6 +341,15 @@
 | `waitingFriendBody` | 分享邀請或房號，朋友加入後立即開局。 | Share the invite or the code. The game starts as soon as they join. | 改寫 |
 | `scanToJoin` | 用手機掃描加入 | Scan to join on a phone | 新增 |
 | `errNickname` | 暱稱需為 1–18 個字。 | Nickname must be 1–18 characters. | 新增（invalid_nickname) |
+
+**front 實作時補上的文案**（2026-09-24 回報，規格同意採用）：
+- `movesTotal`：共 {n} 手／{n} moves。
+- `common.close`：toast 關閉鈕的無障礙名稱。
+- A09 的朗讀句：
+  - `columnReady`：第 N 欄，可以落子。
+  - `columnFull`：第 N 欄已滿。
+  - `youDropped`：你在第 N 欄落子。
+  - `opponentDropped`：對手在第 N 欄落子。
 
 ## 13. Artboard 索引（68 張畫面＋10 張分鏡）
 
