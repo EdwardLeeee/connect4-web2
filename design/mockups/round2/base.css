@@ -2222,6 +2222,12 @@ input.is-focused {
     grid-column: 1 / -1;
   }
 
+  /* 48px exactly: 9px padding + 2px border + 17px text line */
+  .btn {
+    padding-top: 9px;
+    padding-bottom: 9px;
+  }
+
   .result-actions .btn,
   .actions .btn {
     min-height: 48px;
