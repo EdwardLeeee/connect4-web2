@@ -43,7 +43,9 @@ RUN groupadd --gid 10001 connect4 \
     && useradd --uid 10001 --gid connect4 --create-home --home-dir /home/connect4 connect4
 
 COPY --from=python-builder /wheels /wheels
-RUN python -m pip install --no-cache-dir --no-index --find-links=/wheels connect4-web==2.0.0 \
+# /wheels holds exactly one connect4-web wheel (built above from pyproject.toml), so no
+# version pin: pinning here broke every release whose pyproject version moved.
+RUN python -m pip install --no-cache-dir --no-index --find-links=/wheels connect4-web \
     && rm -rf /wheels
 
 WORKDIR /app

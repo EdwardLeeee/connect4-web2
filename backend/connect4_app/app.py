@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from . import __version__
 from .manager import GameManager
 from .sessions import SESSION_COOKIE
 
@@ -33,7 +34,7 @@ ALLOWED_ORIGINS = {
     if origin.strip()
 }
 
-app = FastAPI(title="Connect 4", version="2.0.0")
+app = FastAPI(title="Connect 4", version=__version__)
 manager = GameManager()
 
 
