@@ -54,9 +54,21 @@ npm run test:e2e
 正式網址為 `https://connect4.oraclelee.com`。正式主機需要 Podman 3.4+、
 systemd user service、Nginx 與有效的 TLS 憑證；開發機不需要安裝以下服務。
 
-### 建置映像
+### 取得映像
 
-在正式主機拉取已驗證的 `main` 後建置：
+每次推送 `v*` tag，GitHub Actions 會先跑完整測試，再把映像發布到
+`ghcr.io/edwardleeee/connect4-web:<tag>`（同時更新 `latest`；套件設為公開）。
+正式主機不必安裝 Rust 或 Node，直接拉映像部署：
+
+```bash
+deploy/deploy.sh v3.0.0
+```
+
+腳本會 `podman pull` 該 tag、把它標成 `localhost/connect4-web:production`、重啟
+服務並等待 `/api/health` 回 200；60 秒內不健康就自動切回上一版映像
+（`localhost/connect4-web:previous`）。回滾同一支腳本帶舊 tag 即可。
+
+沒有網路或要驗證未發布的變更時，仍可在主機上從原始碼建置：
 
 ```bash
 git pull --ff-only origin main
@@ -106,5 +118,5 @@ journalctl --user-unit connect4.service --follow
 ```
 
 只有原生精確求解器自測通過，`GET /api/health` 才回傳 HTTP 200。更新版本時
-重新 `git pull --ff-only`、建置相同 production tag，再執行
-`systemctl --user restart connect4.service`。程序重啟會清除進行中的房間與配對。
+執行 `deploy/deploy.sh <新 tag>`（或從原始碼重建相同 production tag 再
+`systemctl --user restart connect4.service`）。程序重啟會清除進行中的房間與配對。
