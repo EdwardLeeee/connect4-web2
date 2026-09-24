@@ -1572,8 +1572,10 @@ input.has-error {
   box-shadow: 0 0 0 3px var(--pink);
 }
 
-input.is-focused {
-  outline: 3px solid var(--mint);
+/* focused field: ink frame (user ruling 2026-09-24, relayed by front) */
+input.is-focused,
+select.is-focused {
+  outline: 3px solid var(--ink);
   outline-offset: 2px;
 }
 
@@ -2784,4 +2786,4 @@ input.has-error:focus-visible {
 }
 
 /* focus frames (user ruling 2026-09-24): every text field, room code included,
-   keeps the mint frame while typing; only a field in error drops it (above) */
+   shows the ink frame while typing; only a field in error drops it (above) */
