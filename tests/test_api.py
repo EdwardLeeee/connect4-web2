@@ -2,6 +2,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from connect4_app import __version__
 from connect4_app.app import (
     CLOSE_NO_SESSION,
     CLOSE_ORIGIN_NOT_ALLOWED,
@@ -54,6 +55,8 @@ async def test_health_proves_exact_solver_is_ready() -> None:
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get("/api/health")
     assert response.status_code == 200
+    assert response.json()["version"] == __version__
+    assert __version__ != "0.0.0"  # read from the installed package metadata
     assert response.json()["solver"] == {
         "ready": True,
         "engine": "connect-four-ai",
