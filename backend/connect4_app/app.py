@@ -13,6 +13,9 @@ from .manager import GameManager
 from .sessions import SESSION_COOKIE
 
 ROOT = Path(__file__).resolve().parents[2]
+# WebSocket close codes are part of the client contract; do not renumber them.
+CLOSE_NO_SESSION = 4401
+CLOSE_ORIGIN_NOT_ALLOWED = 4403
 
 
 def resolve_frontend_dist() -> Path:
@@ -110,11 +113,13 @@ async def health() -> JSONResponse:
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket) -> None:
     if not origin_allowed(websocket.headers.get("origin"), websocket.headers.get("host", "")):
-        await websocket.close(code=4403, reason="Origin not allowed")
+        await websocket.close(code=CLOSE_ORIGIN_NOT_ALLOWED, reason="Origin not allowed")
         return
     session = manager.sessions.get(websocket.cookies.get(SESSION_COOKIE))
     if not session:
-        await websocket.close(code=4401, reason="Create a session through /api/session first")
+        await websocket.close(
+            code=CLOSE_NO_SESSION, reason="Create a session through /api/session first"
+        )
         return
     await websocket.accept()
     await manager.connect(session.id, websocket)

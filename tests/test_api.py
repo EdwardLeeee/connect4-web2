@@ -2,8 +2,16 @@ from pathlib import Path
 
 import httpx
 import pytest
-from connect4_app.app import app, origin_allowed, resolve_frontend_dist
+from connect4_app.app import (
+    CLOSE_NO_SESSION,
+    CLOSE_ORIGIN_NOT_ALLOWED,
+    app,
+    origin_allowed,
+    resolve_frontend_dist,
+)
 from connect4_app.sessions import SESSION_COOKIE
+from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
 FRONTEND_ROOT_ASSETS = {
     "/connect4-mark.svg": "image/svg+xml",
@@ -106,3 +114,16 @@ def test_websocket_origin_must_match_host() -> None:
     assert origin_allowed("https://connect4.example", "connect4.example")
     assert origin_allowed(None, "connect4.example")
     assert not origin_allowed("https://attacker.example", "connect4.example")
+
+
+def test_websocket_close_codes_are_stable() -> None:
+    client = TestClient(app)
+    with pytest.raises(WebSocketDisconnect) as missing_session:
+        with client.websocket_connect("/ws"):
+            pass
+    assert missing_session.value.code == CLOSE_NO_SESSION == 4401
+
+    with pytest.raises(WebSocketDisconnect) as foreign_origin:
+        with client.websocket_connect("/ws", headers={"origin": "https://attacker.example"}):
+            pass
+    assert foreign_origin.value.code == CLOSE_ORIGIN_NOT_ALLOWED == 4403

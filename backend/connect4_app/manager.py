@@ -17,6 +17,8 @@ from .solver import PerfectSolver
 ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 RECONNECT_SECONDS = 30
 AI_ID = "__perfect_ai__"
+# The frontend stops reconnecting on this close code; do not renumber it.
+CLOSE_REPLACED = 4001
 logger = logging.getLogger(__name__)
 
 
@@ -50,14 +52,14 @@ class GameManager:
             game = self._game_for(session_id)
             if game:
                 game.connected[session_id] = True
-                game.grace_deadline = None
+                game.grace_deadlines.pop(session_id, None)
                 if game.status == "paused" and self._all_humans_connected(game):
                     game.status = game.resume_status or "playing"
                     game.resume_status = None
-                    game.revision += 1
+                game.revision += 1
         if previous and previous is not websocket:
             with suppress(Exception):
-                await previous.close(code=4001, reason="Replaced by a newer connection")
+                await previous.close(code=CLOSE_REPLACED, reason="Replaced by a newer connection")
         await self.send_snapshot(session_id)
         if game:
             await self.broadcast(game.room_id)
@@ -75,13 +77,17 @@ class GameManager:
                 return
             room_id = game.room_id
             game.connected[session_id] = False
-            game.grace_deadline = time.time() + self.reconnect_seconds
-            if game.status in {"playing"} and game.mode != "ai":
+            # A disconnected player cannot consent to a new game.
+            game.rematch_votes.discard(session_id)
+            if game.status == "playing" and game.mode != "ai":
                 game.resume_status = game.status
                 game.status = "paused"
-                game.revision += 1
-            task = asyncio.create_task(self._forfeit_after(session_id, game.room_id))
-            self.disconnect_tasks[session_id] = task
+            game.revision += 1
+            # AI games wait for their only human indefinitely; nobody else is kept waiting.
+            if game.mode != "ai":
+                game.grace_deadlines[session_id] = time.time() + self.reconnect_seconds
+                task = asyncio.create_task(self._forfeit_after(session_id, game.room_id))
+                self.disconnect_tasks[session_id] = task
         if room_id:
             await self.broadcast(room_id)
 
@@ -133,7 +139,7 @@ class GameManager:
             game = self._require_game(session_id)
             if game.mode != "ai" or game.status not in {"finished", "error"}:
                 raise GameRuleError("rematch_unavailable")
-            game.reset(swap=False)
+            game.reset()
         await self.broadcast(game.room_id)
 
     async def _create_private(self, session_id: str, _payload: dict[str, Any]) -> None:
@@ -193,7 +199,7 @@ class GameManager:
         await self.send_snapshot(session_id)
 
     async def _move(self, session_id: str, payload: dict[str, Any]) -> None:
-        schedule_ai: tuple[str, int, str] | None = None
+        schedule_ai: tuple[str, str] | None = None
         async with self.lock:
             game = self._require_game(session_id)
             color = game.color_for(session_id)
@@ -203,21 +209,23 @@ class GameManager:
             if game.mode == "ai" and game.status == "playing" and game.turn == "pink":
                 game.status = "thinking"
                 game.revision += 1
-                schedule_ai = (game.room_id, game.revision, game.history)
+                schedule_ai = (game.room_id, game.history)
         await self.broadcast(game.room_id)
         if schedule_ai:
-            room_id, revision, history = schedule_ai
-            task = asyncio.create_task(self._run_ai(room_id, revision, history))
+            room_id, history = schedule_ai
+            task = asyncio.create_task(self._run_ai(room_id, history))
             self.ai_tasks[room_id] = task
 
-    async def _run_ai(self, room_id: str, revision: int, history: str) -> None:
+    async def _run_ai(self, room_id: str, history: str) -> None:
+        # Guard on the position rather than the revision: reconnects bump the revision while
+        # the AI thinks, and only this task can change the position until it finishes.
         try:
             column = await asyncio.to_thread(self.solver.best_move, history)
         except Exception:
             logger.exception("Perfect solver failed for room %s", room_id)
             async with self.lock:
                 game = self.rooms.get(room_id)
-                if game and game.revision == revision and game.status == "thinking":
+                if game and game.history == history and game.status == "thinking":
                     game.status = "error"
                     game.result_reason = "solver_unavailable"
                     game.revision += 1
@@ -226,7 +234,7 @@ class GameManager:
 
         async with self.lock:
             game = self.rooms.get(room_id)
-            if not game or game.revision != revision or game.status != "thinking":
+            if not game or game.history != history or game.status != "thinking":
                 return
             game.drop("pink", column)
             if game.status == "thinking":
@@ -236,16 +244,16 @@ class GameManager:
     async def _rematch(self, session_id: str, _payload: dict[str, Any]) -> None:
         async with self.lock:
             game = self._require_game(session_id)
-            if game.status != "finished":
+            if not self._rematch_available(game):
                 raise GameRuleError("rematch_unavailable")
             if game.mode == "ai":
-                game.reset(swap=False)
+                game.reset()
             else:
                 game.rematch_votes.add(session_id)
                 game.revision += 1
-                humans = {seat for seat in game.seats.values() if seat}
-                if humans <= game.rematch_votes:
-                    game.reset(swap=True)
+                if set(self._humans(game)) <= game.rematch_votes:
+                    # Colours stay with their players; the previous second mover starts.
+                    game.reset(alternate_first=True)
         await self.broadcast(game.room_id)
 
     async def _leave_game(self, session_id: str, _payload: dict[str, Any]) -> None:
@@ -262,6 +270,8 @@ class GameManager:
                 if game.status not in {"finished", "error"}:
                     game.finish_by_forfeit(session_id)
                     game.result_reason = "left"
+                game.rematch_votes.clear()
+                game.revision += 1
                 other_sessions = [
                     occupant
                     for occupant in game.seats.values()
@@ -290,7 +300,7 @@ class GameManager:
                 game = self.rooms.get(room_id)
                 if not game or game.color_for(session_id) is None:
                     return
-                if game.status == "waiting" or game.mode == "ai":
+                if game.status == "waiting":
                     self._delete_room(game)
                     return
                 if game.status in {"finished", "error"}:
@@ -303,11 +313,15 @@ class GameManager:
                         if not connected_human:
                             self._delete_room(game)
                     return
-                if game.status not in {"finished", "error"}:
-                    game.finish_by_forfeit(session_id)
+                game.finish_by_forfeit(session_id)
             await self.broadcast(room_id)
         finally:
-            self.disconnect_tasks.pop(session_id, None)
+            # A reconnect replaces this entry; only clear state this task still owns.
+            if self.disconnect_tasks.get(session_id) is asyncio.current_task():
+                self.disconnect_tasks.pop(session_id, None)
+                game = self.rooms.get(room_id)
+                if game:
+                    game.grace_deadlines.pop(session_id, None)
 
     async def send_snapshot(self, session_id: str) -> None:
         websocket = self.connections.get(session_id)
@@ -323,10 +337,7 @@ class GameManager:
         game = self.rooms.get(room_id)
         if not game:
             return
-        recipients = [
-            occupant for occupant in game.seats.values() if occupant and occupant != AI_ID
-        ]
-        await asyncio.gather(*(self.send_snapshot(session_id) for session_id in recipients))
+        await asyncio.gather(*(self.send_snapshot(session_id) for session_id in self._humans(game)))
 
     async def send_error(self, session_id: str, code: str) -> None:
         websocket = self.connections.get(session_id)
@@ -338,6 +349,7 @@ class GameManager:
         session = self.sessions.sessions[session_id]
         game = self._game_for(session_id)
         base: dict[str, Any] = {
+            "server_time": time.time(),
             "session": {
                 "nickname": session.nickname,
                 "locale": session.locale,
@@ -354,17 +366,33 @@ class GameManager:
         for seat_color, occupant in game.seats.items():
             if occupant == AI_ID:
                 players[seat_color] = {
-                    "nickname": "Perfect AI",
+                    "nickname": "Super AI",
                     "connected": True,
                     "is_ai": True,
+                    "grace_deadline": None,
                 }
             elif occupant:
                 player = self.sessions.sessions.get(occupant)
+                connected = game.connected.get(occupant, False)
                 players[seat_color] = {
                     "nickname": player.nickname if player else "Player",
-                    "connected": game.connected.get(occupant, False),
+                    "connected": connected,
                     "is_ai": False,
+                    "grace_deadline": (
+                        game.grace_deadlines.get(occupant)
+                        if game.status == "paused" and not connected
+                        else None
+                    ),
                 }
+        deadlines = [
+            player["grace_deadline"]
+            for player in players.values()
+            if player["grace_deadline"] is not None
+        ]
+        opponent = next(
+            (occupant for occupant in game.seats.values() if occupant and occupant != session_id),
+            None,
+        )
 
         base["room"] = {
             "id": game.room_id,
@@ -375,14 +403,26 @@ class GameManager:
             "revision": game.revision,
             "status": game.status,
             "board": game.board,
+            "history": game.history,
+            "first": game.first,
             "turn": game.turn,
             "you": color,
             "winner": game.winner,
             "winning_cells": game.win_cells,
             "result_reason": game.result_reason,
             "players": players,
+            "rematch": {
+                seat_color: bool(occupant) and occupant in game.rematch_votes
+                for seat_color, occupant in game.seats.items()
+            },
             "rematch_requested": session_id in game.rematch_votes,
-            "grace_deadline": game.grace_deadline,
+            "rematch_available": self._rematch_available(game),
+            "series": {
+                "you": game.scores.get(session_id, 0),
+                "opponent": game.scores.get(opponent, 0) if opponent else 0,
+                "draws": game.draws,
+            },
+            "grace_deadline": min(deadlines, default=None),
         }
         return base
 
@@ -434,11 +474,19 @@ class GameManager:
         if session_id in self.queue:
             raise GameRuleError("already_searching")
 
+    def _humans(self, game: Game) -> list[str]:
+        return [occupant for occupant in game.seats.values() if occupant and occupant != AI_ID]
+
     def _all_humans_connected(self, game: Game) -> bool:
-        return all(
-            game.connected.get(occupant, False)
-            for occupant in game.seats.values()
-            if occupant and occupant != AI_ID
+        return all(game.connected.get(occupant, False) for occupant in self._humans(game))
+
+    def _rematch_available(self, game: Game) -> bool:
+        if game.mode == "ai":
+            return game.status in {"finished", "error"}
+        # Membership, not result_reason: a player who left after a normal finish leaves
+        # result_reason untouched, while a merely disconnected player may still return.
+        return game.status == "finished" and all(
+            self.room_for.get(occupant) == game.room_id for occupant in self._humans(game)
         )
 
     def _prune_queue(self) -> None:

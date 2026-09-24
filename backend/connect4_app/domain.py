@@ -58,7 +58,10 @@ class Game:
     rematch_votes: set[str] = field(default_factory=set)
     connected: dict[str, bool] = field(default_factory=dict)
     resume_status: Status | None = None
-    grace_deadline: float | None = None
+    first: Color = "green"
+    grace_deadlines: dict[str, float] = field(default_factory=dict)
+    scores: dict[str, int] = field(default_factory=dict)
+    draws: int = 0
 
     def color_for(self, session_id: str) -> Color | None:
         for color, occupant in self.seats.items():
@@ -98,36 +101,42 @@ class Game:
             self.winner = color
             self.win_cells = cells
             self.result_reason = "connect_four"
+            self._score(color)
         elif len(self.history) == ROWS * COLUMNS:
             self.status = "finished"
             self.winner = None
             self.result_reason = "draw"
+            self.draws += 1
         else:
             self.turn = "pink" if color == "green" else "green"
         return row
 
-    def reset(self, *, swap: bool) -> None:
-        if swap:
-            self.seats = {"green": self.seats["pink"], "pink": self.seats["green"]}
+    def reset(self, *, alternate_first: bool = False) -> None:
+        if alternate_first:
+            self.first = "pink" if self.first == "green" else "green"
         self.board = empty_board()
         self.history = ""
-        self.turn = "green"
+        self.turn = self.first
         self.status = "playing"
         self.winner = None
         self.win_cells = []
         self.result_reason = None
         self.rematch_votes.clear()
         self.resume_status = None
-        self.grace_deadline = None
         self.revision += 1
 
     def finish_by_forfeit(self, disconnected_session: str) -> None:
         disconnected_color = self.color_for(disconnected_session)
-        if disconnected_color is None:
+        if disconnected_color is None or self.status == "finished":
             return
+        winner: Color = "pink" if disconnected_color == "green" else "green"
         self.status = "finished"
-        self.winner = "pink" if disconnected_color == "green" else "green"
+        self.winner = winner
         self.result_reason = "forfeit"
         self.resume_status = None
-        self.grace_deadline = None
+        self._score(winner)
         self.revision += 1
+
+    def _score(self, color: Color) -> None:
+        occupant = self.seats[color]
+        self.scores[occupant] = self.scores.get(occupant, 0) + 1
