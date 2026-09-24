@@ -326,6 +326,8 @@
 
 ## 12. 新增與改寫的文案（zh-TW／en；完整字串見 `design/mockups/round2/strings.js`）
 
+**英文標點**（使用者 2026-09-24）：英文文案一律用直的 `'` 和 `"`，不用彎引號 `’ “ ”`。英文也走 `--font-ui`，中文字型排在前面，會把彎引號畫成全形寬，看起來像多了一格空白（28px 字級下 `’` 寬 28px，`'` 只有約 8px）。
+
 | key | zh-TW | en | 備註 |
 |---|---|---|---|
 | `challengeAgain` | 再次挑戰 | Challenge again | 新增（AI result panel; P12 keeps restart) |
@@ -337,13 +339,13 @@
 | `lobbyOffline` | 連線恢復前無法開始對局。 | You can start a game once the connection is back. | 新增 |
 | `inviteEyebrow` | 邀請 | Invite | 新增 |
 | `inviteTitle` | 朋友邀請你一起玩 | A friend invited you to play | 新增 |
-| `inviteBody` | 按下「加入房間」，朋友那邊就會開始對戰。 | Tap “Join room” and the game starts for both of you. | 新增 |
+| `inviteBody` | 按下「加入房間」，朋友那邊就會開始對戰。 | Tap "Join room" and the game starts for both of you. | 新增 |
 | `inviteRoom` | 房間 | Room | 新增 |
 | `inviteAs` | 你的暱稱：{name} | Playing as {name} | 新增 |
 | `editName` | 修改 | Edit | 新增 |
 | `notNow` | 不加入，先去大廳 | Not now, go to lobby | 新增 |
-| `inviteGone` | 這個房間無法加入 | This room can’t be joined | 新增 |
-| `inviteGoneBody` | 房號 {code} 不存在，可能房主已經離開。請朋友重新分享邀請。 | Room {code} doesn’t exist; the host may have left. Ask your friend to share a new invite. | 新增（room_not_found) |
+| `inviteGone` | 這個房間無法加入 | This room can't be joined | 新增 |
+| `inviteGoneBody` | 房號 {code} 不存在，可能房主已經離開。請朋友重新分享邀請。 | Room {code} doesn't exist; the host may have left. Ask your friend to share a new invite. | 新增（room_not_found) |
 | `inviteFullBody` | 房間 {code} 已經滿了，請朋友重新開一個房間。 | Room {code} is already full. Ask your friend to open a new room. | 新增（room_full) |
 | `inviteHostOffBody` | 房主目前離線，請稍後再試一次。 | The host is offline right now. Please try again in a moment. | 新增（host_disconnected) |
 | `yourTurnHint` | 選一欄落子 | Pick a column | 新增 |
@@ -367,24 +369,24 @@
 | `reconnected` | {name} 回來了 | {name} is back | 新增 |
 | `winSub` | 連成四子，共 {n} 手 | Four in a row in {n} moves | 新增 |
 | `loseAi` | Super AI 拿下這局 | Super AI takes this one | 新增 |
-| `loseAiSub` | 挑戰者別氣餒，再挑戰一次？ | Don’t give up, challenger. Try again? | 新增 |
+| `loseAiSub` | 挑戰者別氣餒，再挑戰一次？ | Don't give up, challenger. Try again? | 新增 |
 | `lose` | {name} 拿下這局 | {name} won this game | 新增 |
 | `drawSub` | 42 格全滿，沒有人連成四子。 | All 42 slots are full and nobody connected four. | 新增 |
 | `forfeitWin` | 你獲勝！{name} 離線逾時 | You win! {name} timed out | 新增（was game.forfeitWin) |
-| `forfeitWinSub` | 對手沒有在 30 秒內回來。 | Your opponent didn’t come back within 30 seconds. | 新增 |
+| `forfeitWinSub` | 對手沒有在 30 秒內回來。 | Your opponent didn't come back within 30 seconds. | 新增 |
 | `forfeitLose` | 離線逾時，這局判負 | You timed out — game lost | 新增 |
 | `forfeitLoseSub` | 你的連線中斷超過 30 秒，由對手獲勝。 | Your connection dropped for more than 30 seconds, so your opponent wins. | 新增 |
 | `left` | {name} 離開了房間 | {name} left the room | 新增 |
-| `leftSub` | 這局算你獲勝。對手已離開，無法再來一局。 | You win this game. They’ve left, so a rematch isn’t available. | 新增 |
+| `leftSub` | 這局算你獲勝。對手已離開，無法再來一局。 | You win this game. They've left, so a rematch isn't available. | 新增 |
 | `rematchSent` | 已邀請 {name} 再來一局 | Rematch invite sent to {name} | 新增（was game.rematchWaiting) |
 | `rematchPending` | {name} 還沒回應 | Waiting for {name} to answer | 新增；game.rematch[opponent] false |
 | `rematchWaitingBtn` | 等待對手回應… | Waiting for response… | 新增 |
 | `rematchIncoming` | {name} 想再來一局！ | {name} wants a rematch! | 新增；game.rematch[opponent] |
 | `rematchIncomingSub` | 按下就開始下一局：顏色不變，這局換 {name} 先下。 | Accept to start the next game. Colours stay; {name} moves first this time. | 新增；next first mover |
 | `rematchAccept` | 好，再來一局 | Accept rematch | 新增 |
-| `leftAfter` | {name} 已離開房間，無法再來一局。 | {name} has left the room, so a rematch isn’t available. | 新增；rematch_available false |
+| `leftAfter` | {name} 已離開房間，無法再來一局。 | {name} has left the room, so a rematch isn't available. | 新增；rematch_available false |
 | `gameOffline` | 連線中斷，正在重新連線… | Connection lost — reconnecting… | 新增 |
-| `gameOfflineBody` | 恢復前棋盤暫停操作，棋局會保留。 | The board is paused until you’re back. The game is kept. | 新增 |
+| `gameOfflineBody` | 恢復前棋盤暫停操作，棋局會保留。 | The board is paused until you're back. The game is kept. | 新增 |
 | `otherTab` | 已在其他分頁開啟 | Open in another tab | 新增 |
 | `otherTabBody` | 這局正在另一個分頁進行。一次只能有一個分頁連線；在這裡繼續，另一個分頁就會中斷。 | This game is running in another tab. Only one tab can be connected at a time; continuing here disconnects the other tab. | 新增 |
 | `continueHere` | 在這裡繼續 | Continue here | 新增 |
