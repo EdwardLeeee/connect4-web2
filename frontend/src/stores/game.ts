@@ -25,6 +25,11 @@ export const useGameStore = defineStore("game", {
     retryTimer: null as number | null,
     retryCount: 0,
     deliberatelyClosed: false,
+    // Increments on every successful connection, so views can tell a live
+    // change apart from the state a fresh connection starts with.
+    connectionEpoch: 0,
+    // server_time minus the local clock, in seconds, from the latest snapshot.
+    clockOffset: 0,
   }),
 
   getters: {
@@ -80,11 +85,15 @@ export const useGameStore = defineStore("game", {
         this.connection = "online";
         this.retryCount = 0;
         this.retryTimer = null;
+        this.connectionEpoch += 1;
       });
       socket.addEventListener("message", (event) => {
         const message = JSON.parse(String(event.data));
         if (message.type === "state.snapshot") {
           this.snapshot = message.payload as Snapshot;
+          if (typeof this.snapshot.server_time === "number") {
+            this.clockOffset = this.snapshot.server_time - Date.now() / 1000;
+          }
           i18n.global.locale.value = this.snapshot.session.locale;
           this.errorCode = null;
         } else if (message.type === "error") {
@@ -109,6 +118,13 @@ export const useGameStore = defineStore("game", {
           void this.recoverConnection();
         }, delay);
       });
+    },
+
+    /** Takes the session back from the tab that replaced this one. */
+    reclaim() {
+      if (this.connection !== "replaced") return;
+      this.retryCount = 0;
+      this.connect();
     },
 
     async recoverConnection() {

@@ -1,12 +1,12 @@
 # Connect 4
 
-一個伺服器權威的即時四子棋：支援 Perfect AI、私人房與隨機配對，介面提供繁體中文／英文，並針對現代 iPhone 與 Samsung Galaxy 版面驗證。
+一個伺服器權威的即時四子棋：支援 Super AI（精確求解器）、私人房與隨機配對，介面提供繁體中文／英文，並針對現代 iPhone 與 Samsung Galaxy 版面驗證。
 
 ## 技術架構
 
 - `backend/connect4_app/`：FastAPI、原生 WebSocket、匿名 Cookie 工作階段與房間狀態。
 - `native_solver/`：PyO3 擴充，封裝 `connect-four-ai` 1.0.0 精確求解器。
-- `frontend/`：Vue 3、TypeScript、Pinia、Vue I18n 與響應式棋盤。
+- `frontend/`：Vue 3、TypeScript、Pinia、Vue I18n 與響應式棋盤；介面規格見 `design/spec.md`。
 - `Containerfile`、`deploy/`：Podman 正式映像、環境設定範例與 systemd user service。
 
 AI 會算出每個合法落子的精確終局分數，再選擇最高分手；同分時固定採中央優先。沒有深度限制、隨機弱化或啟發式備援。原生引擎若故障，該局會停止並回報錯誤。

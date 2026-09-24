@@ -7,8 +7,8 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f7f3ee",
-  "theme_color": "#f7f3ee",
+  "background_color": "#fff4dc",
+  "theme_color": "#fff4dc",
   "icons": [
     {
       "src": "/connect4-icon-192.png",

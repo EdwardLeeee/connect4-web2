@@ -1,182 +1,295 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref } from "vue";
+import { computed, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import BoardHead from "../components/BoardHead.vue";
 import ConnectBoard from "../components/ConnectBoard.vue";
-import PlayerStrip from "../components/PlayerStrip.vue";
+import MatchCard from "../components/MatchCard.vue";
+import ResultCard from "../components/ResultCard.vue";
+import SearchingScreen from "../components/SearchingScreen.vue";
+import WaitingScreen from "../components/WaitingScreen.vue";
+import { useCountdown } from "../composables/useCountdown";
 import { useGameStore } from "../stores/game";
-import { copyText } from "../utils/clipboard";
-import { gameOutcome, type GameOutcome } from "../utils/outcome";
+import type { Color } from "../types";
+import {
+  lastMove,
+  opponentOf,
+  resultPanel,
+  statusHead,
+  type ResultAction,
+  type RoomMode,
+} from "../utils/presentation";
 
 const store = useGameStore();
 const { t } = useI18n();
-const copied = ref(false);
-let copiedTimer: number | null = null;
 
-// Outcomes without approved wording yet reuse the closest existing message.
-const outcomeMessage: Record<GameOutcome, string> = {
-  win: "game.win",
-  lose: "game.lose",
-  draw: "game.draw",
-  forfeitWin: "game.forfeitWin",
-  forfeitLose: "game.lose",
-  leftWin: "game.win",
-};
+const online = computed(() => store.connection === "online");
+const mode = computed<RoomMode>(() => store.room?.mode ?? "ai");
+const opponent = computed<Color>(() => opponentOf(store.game?.you ?? "green"));
+const opponentName = computed(
+  () => store.game?.players[opponent.value]?.nickname ?? "",
+);
+const last = computed(() => (store.game ? lastMove(store.game) : null));
 
-const statusTitle = computed(() => {
-  const game = store.game;
-  if (!game) return "";
-  if (game.status === "thinking") return t("game.aiThinking");
-  if (game.status === "paused") return t("game.paused");
-  if (game.status === "error") return t("game.solverError");
-  const outcome = gameOutcome(game);
-  if (outcome) return t(outcomeMessage[outcome]);
-  return store.canMove ? t("game.yourTurn") : t("game.opponentTurn");
-});
+// A05: one countdown per player, from the server's per-player deadline.
+const clockOffset = computed(() => store.clockOffset);
+const deadline = (colour: Color) =>
+  computed(() =>
+    store.game?.status === "paused"
+      ? (store.game.players[colour]?.grace_deadline ?? null)
+      : null,
+  );
+const greenCountdown = useCountdown(deadline("green"), clockOffset);
+const pinkCountdown = useCountdown(deadline("pink"), clockOffset);
+const opponentCountdown = computed(() =>
+  opponent.value === "green" ? greenCountdown : pinkCountdown,
+);
 
-const statusTone = computed(() => {
-  if (store.game?.status === "finished") {
-    if (!store.game.winner) return "neutral";
-    return store.game.winner === store.game.you ? "success" : "pink";
-  }
-  if (store.canMove) return "success";
-  return "neutral";
-});
+// Changes seen live on this connection animate; the state a connection starts
+// with (first load, reconnect) is shown as it is (A01, A03).
+const dropping = ref<{ row: number; column: number; move: number } | null>(
+  null,
+);
+const celebrating = ref(false);
+const confetti = ref(false);
+const resultEntering = ref(false);
+const thinkingVisible = ref(false);
+const reconnectedName = ref<string | null>(null);
+const announcement = ref("");
+let thinkingTimer: number | null = null;
+let reconnectedTimer: number | null = null;
 
-async function copyCode() {
-  const code = store.room?.code;
-  if (!code) return;
-  const success = await copyText(code);
-  if (!success) {
-    copied.value = false;
-    store.errorCode = "copy_failed";
-    return;
-  }
-  copied.value = true;
-  if (copiedTimer !== null) window.clearTimeout(copiedTimer);
-  copiedTimer = window.setTimeout(() => {
-    copied.value = false;
-    copiedTimer = null;
-  }, 1400);
-}
+watch(
+  () =>
+    [
+      store.game?.history ?? null,
+      store.game?.status ?? null,
+      store.room?.id ?? null,
+      store.connectionEpoch,
+    ] as const,
+  ([history, status], [oldHistory, oldStatus, oldRoom, oldEpoch]) => {
+    const game = store.game;
+    const live =
+      store.room?.id === oldRoom && store.connectionEpoch === oldEpoch;
+    if (!game || !live) {
+      dropping.value = null;
+      celebrating.value = false;
+      confetti.value = false;
+      resultEntering.value = false;
+      return;
+    }
+
+    if (
+      history !== null &&
+      oldHistory !== null &&
+      history.length === oldHistory.length + 1 &&
+      history.startsWith(oldHistory)
+    ) {
+      const move = lastMove(game);
+      if (move) {
+        dropping.value = {
+          row: move.row,
+          column: move.column,
+          move: history.length,
+        };
+        const column = move.column + 1;
+        announcement.value =
+          move.colour === game.you
+            ? t("game.youDropped", { column })
+            : t("game.opponentDropped", { column });
+      }
+    } else if (history !== oldHistory) {
+      dropping.value = null;
+    }
+
+    // A forfeit ends a paused game, so a live finish can come from "paused".
+    const wasLive =
+      oldStatus === "playing" ||
+      oldStatus === "thinking" ||
+      oldStatus === "paused";
+    if (status === "finished" && wasLive) {
+      celebrating.value = game.winning_cells.length >= 4;
+      // A03: confetti whenever you win: four in a row, a forfeit, or a leave.
+      confetti.value = game.winner === game.you;
+      resultEntering.value = true;
+    } else if (status === "error" && wasLive) {
+      resultEntering.value = true;
+    } else if (status !== oldStatus) {
+      celebrating.value = false;
+      confetti.value = false;
+      resultEntering.value = false;
+    }
+
+    if (oldStatus === "paused" && status === "playing") {
+      reconnectedName.value = opponentName.value;
+      if (reconnectedTimer !== null) window.clearTimeout(reconnectedTimer);
+      reconnectedTimer = window.setTimeout(() => {
+        reconnectedName.value = null;
+      }, 2000);
+    } else if (status !== "playing") {
+      reconnectedName.value = null;
+    }
+  },
+);
+
+// A04: the AI usually answers at once; only a slow answer is announced.
+watch(
+  () => store.game?.status,
+  (status) => {
+    if (thinkingTimer !== null) window.clearTimeout(thinkingTimer);
+    thinkingTimer = null;
+    thinkingVisible.value = false;
+    if (status === "thinking") {
+      thinkingTimer = window.setTimeout(() => {
+        thinkingVisible.value = true;
+      }, 300);
+    }
+  },
+  { immediate: true },
+);
 
 onUnmounted(() => {
-  if (copiedTimer !== null) window.clearTimeout(copiedTimer);
+  if (thinkingTimer !== null) window.clearTimeout(thinkingTimer);
+  if (reconnectedTimer !== null) window.clearTimeout(reconnectedTimer);
 });
+
+const head = computed(() =>
+  store.game
+    ? statusHead({
+        game: store.game,
+        opponentName: opponentName.value,
+        online: online.value,
+        thinkingVisible: thinkingVisible.value,
+        reconnectedName: reconnectedName.value,
+        countdownSeconds: opponentCountdown.value.seconds.value,
+      })
+    : null,
+);
+const result = computed(() =>
+  store.game ? resultPanel(store.game, mode.value, opponentName.value) : null,
+);
+const rings = computed(() => ({
+  green: greenCountdown.fraction.value,
+  pink: pinkCountdown.fraction.value,
+}));
+const overlay = computed(() => {
+  if (!online.value) return "offline" as const;
+  if (store.game?.status === "error") return "error" as const;
+  return null;
+});
+
+function onAction(action: ResultAction) {
+  if (action === "again") {
+    store.send(mode.value === "ai" ? "game.ai.retry" : "game.rematch");
+  } else if (action === "accept") {
+    store.send("game.rematch");
+  } else if (action === "leave" || action === "lobby") {
+    store.send("game.leave");
+  }
+}
 </script>
 
 <template>
-  <section v-if="store.searching && !store.game" class="waiting-screen">
-    <div class="radar" aria-hidden="true"><span /></div>
-    <p class="eyebrow">{{ t("common.waiting") }}</p>
-    <h1>{{ t("game.searching") }}</h1>
-    <p>{{ t("game.searchingBody") }}</p>
-    <button
-      class="button secondary"
-      type="button"
-      @click="store.send('queue.leave')"
-    >
-      {{ t("game.cancelSearch") }}
-    </button>
-  </section>
+  <SearchingScreen v-if="store.searching && !store.game" />
 
-  <section v-else-if="store.game?.status === 'waiting'" class="waiting-screen">
-    <div class="room-code-block">
-      <span>{{ t("lobby.roomCode") }}</span>
-      <strong>{{ store.room?.code }}</strong>
-    </div>
-    <h1>{{ t("game.waitingFriend") }}</h1>
-    <p>{{ t("game.waitingFriendBody") }}</p>
-    <div class="button-row waiting-actions">
-      <button class="button primary" type="button" @click="copyCode">
-        {{ copied ? t("common.copied") : t("common.copy") }}
-      </button>
-      <button
-        class="button secondary"
-        type="button"
-        @click="store.send('game.leave')"
-      >
-        {{ t("common.leave") }}
-      </button>
-    </div>
-  </section>
+  <WaitingScreen
+    v-else-if="store.game?.status === 'waiting'"
+    :code="store.room?.code ?? ''"
+  />
 
-  <section v-else-if="store.game" class="game-screen">
-    <div class="game-main">
-      <div
-        class="turn-card"
-        :class="statusTone"
-        role="status"
-        aria-live="polite"
-      >
-        <span class="turn-token" :class="store.game.turn" aria-hidden="true" />
-        <span>
-          <strong>{{ statusTitle }}</strong>
-          <small v-if="store.game.status === 'error'">{{
-            t("game.solverErrorBody")
-          }}</small>
-        </span>
-      </div>
-
+  <section
+    v-else-if="store.game"
+    class="game"
+    :class="[
+      `status-${store.game.status}`,
+      {
+        'is-finished': store.game.status === 'finished',
+        'is-offline': !online,
+      },
+    ]"
+  >
+    <div class="board-unit">
+      <BoardHead
+        :head="head"
+        place="in-unit"
+        :countdown-seconds="opponentCountdown.seconds.value"
+        :countdown-fraction="opponentCountdown.fraction.value"
+        :late="store.game.status === 'thinking'"
+      />
       <ConnectBoard
         :board="store.game.board"
-        :disabled="!store.canMove"
+        :you="store.game.you"
+        :interactive="store.canMove"
         :winning-cells="store.game.winning_cells"
+        :last="last"
+        :dropping="dropping"
+        :celebrating="celebrating"
+        :confetti="confetti"
+        :finished="store.game.status === 'finished'"
+        :overlay="overlay"
         @move="store.send('game.move', { column: $event })"
+        @announce="announcement = $event"
       />
     </div>
 
-    <aside class="game-sidebar">
-      <PlayerStrip
-        :you="store.game.you"
-        :turn="store.game.turn"
-        :players="store.game.players"
-        :active="store.game.status === 'playing'"
+    <aside class="side">
+      <BoardHead
+        :head="head"
+        place="in-side"
+        :countdown-seconds="opponentCountdown.seconds.value"
+        :countdown-fraction="opponentCountdown.fraction.value"
+        :late="store.game.status === 'thinking'"
       />
-
-      <div v-if="store.room?.code" class="compact-code">
-        <span>{{ t("lobby.roomCode") }}</span>
-        <button type="button" @click="copyCode">
-          <strong>{{ store.room.code }}</strong>
-          <small>{{ copied ? t("common.copied") : t("common.copy") }}</small>
-        </button>
+      <ResultCard
+        v-if="result"
+        :result="result"
+        :mode="mode"
+        :opponent="opponent"
+        :opponent-name="opponentName"
+        :you-move-first="store.game.you === store.game.first"
+        :entering="resultEntering"
+        @action="onAction"
+      />
+      <MatchCard
+        :game="store.game"
+        :mode="mode"
+        :code="store.room?.code ?? null"
+        :online="online"
+        :rings="rings"
+      />
+      <div class="card info-card">
+        <div>
+          <small>{{ t("game.first") }}</small>
+          <strong>{{
+            store.game.you === store.game.first
+              ? t("game.you")
+              : (store.game.players[store.game.first]?.nickname ?? "")
+          }}</strong>
+        </div>
+        <div>
+          <small>{{ t("game.lastMove") }}</small>
+          <strong>
+            <template v-if="last">
+              <i class="token stat-token" :class="last.colour" />
+              {{ t("game.column", { column: last.column + 1 }) }}
+            </template>
+            <template v-else>—</template>
+          </strong>
+        </div>
       </div>
-
-      <div class="game-actions">
+      <div v-if="!result" class="actions">
         <button
-          class="button secondary"
+          class="btn secondary"
           type="button"
           @click="store.send('game.leave')"
         >
-          {{ t("common.leave") }}
-        </button>
-        <button
-          v-if="store.game.status === 'finished'"
-          class="button primary"
-          type="button"
-          :disabled="store.game.rematch_requested"
-          @click="
-            store.send(
-              store.room?.mode === 'ai' ? 'game.ai.retry' : 'game.rematch',
-            )
-          "
-        >
-          {{
-            store.game.rematch_requested
-              ? t("game.rematchWaiting")
-              : store.room?.mode === "ai"
-                ? t("common.retry")
-                : t("common.rematch")
-          }}
-        </button>
-        <button
-          v-if="store.game.status === 'error' && store.room?.mode === 'ai'"
-          class="button primary"
-          type="button"
-          @click="store.send('game.ai.retry')"
-        >
-          {{ t("common.retry") }}
+          <span>{{ t("common.leave") }}</span>
         </button>
       </div>
+      <p v-if="store.canMove" class="kbd-hint">
+        <kbd>←</kbd><kbd>→</kbd> {{ t("game.kbdPick") }} <kbd>Enter</kbd>
+        {{ t("game.kbdDrop") }}
+      </p>
     </aside>
+    <p class="sr-only" aria-live="polite">{{ announcement }}</p>
   </section>
 </template>

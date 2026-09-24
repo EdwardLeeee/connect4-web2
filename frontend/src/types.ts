@@ -18,8 +18,10 @@ export interface GameState {
   revision: number;
   status: GameStatus;
   board: Cell[][];
-  /** Moves as columns "1"–"7"; even indices are green. */
+  /** Moves as columns "1"–"7"; even indices belong to `first`. */
   history: string;
+  /** Who moves first this game; player-vs-player rematches alternate it. */
+  first: Color;
   turn: Color;
   you: Color;
   winner: Color | null;

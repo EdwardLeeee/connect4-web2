@@ -1,19 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#f7f3ee" />
-  <circle
-    cx="306"
-    cy="306"
-    r="112"
-    fill="#f38fae"
-    stroke="#973a5a"
-    stroke-width="24"
-  />
-  <circle
-    cx="206"
-    cy="206"
-    r="112"
-    fill="#66d3a3"
-    stroke="#176747"
-    stroke-width="24"
-  />
+  <defs>
+    <clipPath id="pink-face"><circle cx="306" cy="306" r="104" /></clipPath>
+  </defs>
+  <rect width="512" height="512" fill="#fff4dc" />
+  <circle cx="318" cy="318" r="112" fill="#1b1b1f" />
+  <circle cx="306" cy="306" r="112" fill="#ff5fa2" stroke="#1b1b1f" stroke-width="16" />
+  <g clip-path="url(#pink-face)" transform="rotate(-28 306 306)" stroke="#1b1b1f" stroke-width="14">
+    <line x1="180" y1="262" x2="432" y2="262" />
+    <line x1="180" y1="350" x2="432" y2="350" />
+  </g>
+  <circle cx="218" cy="218" r="112" fill="#1b1b1f" />
+  <circle cx="206" cy="206" r="112" fill="#3ddc97" stroke="#1b1b1f" stroke-width="16" />
+  <circle cx="206" cy="206" r="50" fill="none" stroke="#1b1b1f" stroke-width="14" />
+  <ellipse cx="160" cy="146" rx="26" ry="15" fill="#ffffff" fill-opacity="0.7" transform="rotate(-30 160 146)" />
 </svg>

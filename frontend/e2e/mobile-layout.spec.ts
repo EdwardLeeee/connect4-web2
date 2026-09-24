@@ -1,82 +1,25 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import type { Snapshot } from "../src/types";
+import { pageSnapshot, SERVER_TIME, type PageId } from "./states";
 
-const SERVER_TIME = 1_790_000_000;
+// Layout numbers come from design/spec.md §3 and §10 (approved 2026-09-24).
+const ASSET_VERSION = "v=20260924";
 
-const gameSnapshot: Snapshot = {
-  server_time: SERVER_TIME,
-  session: { nickname: "曜宇", locale: "zh-TW" },
-  queue: { searching: false },
-  room: { id: "room", code: null, mode: "ai" },
-  game: {
-    revision: 9,
-    status: "playing",
-    board: [
-      [null, null, null, null, null, null, null],
-      [null, null, null, null, null, null, null],
-      [null, null, null, null, null, null, null],
-      [null, null, null, null, null, null, null],
-      [null, null, "green", "pink", "green", null, null],
-      [null, null, "pink", "green", "pink", null, null],
-    ],
-    history: "433554",
-    turn: "green",
-    you: "green",
-    winner: null,
-    winning_cells: [],
-    result_reason: null,
-    players: {
-      green: {
-        nickname: "曜宇",
-        connected: true,
-        is_ai: false,
-        grace_deadline: null,
-      },
-      pink: {
-        nickname: "Perfect AI",
-        connected: true,
-        is_ai: true,
-        grace_deadline: null,
-      },
-    },
-    rematch: { green: false, pink: false },
-    rematch_requested: false,
-    rematch_available: false,
-    series: { you: 0, opponent: 0, draws: 0 },
-    grace_deadline: null,
-  },
-};
+type SocketRoute = Parameters<Parameters<Page["routeWebSocket"]>[1]>[0];
 
-const emptyBoard = Array.from({ length: 6 }, () => Array<null>(7).fill(null));
-
-function human(nickname: string) {
-  return { nickname, connected: true, is_ai: false, grace_deadline: null };
+interface MockOptions {
+  /** Called with every message the page sends. */
+  onMessage?: (message: { type: string; payload: unknown }) => void;
+  /** Close every connection after the first, so the page stays offline. */
+  refuseReconnects?: boolean;
 }
 
-function privateSnapshot(status: "waiting" | "playing" | "finished"): Snapshot {
-  return {
-    server_time: SERVER_TIME,
-    session: { nickname: "曜宇", locale: "zh-TW" },
-    queue: { searching: false },
-    room: { id: "private-room", code: "LAN427", mode: "private" },
-    game: {
-      ...gameSnapshot.game!,
-      revision: 2,
-      status,
-      board: status === "waiting" ? emptyBoard : gameSnapshot.game!.board,
-      history: status === "waiting" ? "" : gameSnapshot.game!.history,
-      rematch_available: status === "finished",
-      winner: status === "finished" ? "green" : null,
-      result_reason: status === "finished" ? "connect_four" : null,
-      players:
-        status === "waiting"
-          ? { green: human("曜宇") }
-          : { green: human("曜宇"), pink: human("小安") },
-    },
-  };
-}
-
-async function mockApp(page: Page, snapshot: Snapshot = gameSnapshot) {
+async function mockApp(
+  page: Page,
+  snapshot: Snapshot,
+  options: MockOptions = {},
+) {
+  const sockets: SocketRoute[] = [];
   await page.route("**/api/session", async (route) => {
     await route.fulfill({
       status: 200,
@@ -84,9 +27,34 @@ async function mockApp(page: Page, snapshot: Snapshot = gameSnapshot) {
       body: JSON.stringify(snapshot.session),
     });
   });
-  await page.routeWebSocket(/\/ws$/, async (socket) => {
+  await page.routeWebSocket(/\/ws$/, (socket) => {
+    sockets.push(socket);
+    if (options.refuseReconnects && sockets.length > 1) {
+      void socket.close({ code: 1011 });
+      return;
+    }
+    socket.onMessage((data) => {
+      options.onMessage?.(JSON.parse(String(data)));
+    });
     socket.send(JSON.stringify({ type: "state.snapshot", payload: snapshot }));
   });
+  return {
+    sockets,
+    send(payload: Snapshot) {
+      sockets.at(-1)!.send(JSON.stringify({ type: "state.snapshot", payload }));
+    },
+  };
+}
+
+function snapshotFor(id: PageId, locale: "zh-TW" | "en" = "zh-TW") {
+  return pageSnapshot(id, locale);
+}
+
+function kind(testInfo: TestInfo) {
+  const name = testInfo.project.name;
+  if (name.startsWith("desktop-")) return "desktop" as const;
+  if (name.endsWith("-landscape")) return "landscape" as const;
+  return "phone" as const;
 }
 
 async function forceLanCopyFallback(page: Page) {
@@ -99,6 +67,10 @@ async function forceLanCopyFallback(page: Page) {
       configurable: true,
       value: undefined,
     });
+    Object.defineProperty(navigator, "share", {
+      configurable: true,
+      value: undefined,
+    });
     document.addEventListener(
       "copy",
       () => {
@@ -106,124 +78,103 @@ async function forceLanCopyFallback(page: Page) {
           document.activeElement instanceof HTMLTextAreaElement
             ? document.activeElement
             : null;
-        (
-          window as typeof window & { __copiedRoomCode?: string }
-        ).__copiedRoomCode = textarea?.value;
+        (window as typeof window & { __copied?: string[] }).__copied = [
+          ...((window as typeof window & { __copied?: string[] }).__copied ??
+            []),
+          textarea?.value ?? "",
+        ];
       },
       { capture: true },
     );
   });
 }
 
-function lobbySnapshot(locale: "zh-TW" | "en"): Snapshot {
-  return {
-    server_time: SERVER_TIME,
-    session: { nickname: locale === "zh-TW" ? "曜宇" : "Taylor", locale },
-    queue: { searching: false },
-    room: null,
-    game: null,
-  };
+async function expectTouchSafe(page: Page, selector: string) {
+  const targets = await page.locator(selector).evaluateAll((elements) =>
+    elements.map((element) => {
+      const box = element.getBoundingClientRect();
+      return {
+        name: element.textContent?.trim() || element.getAttribute("aria-label"),
+        // Rotated stickers leave sub-pixel noise in the layout.
+        width: Math.round(box.width),
+        height: Math.round(box.height),
+      };
+    }),
+  );
+  for (const target of targets) {
+    expect(target.width, JSON.stringify(target)).toBeGreaterThanOrEqual(44);
+    expect(target.height, JSON.stringify(target)).toBeGreaterThanOrEqual(44);
+  }
+}
+
+async function horizontalOverflow(page: Page) {
+  return page.evaluate(
+    () =>
+      document.documentElement.scrollWidth -
+      document.documentElement.clientWidth,
+  );
 }
 
 async function expectAlignedLobby(
   page: Page,
   expectedHeadings: string[],
-  testInfo: { project: { name: string } },
+  testInfo: TestInfo,
   locale: "zh-TW" | "en",
 ) {
-  const desktopOrLandscape =
-    testInfo.project.name.startsWith("desktop-") ||
-    testInfo.project.name.endsWith("-landscape");
-  const portraitPhone = !desktopOrLandscape;
+  const layoutKind = kind(testInfo);
 
   await expect(page.locator(".hero-copy")).toHaveCount(0);
   await expect(page.locator(".badge")).toHaveCount(0);
   await expect(page.locator(".brand")).toContainText("CONNECT 4");
   await expect(page.locator(".mode-card h2")).toHaveText(expectedHeadings);
+  expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
 
   const layout = await page.locator(".mode-card").evaluateAll((cards) => {
-    const cardRects = cards.map((card) => card.getBoundingClientRect());
-    const titleOffsets = cards.map((card) => {
-      const title = card.querySelector("h2")!;
-      return (
-        title.getBoundingClientRect().top - card.getBoundingClientRect().top
-      );
-    });
+    const rects = cards.map((card) => card.getBoundingClientRect());
     const grid = document
       .querySelector<HTMLElement>(".lobby-grid")!
       .getBoundingClientRect();
-    const main = document.querySelector("main")!.getBoundingClientRect();
     return {
-      titleOffsets,
       brandFontSize: Number.parseFloat(
         getComputedStyle(document.querySelector<HTMLElement>(".brand")!)
           .fontSize,
       ),
-      documentHeight: document.documentElement.scrollHeight,
-      viewportHeight: window.innerHeight,
-      cardTops: cardRects.map((card) => card.top),
-      cardBottoms: cardRects.map((card) => card.bottom),
-      cardHeights: cardRects.map((card) => card.height),
-      gridTop: grid.top,
-      gridBottom: grid.bottom,
+      brandFont: getComputedStyle(document.querySelector(".brand")!).fontFamily,
+      cardTops: rects.map((card) => card.top),
+      cardBottoms: rects.map((card) => card.bottom),
+      cardLefts: rects.map((card) => card.left),
+      cardHeights: rects.map((card) => card.height),
       gridLeft: grid.left,
       gridRight: grid.right,
-      mainTop: main.top,
-      mainBottom: main.bottom,
       viewportWidth: window.innerWidth,
-      overflow:
-        document.documentElement.scrollWidth -
-        document.documentElement.clientWidth,
       cardOverflow: cards.map((card) => card.scrollWidth - card.clientWidth),
     };
   });
 
-  expect(layout.overflow).toBeLessThanOrEqual(1);
-  expect(layout.brandFontSize).toBe(desktopOrLandscape ? 22 : 20);
-  const comparedTitleOffsets = portraitPhone
-    ? layout.titleOffsets.slice(1)
-    : layout.titleOffsets;
-  expect(
-    Math.max(...comparedTitleOffsets) - Math.min(...comparedTitleOffsets),
-  ).toBeLessThanOrEqual(1);
+  expect(layout.brandFontSize).toBe(layoutKind === "phone" ? 20 : 22);
+  expect(layout.brandFont).toContain("Space Grotesk");
   for (const overflow of layout.cardOverflow) {
     expect(overflow).toBeLessThanOrEqual(1);
   }
 
-  async function expectTouchSafeTargets() {
-    const targets = await page
-      .locator(".lobby button:visible, .lobby input:visible")
-      .evaluateAll((elements) =>
-        elements.map((element) => {
-          const box = element.getBoundingClientRect();
-          return { width: box.width, height: box.height };
-        }),
-      );
-    for (const target of targets) {
-      expect(target.width).toBeGreaterThanOrEqual(44);
-      expect(target.height).toBeGreaterThanOrEqual(44);
-    }
+  const roomCode = page.locator("#room-code");
+  const friendToggle = page.locator(".friend-card .card-toggle");
+  const matchmakingToggle = page.locator(".match-card-lobby .card-toggle");
+  const friendDescription = page.locator(".friend-card .card-copy p");
+  const matchmakingDescription = page.locator(".match-card-lobby .card-copy p");
+  const matchmakingAction = page.locator(".match-card-lobby .card-panel .btn");
+
+  if (layoutKind === "desktop") {
+    // D2: two columns, the AI card on the left spanning both rows.
+    expect(layout.cardLefts[1]).toBeGreaterThan(layout.cardLefts[0]);
+    expect(Math.abs(layout.cardLefts[1] - layout.cardLefts[2])).toBeLessThan(1);
+    expect(
+      Math.abs(layout.cardTops[0] - layout.cardTops[1]),
+    ).toBeLessThanOrEqual(1);
   }
 
-  const roomCode = page.locator("#room-code");
-  const friendToggle = page.locator(".friend-card .mode-card-toggle");
-  const matchmakingToggle = page.locator(".matchmaking-card .mode-card-toggle");
-  const friendDescription = page.locator(".friend-card .mode-copy p");
-  const matchmakingDescription = page.locator(".matchmaking-card .mode-copy p");
-  const matchmakingAction = page.locator(
-    ".matchmaking-card .mode-card-panel .button",
-  );
-
-  if (portraitPhone) {
-    await expect(page.locator(".mode-card-toggle:visible")).toHaveCount(2);
-    await expect(friendToggle).toHaveAttribute("aria-expanded", "false");
-    await expect(matchmakingToggle).toHaveAttribute("aria-expanded", "false");
-    await expect(friendDescription).toBeHidden();
-    await expect(matchmakingDescription).toBeHidden();
-    await expect(roomCode).toBeHidden();
-    await expect(matchmakingAction).toBeHidden();
-  } else {
-    await expect(page.locator(".mode-card-toggle:visible")).toHaveCount(0);
+  if (layoutKind === "desktop") {
+    await expect(page.locator(".card-toggle:visible")).toHaveCount(0);
     await expect(friendDescription).toBeVisible();
     await expect(matchmakingDescription).toBeVisible();
     await expect(roomCode).toBeVisible();
@@ -231,15 +182,19 @@ async function expectAlignedLobby(
       await roomCode.focus();
       await expect(roomCode).toBeInViewport();
     }
+  } else {
+    await expect(page.locator(".card-toggle:visible")).toHaveCount(2);
+    await expect(friendToggle).toHaveAttribute("aria-expanded", "false");
+    await expect(matchmakingToggle).toHaveAttribute("aria-expanded", "false");
+    await expect(friendDescription).toBeHidden();
+    await expect(matchmakingDescription).toBeHidden();
+    await expect(roomCode).toBeHidden();
+    await expect(matchmakingAction).toBeHidden();
   }
-  await expectTouchSafeTargets();
+  await expectTouchSafe(page, ".lobby button:visible, .lobby input:visible");
 
-  if (portraitPhone) {
+  if (layoutKind === "phone") {
     expect(layout.gridLeft, JSON.stringify(layout)).toBeGreaterThanOrEqual(20);
-    expect(
-      layout.viewportWidth - layout.gridRight,
-      JSON.stringify(layout),
-    ).toBeGreaterThanOrEqual(20);
     expect(
       Math.abs(layout.gridLeft - (layout.viewportWidth - layout.gridRight)),
       JSON.stringify(layout),
@@ -248,49 +203,36 @@ async function expectAlignedLobby(
       Math.abs(layout.cardHeights[1] - layout.cardHeights[2]),
       JSON.stringify(layout),
     ).toBeLessThanOrEqual(1);
-    expect(layout.cardHeights[0], JSON.stringify(layout)).toBeGreaterThan(
-      layout.cardHeights[1],
-    );
-    const cardGaps = [
+    expect(layout.cardHeights[0]).toBeGreaterThan(layout.cardHeights[1]);
+    for (const gap of [
       layout.cardTops[1] - layout.cardBottoms[0],
       layout.cardTops[2] - layout.cardBottoms[1],
-    ];
-    for (const gap of cardGaps) {
+    ]) {
       expect(gap, JSON.stringify(layout)).toBeCloseTo(16, 0);
     }
-    expect(
-      layout.viewportHeight - layout.gridBottom,
-      JSON.stringify(layout),
-    ).toBeGreaterThanOrEqual(40);
-    expect(
-      Math.abs(
-        (layout.gridTop + layout.gridBottom) / 2 -
-          (layout.mainTop + layout.mainBottom) / 2,
-      ),
-      JSON.stringify(layout),
-    ).toBeLessThanOrEqual(2);
-    expect(
-      layout.viewportHeight - layout.mainBottom,
-      JSON.stringify(layout),
-    ).toBeLessThanOrEqual(20);
   }
 
   await expect(page.locator('link[rel~="icon"]')).toHaveCount(3);
-  const iconHrefs = await page
-    .locator('link[rel~="icon"]')
-    .evaluateAll((links) => links.map((link) => link.getAttribute("href")));
-  expect(iconHrefs).toEqual([
-    "/connect4-mark.svg?v=20260730-2",
-    "/connect4-mark-32.png?v=20260730-2",
-    "/favicon.ico?v=20260730-2",
+  expect(
+    await page
+      .locator('link[rel~="icon"]')
+      .evaluateAll((links) => links.map((link) => link.getAttribute("href"))),
+  ).toEqual([
+    `/connect4-mark.svg?${ASSET_VERSION}`,
+    `/connect4-mark-32.png?${ASSET_VERSION}`,
+    `/favicon.ico?${ASSET_VERSION}`,
   ]);
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute(
     "href",
-    "/apple-touch-icon.png?v=20260730-2",
+    `/apple-touch-icon.png?${ASSET_VERSION}`,
   );
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
     "href",
-    "/site.webmanifest?v=20260730-2",
+    `/site.webmanifest?${ASSET_VERSION}`,
+  );
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute(
+    "content",
+    "#fff4dc",
   );
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
     "href",
@@ -298,14 +240,14 @@ async function expectAlignedLobby(
   );
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
     "content",
-    "https://connect4.oraclelee.com/connect4-preview.png?v=20260730-2",
+    `https://connect4.oraclelee.com/connect4-preview.png?${ASSET_VERSION}`,
   );
   await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute(
     "content",
     "summary_large_image",
   );
 
-  if (portraitPhone) {
+  if (layoutKind !== "desktop") {
     await friendToggle.click();
     await expect(friendToggle).toHaveAttribute("aria-expanded", "true");
     await expect(matchmakingToggle).toHaveAttribute("aria-expanded", "false");
@@ -313,7 +255,7 @@ async function expectAlignedLobby(
     await expect(roomCode).toBeVisible();
     await roomCode.fill("lan427");
     await expect(roomCode).toHaveValue("LAN427");
-    await expectTouchSafeTargets();
+    await expectTouchSafe(page, ".lobby button:visible, .lobby input:visible");
 
     await matchmakingToggle.click();
     await expect(friendToggle).toHaveAttribute("aria-expanded", "false");
@@ -321,22 +263,12 @@ async function expectAlignedLobby(
     await expect(roomCode).toBeHidden();
     await expect(matchmakingDescription).toBeVisible();
     await expect(matchmakingAction).toBeVisible();
-    await expectTouchSafeTargets();
 
     await matchmakingToggle.click();
     await friendToggle.click();
     await expect(roomCode).toHaveValue("LAN427");
     await friendToggle.click();
     await expect(friendToggle).toHaveAttribute("aria-expanded", "false");
-  }
-
-  if (testInfo.project.name.startsWith("desktop-")) {
-    const verticalOffset = await page.locator(".lobby").evaluate((lobby) => {
-      const main = document.querySelector("main")!.getBoundingClientRect();
-      const section = lobby.getBoundingClientRect();
-      return (section.top + section.bottom) / 2 - (main.top + main.bottom) / 2;
-    });
-    expect(Math.abs(verticalOffset)).toBeLessThanOrEqual(1);
   }
 
   await expect(page).toHaveScreenshot(
@@ -348,195 +280,60 @@ async function expectAlignedLobby(
 test("game board is touch-safe and visually stable", async ({
   page,
 }, testInfo) => {
-  await mockApp(page);
+  const layoutKind = kind(testInfo);
+  await mockApp(page, snapshotFor("P03"));
   await page.goto("/play");
-  await expect(page.locator(".board-wrap")).toBeVisible();
+  await expect(page.locator(".board")).toBeVisible();
+  await expect(
+    page.locator(".board-head.in-unit, .board-head.in-side"),
+  ).toHaveCount(2);
 
-  const overflow = await page.evaluate(() => ({
-    document:
-      document.documentElement.scrollWidth -
-      document.documentElement.clientWidth,
-    body: document.body.scrollWidth - document.body.clientWidth,
-    sizes: {
-      innerWidth: window.innerWidth,
-      documentClient: document.documentElement.clientWidth,
-      documentScroll: document.documentElement.scrollWidth,
-      bodyClient: document.body.clientWidth,
-      bodyScroll: document.body.scrollWidth,
-      bodyRect: document.body.getBoundingClientRect().toJSON(),
-    },
-    offenders: [...document.querySelectorAll<HTMLElement>("body *")]
-      .filter((element) => {
-        const box = element.getBoundingClientRect();
-        return (
-          box.left < -1 || box.right > document.documentElement.clientWidth + 1
-        );
-      })
-      .map((element) => ({
-        className: element.className,
-        tag: element.tagName,
-        left: element.getBoundingClientRect().left,
-        right: element.getBoundingClientRect().right,
-      }))
-      .slice(0, 8),
-  }));
+  expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
 
-  if (testInfo.project.name.endsWith("-landscape")) {
-    const landscapeLayout = await page.evaluate(() => ({
-      mediaMatches: matchMedia(
-        "(orientation: landscape) and (max-height: 500px)",
-      ).matches,
-      brandFontSize: getComputedStyle(
-        document.querySelector<HTMLElement>(".brand")!,
-      ).fontSize,
-    }));
-    expect(landscapeLayout).toEqual({
-      mediaMatches: true,
-      brandFontSize: "0px",
-    });
+  const layout = await page.evaluate(() => {
+    const board = document.querySelector<HTMLElement>(".board")!;
+    const cell = document.querySelector<HTMLElement>(".board .cell")!;
+    const leave = document.querySelector<HTMLElement>(".actions .btn")!;
+    const visibleHead = [
+      ...document.querySelectorAll<HTMLElement>(".board-head"),
+    ].find((head) => head.offsetParent !== null)!;
+    const brandText = document.querySelector<HTMLElement>(".brand-text")!;
+    return {
+      // Rotated stickers leave sub-pixel noise in the layout.
+      boardWidth: Math.round(board.getBoundingClientRect().width),
+      slot: Math.round(cell.getBoundingClientRect().width),
+      slotHeight: Math.round(cell.getBoundingClientRect().height),
+      leaveHeight: Math.round(leave.getBoundingClientRect().height),
+      headPlace: visibleHead.classList.contains("in-side") ? "side" : "unit",
+      brandTextShown: brandText.offsetParent !== null,
+      brandFontSize: Number.parseFloat(
+        getComputedStyle(document.querySelector(".brand")!).fontSize,
+      ),
+      viewportHeight: window.innerHeight,
+    };
+  });
+
+  // D7: round slots; §3 slot sizes per layout.
+  expect(layout.slot).toBe(layout.slotHeight);
+  if (layoutKind === "desktop") {
+    const short = layout.viewportHeight <= 820;
+    expect(layout.slot).toBe(short ? 68 : 84);
+    if (!short) expect(layout.boardWidth).toBe(694);
+    expect(layout.leaveHeight).toBe(56);
+    expect(layout.brandFontSize).toBe(22);
+    expect(layout.headPlace).toBe("unit");
+  } else if (layoutKind === "landscape") {
+    expect(layout.slot).toBe(56);
+    expect(layout.headPlace).toBe("side");
+    expect(layout.brandTextShown).toBe(false);
+  } else {
+    expect(layout.slot).toBe(48);
+    expect(layout.leaveHeight).toBe(48);
+    expect(layout.brandFontSize).toBe(20);
+    expect(layout.headPlace).toBe("unit");
   }
 
-  if (testInfo.project.name.startsWith("desktop-")) {
-    const desktopLayout = await page.evaluate(() => {
-      const main = document.querySelector("main")!.getBoundingClientRect();
-      const game = document
-        .querySelector(".game-screen")!
-        .getBoundingClientRect();
-      return {
-        brandFontSize: Number.parseFloat(
-          getComputedStyle(document.querySelector<HTMLElement>(".brand")!)
-            .fontSize,
-        ),
-        verticalOffset:
-          (game.top + game.bottom) / 2 - (main.top + main.bottom) / 2,
-      };
-    });
-    expect(desktopLayout.brandFontSize).toBe(22);
-    expect(Math.abs(desktopLayout.verticalOffset)).toBeLessThanOrEqual(1);
-  }
-
-  if (
-    !testInfo.project.name.startsWith("desktop-") &&
-    !testInfo.project.name.endsWith("-landscape")
-  ) {
-    const portraitLayout = await page.evaluate(() => {
-      const main = document.querySelector("main")!.getBoundingClientRect();
-      const game = document
-        .querySelector(".game-screen")!
-        .getBoundingClientRect();
-      return {
-        mainHeight: main.height,
-        mainBottom: main.bottom,
-        gameHeight: game.height,
-        viewportHeight: window.innerHeight,
-        verticalOffset:
-          (game.top + game.bottom) / 2 - (main.top + main.bottom) / 2,
-      };
-    });
-    expect(
-      portraitLayout.gameHeight,
-      JSON.stringify(portraitLayout),
-    ).toBeLessThanOrEqual(portraitLayout.mainHeight);
-    expect(
-      Math.abs(portraitLayout.verticalOffset),
-      JSON.stringify(portraitLayout),
-    ).toBeLessThanOrEqual(2);
-    expect(
-      portraitLayout.viewportHeight - portraitLayout.mainBottom,
-      JSON.stringify(portraitLayout),
-    ).toBeLessThanOrEqual(20);
-  }
-
-  expect(overflow.document, JSON.stringify(overflow)).toBeLessThanOrEqual(1);
-  expect(overflow.body, JSON.stringify(overflow)).toBeLessThanOrEqual(1);
-
-  const targets = await page.locator("button:visible").evaluateAll((buttons) =>
-    buttons.map((button) => {
-      const box = button.getBoundingClientRect();
-      return { width: box.width, height: box.height };
-    }),
-  );
-  for (const target of targets) {
-    expect(target.width).toBeGreaterThanOrEqual(44);
-    expect(target.height).toBeGreaterThanOrEqual(44);
-  }
-
-  const actionLayout = await page
-    .locator(".game-actions")
-    .evaluate((actions) => {
-      const button = actions.querySelector("button")!;
-      return {
-        actionWidth: actions.getBoundingClientRect().width,
-        buttonWidth: button.getBoundingClientRect().width,
-        buttonCount: actions.querySelectorAll("button").length,
-        gridColumn: getComputedStyle(button).gridColumn,
-        sidebarWidth: document
-          .querySelector(".game-sidebar")!
-          .getBoundingClientRect().width,
-        playerStripWidth: document
-          .querySelector(".player-strip")!
-          .getBoundingClientRect().width,
-        screenWidth: document
-          .querySelector(".game-screen")!
-          .getBoundingClientRect().width,
-      };
-    });
-  expect(actionLayout.buttonCount).toBe(1);
-  expect(
-    actionLayout.buttonWidth / actionLayout.actionWidth,
-    JSON.stringify(actionLayout),
-  ).toBeGreaterThan(0.95);
-  expect(
-    actionLayout.actionWidth / actionLayout.sidebarWidth,
-    JSON.stringify(actionLayout),
-  ).toBeGreaterThan(0.95);
-  expect(
-    actionLayout.playerStripWidth / actionLayout.sidebarWidth,
-    JSON.stringify(actionLayout),
-  ).toBeLessThanOrEqual(1.01);
-  if (
-    !testInfo.project.name.endsWith("-landscape") &&
-    !testInfo.project.name.startsWith("desktop-")
-  ) {
-    expect(
-      actionLayout.sidebarWidth / actionLayout.screenWidth,
-      JSON.stringify(actionLayout),
-    ).toBeGreaterThan(0.95);
-  }
-
-  if (
-    !testInfo.project.name.endsWith("-landscape") &&
-    !testInfo.project.name.startsWith("desktop-")
-  ) {
-    const bottomLayout = await page.locator(".board-wrap").evaluate((board) => {
-      const boardBox = board.getBoundingClientRect();
-      const boardStyle = getComputedStyle(board);
-      const border = Number.parseFloat(boardStyle.borderBottomWidth);
-      const grid = board.querySelector<HTMLElement>(".board-grid")!;
-      const gridBox = grid.getBoundingClientRect();
-      const gridStyle = getComputedStyle(grid);
-      const lastRow = [...board.querySelectorAll<HTMLElement>(".slot")].slice(
-        -7,
-      );
-      const slotBoxes = lastRow.map((slot) => slot.getBoundingClientRect());
-      return {
-        inset:
-          boardBox.bottom -
-          border -
-          Math.max(...slotBoxes.map((slot) => slot.bottom)),
-        board: { width: boardBox.width, height: boardBox.height },
-        grid: { width: gridBox.width, height: gridBox.height },
-        paddingBottom: gridStyle.paddingBottom,
-        rowGap: gridStyle.rowGap,
-        slot: { width: slotBoxes[0].width, height: slotBoxes[0].height },
-      };
-    });
-    expect(
-      bottomLayout.inset,
-      JSON.stringify(bottomLayout),
-    ).toBeGreaterThanOrEqual(7.5);
-  }
-
+  await expectTouchSafe(page, "button:visible");
   await expect(page).toHaveScreenshot(`${testInfo.project.name}-game.png`, {
     fullPage: true,
   });
@@ -545,7 +342,7 @@ test("game board is touch-safe and visually stable", async ({
 test("Traditional Chinese lobby is aligned and touch-safe", async ({
   page,
 }, testInfo) => {
-  await mockApp(page, lobbySnapshot("zh-TW"));
+  await mockApp(page, snapshotFor("L01"));
   await page.goto("/");
   await expectAlignedLobby(
     page,
@@ -558,7 +355,7 @@ test("Traditional Chinese lobby is aligned and touch-safe", async ({
 test("English lobby is localized, aligned, and touch-safe", async ({
   page,
 }, testInfo) => {
-  await mockApp(page, lobbySnapshot("en"));
+  await mockApp(page, snapshotFor("L02", "en"));
   await page.goto("/");
   const input = page.getByLabel("Room Code");
   await expect(input).toHaveCount(1);
@@ -574,34 +371,26 @@ test("English lobby is localized, aligned, and touch-safe", async ({
 test("portrait lobby accordion stays focused and breathable", async ({
   page,
 }, testInfo) => {
-  const isPortraitPhone =
-    !testInfo.project.name.startsWith("desktop-") &&
-    !testInfo.project.name.endsWith("-landscape");
-  test.skip(!isPortraitPhone, "This interaction is intentionally phone-only.");
+  test.skip(kind(testInfo) !== "phone", "The accordion is phone-only.");
 
-  await mockApp(page, lobbySnapshot("zh-TW"));
+  await mockApp(page, snapshotFor("L05"));
   await page.goto("/");
-  await page.locator(".friend-card .mode-card-toggle").click();
+  await page.locator(".friend-card .card-toggle").click();
 
   const roomCode = page.getByLabel("房間代碼");
   await expect(roomCode).toBeVisible();
   await expect(roomCode).toBeInViewport();
   await expect(page.getByRole("button", { name: "加入房間" })).toBeInViewport();
+  // L05: the AI card folds its demo board while another card is open.
+  await expect(page.locator(".ai-card .mini-board")).toBeHidden();
 
   const layout = await page.locator(".lobby-grid").evaluate((grid) => {
     const box = grid.getBoundingClientRect();
-    return {
-      left: box.left,
-      right: box.right,
-      viewportWidth: window.innerWidth,
-      overflow:
-        document.documentElement.scrollWidth -
-        document.documentElement.clientWidth,
-    };
+    return { left: box.left, right: box.right, viewportWidth: innerWidth };
   });
   expect(layout.left).toBeGreaterThanOrEqual(20);
   expect(layout.viewportWidth - layout.right).toBeGreaterThanOrEqual(20);
-  expect(layout.overflow).toBeLessThanOrEqual(1);
+  expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
 
   if (
     testInfo.project.name === "iphone-14promax-15plus-15promax-16plus" ||
@@ -623,52 +412,35 @@ test("short portrait viewport keeps expanded cards safely scrollable", async ({
   );
 
   await page.setViewportSize({ width: 390, height: 420 });
-  await mockApp(page, lobbySnapshot("zh-TW"));
+  await mockApp(page, snapshotFor("L05"));
   await page.goto("/");
-  await page.locator(".friend-card .mode-card-toggle").click();
-
-  const layout = await page.locator(".lobby-grid").evaluate((grid) => {
-    const box = grid.getBoundingClientRect();
-    const main = document.querySelector("main")!.getBoundingClientRect();
-    return {
-      gridTop: box.top,
-      gridBottom: box.bottom,
-      mainTop: main.top,
-      documentHeight: document.documentElement.scrollHeight,
-      viewportHeight: window.innerHeight,
-      scrollY: window.scrollY,
-    };
-  });
-
-  expect(layout.scrollY, JSON.stringify(layout)).toBe(0);
-  expect(layout.gridTop, JSON.stringify(layout)).toBeGreaterThanOrEqual(
-    layout.mainTop + 19,
-  );
-  expect(layout.documentHeight, JSON.stringify(layout)).toBeGreaterThan(
-    layout.viewportHeight,
-  );
-  expect(layout.gridBottom, JSON.stringify(layout)).toBeLessThanOrEqual(
-    layout.documentHeight + 1,
-  );
+  await page.locator(".friend-card .card-toggle").click();
 
   const joinButton = page.getByRole("button", { name: "加入房間" });
   await joinButton.scrollIntoViewIfNeeded();
   await expect(joinButton).toBeInViewport();
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect(page.locator(".topbar")).toBeInViewport();
+  expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
 });
 
-test("portrait profile fields match on mobile browsers", async ({
+test("profile fields match and explain a rejected nickname", async ({
   page,
 }, testInfo) => {
-  const isPortraitPhone =
-    !testInfo.project.name.startsWith("desktop-") &&
-    !testInfo.project.name.endsWith("-landscape");
-  test.skip(!isPortraitPhone, "This regression targets portrait mobile UI.");
-
-  await mockApp(page, lobbySnapshot("zh-TW"));
+  await mockApp(page, snapshotFor("L10"));
+  await page.route("**/api/session", async (route) => {
+    if (route.request().method() === "PATCH") {
+      await route.fulfill({
+        status: 422,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "invalid_nickname" }),
+      });
+      return;
+    }
+    await route.fallback();
+  });
   await page.goto("/");
-  await page.locator(".profile-button").click();
+  await page.locator(".profile").click();
 
   const nickname = page.locator(".profile-sheet input");
   const language = page.locator(".profile-sheet select");
@@ -678,28 +450,20 @@ test("portrait profile fields match on mobile browsers", async ({
   const controls = await page.locator(".profile-sheet").evaluate((sheet) => {
     const input = sheet.querySelector("input")!;
     const select = sheet.querySelector("select")!;
-    const inputBox = input.getBoundingClientRect();
-    const selectBox = select.getBoundingClientRect();
-    const chevron = getComputedStyle(
-      sheet.querySelector(".select-field")!,
-      "::after",
-    );
+    const chevron = sheet.querySelector(".select-field .icon")!;
     return {
       input: {
-        width: inputBox.width,
-        height: inputBox.height,
+        width: input.getBoundingClientRect().width,
+        height: input.getBoundingClientRect().height,
         fontSize: Number.parseFloat(getComputedStyle(input).fontSize),
       },
       select: {
-        width: selectBox.width,
-        height: selectBox.height,
+        width: select.getBoundingClientRect().width,
+        height: select.getBoundingClientRect().height,
         fontSize: Number.parseFloat(getComputedStyle(select).fontSize),
         appearance: getComputedStyle(select).appearance,
       },
-      chevron: {
-        content: chevron.content,
-        pointerEvents: chevron.pointerEvents,
-      },
+      chevronPointerEvents: getComputedStyle(chevron).pointerEvents,
     };
   });
 
@@ -711,11 +475,12 @@ test("portrait profile fields match on mobile browsers", async ({
   expect(controls.input.fontSize).toBeGreaterThanOrEqual(16);
   expect(controls.select.fontSize).toBeGreaterThanOrEqual(16);
   expect(controls.select.appearance).toBe("none");
-  expect(controls.chevron.content).not.toBe("none");
-  expect(controls.chevron.pointerEvents).toBe("none");
+  expect(controls.chevronPointerEvents).toBe("none");
+  await expectTouchSafe(page, ".profile-sheet button");
 
   await language.selectOption("en");
   await expect(language).toHaveValue("en");
+  await language.selectOption("zh-TW");
 
   if (
     testInfo.project.name === "iphone-14promax-15plus-15promax-16plus" ||
@@ -723,6 +488,34 @@ test("portrait profile fields match on mobile browsers", async ({
   ) {
     await expect(page).toHaveScreenshot(`${testInfo.project.name}-profile.png`);
   }
+
+  // L10: an empty nickname is caught while typing and Save is disabled.
+  const save = page.locator(".profile-sheet .btn.primary");
+  await expect(page.locator(".form-error")).toHaveCount(0);
+  await nickname.fill("   ");
+  await expect(page.locator("#nickname-error")).toHaveText("請先輸入暱稱");
+  await expect(nickname).toHaveClass(/has-error/);
+  await expect(nickname).toHaveAttribute("aria-invalid", "true");
+  await expect(nickname).toHaveAttribute("aria-describedby", "nickname-error");
+  await expect(save).toBeDisabled();
+  expect(
+    await nickname.evaluate(
+      (element) => getComputedStyle(element).outlineStyle,
+    ),
+  ).toBe("none");
+  await nickname.press("Enter");
+  await expect(page.locator(".profile-sheet")).toBeVisible();
+
+  await nickname.fill("Ann");
+  await expect(page.locator("#nickname-error")).toHaveCount(0);
+  await expect(save).toBeEnabled();
+
+  // The server's own rule still explains itself (422 invalid_nickname).
+  await save.click();
+  await expect(page.locator("#nickname-error")).toHaveText(
+    "暱稱需為 1–18 個字。",
+  );
+  await expect(nickname).toHaveClass(/has-error/);
 });
 
 test("brand icons and install metadata contain the green-pink mark", async ({
@@ -733,7 +526,7 @@ test("brand icons and install metadata contain the green-pink mark", async ({
     "One desktop Chromium project is sufficient for asset decoding.",
   );
 
-  await mockApp(page, lobbySnapshot("zh-TW"));
+  await mockApp(page, snapshotFor("L01"));
   await page.goto("/");
 
   const inspection = await page.evaluate(async () => {
@@ -836,8 +629,8 @@ test("brand icons and install metadata contain the green-pink mark", async ({
     start_url: "/",
     scope: "/",
     display: "standalone",
-    background_color: "#f7f3ee",
-    theme_color: "#f7f3ee",
+    background_color: "#fff4dc",
+    theme_color: "#fff4dc",
     icons: [
       {
         src: "/connect4-icon-192.png",
@@ -855,56 +648,54 @@ test("brand icons and install metadata contain the green-pink mark", async ({
   });
 });
 
-test("desktop private-game controls use the enlarged layout", async ({
+test("desktop private-game sidebar follows the match card spec", async ({
   page,
 }, testInfo) => {
-  test.skip(
-    !testInfo.project.name.startsWith("desktop-"),
-    "The enlarged sidebar is intentionally desktop-only.",
-  );
+  test.skip(kind(testInfo) !== "desktop", "The sidebar is desktop-only.");
 
-  await mockApp(page, privateSnapshot("finished"));
+  await mockApp(page, snapshotFor("P07"));
   await page.goto("/play");
   await expect(page.getByRole("button", { name: "再來一局" })).toBeVisible();
 
-  const layout = await page.locator(".game-sidebar").evaluate((sidebar) => {
-    const playerStrip = sidebar.querySelector(".player-strip")!;
-    const token = sidebar.querySelector(".player-token")!;
-    const playerName = sidebar.querySelector(".player-side strong")!;
-    const versus = sidebar.querySelector(".versus")!;
-    const roomCode = sidebar.querySelector(".compact-code")!;
-    const code = sidebar.querySelector(".compact-code strong")!;
+  const layout = await page.locator(".side").evaluate((side) => {
+    const players = [...side.querySelectorAll<HTMLElement>(".player")];
     const buttons = [
-      ...sidebar.querySelectorAll<HTMLElement>(".game-actions .button"),
+      ...side.querySelectorAll<HTMLElement>(".result-actions .btn"),
     ];
     return {
-      playerHeight: playerStrip.getBoundingClientRect().height,
-      tokenWidth: token.getBoundingClientRect().width,
-      playerNameSize: Number.parseFloat(getComputedStyle(playerName).fontSize),
-      versusSize: Number.parseFloat(getComputedStyle(versus).fontSize),
-      roomCodeHeight: roomCode.getBoundingClientRect().height,
-      codeSize: Number.parseFloat(getComputedStyle(code).fontSize),
-      buttonHeights: buttons.map(
-        (button) => button.getBoundingClientRect().height,
+      playerHeights: players.map((row) => row.getBoundingClientRect().height),
+      tokenWidth: side.querySelector(".player-token")!.getBoundingClientRect()
+        .width,
+      playerNameSize: Number.parseFloat(
+        getComputedStyle(side.querySelector(".player-copy strong")!).fontSize,
+      ),
+      versusSize: Number.parseFloat(
+        getComputedStyle(side.querySelector(".versus")!).fontSize,
+      ),
+      modeLabel: side.querySelector(".mode-label")!.textContent,
+      compactCode: side.querySelectorAll(".compact-code").length,
+      buttonHeights: buttons.map((button) =>
+        Math.round(button.getBoundingClientRect().height),
       ),
       buttonSizes: buttons.map((button) =>
         Number.parseFloat(getComputedStyle(button).fontSize),
       ),
-      overflow:
-        document.documentElement.scrollWidth -
-        document.documentElement.clientWidth,
     };
   });
 
-  expect(layout.playerHeight).toBeGreaterThanOrEqual(104);
+  // D4: one row per player, at least 76px; token 44, name 18, "對" 14.
+  for (const height of layout.playerHeights) {
+    expect(height).toBeGreaterThanOrEqual(75.5);
+  }
   expect(layout.tokenWidth).toBe(44);
   expect(layout.playerNameSize).toBe(18);
   expect(layout.versusSize).toBe(14);
-  expect(layout.roomCodeHeight).toBeGreaterThanOrEqual(88);
-  expect(layout.codeSize).toBe(24);
+  // D3: the code lives on the mode label; no copyable block during a game.
+  expect(layout.modeLabel).toContain("LAN427");
+  expect(layout.compactCode).toBe(0);
   expect(layout.buttonHeights).toEqual([56, 56]);
   expect(layout.buttonSizes).toEqual([17, 17]);
-  expect(layout.overflow).toBeLessThanOrEqual(1);
+  expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
 
   await expect(page).toHaveScreenshot(
     `${testInfo.project.name}-private-finished.png`,
@@ -912,46 +703,337 @@ test("desktop private-game controls use the enlarged layout", async ({
   );
 });
 
-test("room copy button works on HTTP LAN while waiting", async ({ page }) => {
+test("waiting room has one invite button that stays copied", async ({
+  page,
+}) => {
   await forceLanCopyFallback(page);
-  await mockApp(page, privateSnapshot("waiting"));
+  await mockApp(page, snapshotFor("P02"));
   await page.goto("/play");
 
-  const copyButton = page.getByRole("button", { name: "複製" });
-  await copyButton.click();
-  await expect(copyButton).toHaveText("已複製");
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () =>
-          (window as typeof window & { __copiedRoomCode?: string })
-            .__copiedRoomCode,
-      ),
-    )
-    .toBe("LAN427");
+  await expect(page.locator(".room-code-block strong")).toHaveText("LAN427");
+  await expect(page.locator(".qr-card path")).toHaveAttribute("d", /^M/);
+  // Round 3: a single primary button plus the leave link; no copy-code button.
+  await expect(page.locator(".waiting-actions .btn.primary")).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "複製房號" })).toHaveCount(0);
+  await expectTouchSafe(page, ".waiting-actions button");
+
+  // Without navigator.share even phones copy the link.
+  const invite = page.locator(".waiting-actions .btn.primary");
+  await expect(invite).toHaveText("複製邀請連結");
+  await invite.click();
+  await expect(invite).toHaveText("已複製邀請連結");
+  await page.waitForTimeout(1600);
+  await expect(invite).toHaveText("已複製邀請連結");
+  const copied = await page.evaluate(
+    () => (window as typeof window & { __copied?: string[] }).__copied,
+  );
+  expect(copied).toHaveLength(1);
+  expect(copied?.[0]).toMatch(/\/\?room=LAN427$/);
+  expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
 });
 
-test("room copy button works on HTTP LAN during a game", async ({
+test("phones share the invite through the system sheet", async ({
+  page,
+}, testInfo) => {
+  test.skip(kind(testInfo) !== "phone", "Sharing replaces copy on phones.");
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "share", {
+      configurable: true,
+      value: async (data: ShareData) => {
+        (window as typeof window & { __shared?: ShareData }).__shared = data;
+      },
+    });
+  });
+  await mockApp(page, snapshotFor("P02"));
+  await page.goto("/play");
+  await page.getByRole("button", { name: "分享邀請" }).click();
+  const shared = await page.evaluate(
+    () => (window as typeof window & { __shared?: ShareData }).__shared,
+  );
+  expect(shared?.url).toMatch(/\/\?room=LAN427$/);
+  expect(shared?.text).toContain("LAN427");
+});
+
+test("an invite link opens the invite page and joins only on a tap", async ({
+  page,
+}) => {
+  const sent: string[] = [];
+  await mockApp(page, snapshotFor("L12"), {
+    onMessage: (message) => sent.push(JSON.stringify(message)),
+  });
+  await page.goto("/?room=lan427");
+
+  const card = page.locator(".invite-card");
+  await expect(card.locator("h1")).toHaveText("朋友邀請你一起玩");
+  await expect(card.locator(".room-code-block strong")).toHaveText("LAN427");
+  await expect(card.locator(".invite-as")).toContainText("你的暱稱：曜宇");
+  await expect(page.locator(".lobby")).toHaveCount(0);
+  await expectTouchSafe(page, ".invite-card button");
+  expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
+  await page.waitForTimeout(300);
+  expect(sent.filter((message) => message.includes("room.join"))).toEqual([]);
+
+  await card.getByRole("button", { name: "修改" }).click();
+  await expect(page.locator(".profile-sheet")).toBeVisible();
+  await page.locator(".profile-sheet .btn.secondary").click();
+
+  await card.getByRole("button", { name: "加入房間" }).click();
+  await expect
+    .poll(() => sent.filter((message) => message.includes("room.join")))
+    .toEqual([
+      JSON.stringify({ type: "room.join", payload: { code: "LAN427" } }),
+    ]);
+
+  await card.getByRole("button", { name: "不加入，先去大廳" }).click();
+  await expect(page.locator(".lobby")).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
+});
+
+test("a room that cannot be joined is explained on the invite page", async ({
+  page,
+}) => {
+  const app = await mockApp(page, snapshotFor("L13"), {
+    onMessage: (message) => {
+      if (message.type === "room.join") {
+        app.sockets
+          .at(-1)!
+          .send(
+            JSON.stringify({ type: "error", payload: { code: "room_full" } }),
+          );
+      }
+    },
+  });
+  await page.goto("/?room=LAN427");
+  // Count every toast that appears, even one that fades out again.
+  await page.evaluate(() => {
+    new MutationObserver(() => {
+      if (document.querySelector(".toast")) {
+        (window as typeof window & { __toasts?: number }).__toasts = 1;
+      }
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+  await page.getByRole("button", { name: "加入房間" }).click();
+
+  const card = page.locator(".invite-card.is-gone");
+  await expect(card.locator("h1")).toHaveText("這個房間無法加入");
+  await expect(card.locator(".lead")).toHaveText(
+    "房間 LAN427 已經滿了，請朋友重新開一個房間。",
+  );
+  // The reason is shown on the page, not repeated as a toast.
+  await expect(page.locator(".toast")).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () => (window as typeof window & { __toasts?: number }).__toasts,
+    ),
+  ).toBeUndefined();
+  await card.getByRole("button", { name: "回到大廳" }).click();
+  await expect(page.locator(".lobby")).toBeVisible();
+});
+
+test("joining with an empty code explains itself and sends nothing", async ({
+  page,
+}, testInfo) => {
+  const sent: string[] = [];
+  await mockApp(page, snapshotFor("L14"), {
+    onMessage: (message) => sent.push(JSON.stringify(message)),
+  });
+  await page.goto("/");
+  if (kind(testInfo) !== "desktop") {
+    await page.locator(".friend-card .card-toggle").click();
+  }
+  const input = page.locator("#room-code");
+  await input.fill("  ");
+  await page.getByRole("button", { name: "加入房間" }).click();
+
+  // L14: pink field, the reason below it, focus kept in the field.
+  await expect(page.locator("#join-error")).toHaveText("請先輸入房號");
+  await expect(input).toHaveClass(/has-error/);
+  await expect(input).toHaveAttribute("aria-invalid", "true");
+  await expect(input).toBeFocused();
+  // The error state shows only the pink ring, no focus outline.
+  expect(
+    await input.evaluate((element) => getComputedStyle(element).outlineStyle),
+  ).toBe("none");
+  await page.waitForTimeout(300);
+  expect(sent.filter((message) => message.includes("room.join"))).toEqual([]);
+
+  await input.press("A");
+  await expect(page.locator("#join-error")).toHaveCount(0);
+  await expect(input).not.toHaveClass(/has-error/);
+  // Typing normally, the field shows a black focus frame.
+  await expect(input).toBeFocused();
+  expect(
+    await input.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return `${style.outlineStyle} ${style.outlineColor}`;
+    }),
+  ).toBe("solid rgb(27, 27, 31)");
+});
+
+test("a replaced tab stops reconnecting until you continue here", async ({
+  page,
+}) => {
+  const app = await mockApp(page, snapshotFor("P15"));
+  await page.goto("/play");
+  await expect(page.locator(".board")).toBeVisible();
+
+  await app.sockets[0].close({ code: 4001 });
+  await expect(
+    page.getByRole("heading", { name: "已在其他分頁開啟" }),
+  ).toBeVisible();
+  await expect(page.locator(".connection-pill")).toHaveCount(0);
+  await page.waitForTimeout(1500);
+  expect(app.sockets).toHaveLength(1);
+
+  await page.getByRole("button", { name: "在這裡繼續" }).click();
+  await expect(page.locator(".board")).toBeVisible();
+  expect(app.sockets).toHaveLength(2);
+});
+
+test("losing the connection pauses the board with an explanation", async ({
+  page,
+}) => {
+  const app = await mockApp(page, snapshotFor("P14"), {
+    refuseReconnects: true,
+  });
+  await page.goto("/play");
+  await expect(page.locator(".board")).toBeVisible();
+  await app.sockets[0].close({ code: 1011 });
+
+  await expect(page.locator(".overlay-card")).toContainText(
+    "連線中斷，正在重新連線…",
+  );
+  await expect(page.locator(".connection-pill")).toBeVisible();
+  await expect(page.locator(".board")).toHaveClass(/is-disabled/);
+});
+
+test("the paused countdown follows the server deadline", async ({ page }) => {
+  await page.clock.install({ time: SERVER_TIME * 1000 });
+  await page.clock.pauseAt(SERVER_TIME * 1000 + 30_000);
+  await mockApp(page, snapshotFor("P06"));
+  await page.goto("/play");
+
+  const chip = page.locator(".board-head:visible .move-chip.countdown");
+  await expect(chip).toHaveText("0:18");
+  await expect(page.locator(".board-head:visible")).toContainText(
+    "小安 離線了",
+  );
+  await expect(page.locator(".token-ring")).toHaveCount(1);
+  await page.clock.runFor(9_000);
+  await expect(chip).toHaveText("0:09");
+  await expect(chip).toHaveClass(/is-urgent/);
+});
+
+test("AI thinking is only announced after 300ms", async ({ page }) => {
+  await page.clock.install({ time: SERVER_TIME * 1000 });
+  await page.clock.pauseAt(SERVER_TIME * 1000 + 30_000);
+  await mockApp(page, snapshotFor("P05"));
+  await page.goto("/play");
+  await expect(page.locator(".board")).toBeVisible();
+  await expect(page.locator(".board-head:visible")).not.toContainText(
+    "AI 正在思考",
+  );
+  await page.clock.runFor(400);
+  await expect(page.locator(".board-head:visible")).toContainText(
+    "AI 正在思考",
+  );
+});
+
+test("a live move drops in and is announced; the first snapshot is static", async ({
+  page,
+}) => {
+  const start = snapshotFor("P03");
+  const app = await mockApp(page, start);
+  await page.goto("/play");
+  await expect(page.locator(".board")).toBeVisible();
+  await expect(page.locator(".token.is-dropping")).toHaveCount(0);
+  await expect(page.locator(".cell.is-last")).toHaveCount(1);
+
+  const game = start.game!;
+  const board = game.board.map((row) => [...row]);
+  board[3][4] = "green";
+  app.send({
+    ...start,
+    game: {
+      ...game,
+      revision: game.revision + 1,
+      status: "thinking",
+      turn: "pink",
+      board,
+      history: `${game.history}5`,
+    },
+  });
+  await expect(page.locator(".token.is-dropping")).toHaveCount(1);
+  await expect(page.locator(".game > .sr-only")).toHaveText("你在第 5 欄落子");
+});
+
+test("the keyboard plays through one tab stop on the board", async ({
   page,
 }, testInfo) => {
   test.skip(
-    testInfo.project.name.endsWith("-landscape"),
-    "The compact Room Code control is intentionally hidden in short landscape layouts.",
+    kind(testInfo) !== "desktop",
+    "Keyboard play is checked on desktop.",
   );
-  await forceLanCopyFallback(page);
-  await mockApp(page, privateSnapshot("playing"));
+  const sent: string[] = [];
+  await mockApp(page, snapshotFor("P03"), {
+    onMessage: (message) => sent.push(JSON.stringify(message)),
+  });
   await page.goto("/play");
+  await expect(page.locator(".board")).toBeVisible();
 
-  const copyButton = page.locator(".compact-code button");
-  await copyButton.click();
-  await expect(copyButton.locator("small")).toHaveText("已複製");
+  await page.locator(".col-target").nth(3).focus();
+  await expect(page.locator(".hand")).toBeVisible();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator(".col-target").nth(4)).toBeFocused();
+  // The focused column shows a plain black frame, no coloured halo.
+  expect(
+    await page
+      .locator(".col-target")
+      .nth(4)
+      .evaluate((element) => {
+        const style = getComputedStyle(element);
+        return [style.outlineStyle, style.outlineColor, style.boxShadow];
+      }),
+  ).toEqual(["solid", "rgb(27, 27, 31)", "none"]);
+  await expect(page.locator(".col-target[tabindex='0']")).toHaveCount(1);
+  await page.keyboard.press("Enter");
   await expect
-    .poll(() =>
-      page.evaluate(
-        () =>
-          (window as typeof window & { __copiedRoomCode?: string })
-            .__copiedRoomCode,
-      ),
-    )
-    .toBe("LAN427");
+    .poll(() => sent.filter((message) => message.includes("game.move")))
+    .toEqual([JSON.stringify({ type: "game.move", payload: { column: 4 } })]);
+});
+
+test("finished games show the approved outcome for each case", async ({
+  page,
+}, testInfo) => {
+  test.skip(kind(testInfo) !== "desktop", "Copy is the same on every size.");
+  const cases: Array<[PageId, string, string[]]> = [
+    ["P08", "Super AI 拿下這局", ["再次挑戰", "離開"]],
+    ["P09", "平手！", ["再來一局", "離開"]],
+    ["P10", "你獲勝！小安 離線逾時", ["再來一局", "離開"]],
+    ["P11", "小安 離開了房間", ["回到大廳"]],
+    ["P12", "AI 求解器暫時無法使用", ["重新開始", "離開"]],
+    ["P13", "你贏了！", ["等待對手回應…", "離開"]],
+    ["P16", "離線逾時，這局判負", ["再來一局", "離開"]],
+    ["P17", "小安 拿下這局", ["好，再來一局", "離開"]],
+    ["P18", "你贏了！", ["回到大廳"]],
+  ];
+  for (const [id, title, buttons] of cases) {
+    const tab = await page.context().newPage();
+    await mockApp(tab, snapshotFor(id));
+    await tab.goto("/play");
+    const card = tab.locator(".result-card");
+    await expect(card.locator("h2"), id).toHaveText(title);
+    await expect(card.locator(".result-actions .btn"), id).toHaveText(buttons);
+    if (id === "P18") {
+      await expect(card.locator(".rematch-row")).toHaveText(
+        "小安 已離開房間，無法再來一局。",
+      );
+    }
+    if (id === "P17") {
+      await expect(card.locator(".rematch-row")).toContainText(
+        "這局換 小安 先下",
+      );
+    }
+    await tab.close();
+  }
 });

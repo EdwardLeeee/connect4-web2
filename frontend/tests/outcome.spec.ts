@@ -8,6 +8,7 @@ function finished(overrides: Partial<GameState>): GameState {
     status: "finished",
     board: Array.from({ length: 6 }, () => Array(7).fill(null)),
     history: "4455667",
+    first: "green",
     turn: "green",
     you: "green",
     winner: "green",
