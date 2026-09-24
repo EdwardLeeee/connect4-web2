@@ -24,7 +24,9 @@ export default defineConfig({
     baseURL: "http://127.0.0.1:5173",
     locale: "zh-TW",
     colorScheme: "light",
-    reducedMotion: "reduce",
+    // reducedMotion is not a test option of its own; outside contextOptions
+    // it is silently ignored and every test would run with motion on.
+    contextOptions: { reducedMotion: "reduce" },
   },
   expect: {
     toHaveScreenshot: {
