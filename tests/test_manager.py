@@ -74,13 +74,17 @@ def replay_history(history: str, first: str) -> list[list[str | None]]:
     return board
 
 
-async def start_ai(reconnect_seconds: int = 30) -> tuple[GameManager, str, FakeSocket]:
+async def start_ai(
+    reconnect_seconds: int = 30,
+    ai_min_think_seconds: float = 0,
+) -> tuple[GameManager, str, FakeSocket]:
     sessions = SessionStore()
     player = add_session(sessions, "Ada")
     manager = GameManager(
         sessions,
         CentreSolver(),  # type: ignore[arg-type]
         reconnect_seconds=reconnect_seconds,
+        ai_min_think_seconds=ai_min_think_seconds,
     )
     socket = FakeSocket()
     await manager.connect(player, socket)  # type: ignore[arg-type]
@@ -96,7 +100,11 @@ async def test_ai_move_is_computed_server_side(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(asyncio, "to_thread", run_inline)
     sessions = SessionStore()
     player = add_session(sessions, "Ada")
-    manager = GameManager(sessions, CentreSolver())  # type: ignore[arg-type]
+    manager = GameManager(
+        sessions,
+        CentreSolver(),  # type: ignore[arg-type]
+        ai_min_think_seconds=0,
+    )
     socket = FakeSocket()
     await manager.connect(player, socket)  # type: ignore[arg-type]
 
@@ -401,3 +409,70 @@ async def test_ai_rematch_after_solver_failure_restarts(monkeypatch: pytest.Monk
     assert view["status"] == "playing"
     assert view["history"] == ""
     assert view["first"] == "green"
+
+
+@pytest.mark.asyncio
+async def test_ai_waits_for_the_minimum_think_time() -> None:
+    manager, player, _ = await start_ai(ai_min_think_seconds=0.3)
+    started = time.monotonic()
+    await manager.handle(player, {"type": "game.move", "payload": {"column": 2}})
+    game = manager._game_for(player)
+    assert game is not None
+
+    await asyncio.sleep(0.1)
+    assert game.status == "thinking"
+    assert game.history == "3"
+
+    await next(iter(manager.ai_tasks.values()))
+    assert time.monotonic() - started >= 0.3
+    assert game.history == "34"
+    assert game.status == "playing"
+
+
+@pytest.mark.asyncio
+async def test_solver_failure_is_reported_without_waiting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fail(_function: Any, *_args: Any) -> Any:
+        raise RuntimeError("solver offline")
+
+    monkeypatch.setattr(asyncio, "to_thread", fail)
+    manager, player, _ = await start_ai(ai_min_think_seconds=5)
+    await manager.handle(player, {"type": "game.move", "payload": {"column": 2}})
+    await asyncio.wait_for(next(iter(manager.ai_tasks.values())), timeout=1)
+
+    view = manager.snapshot(player)["game"]
+    assert view["status"] == "error"
+    assert view["result_reason"] == "solver_unavailable"
+
+
+@pytest.mark.asyncio
+async def test_leaving_while_ai_thinks_cancels_the_move() -> None:
+    manager, player, socket = await start_ai(ai_min_think_seconds=0.3)
+    await manager.handle(player, {"type": "game.move", "payload": {"column": 2}})
+    task = next(iter(manager.ai_tasks.values()))
+
+    await manager.handle(player, {"type": "game.leave", "payload": {}})
+    await asyncio.gather(task, return_exceptions=True)
+
+    assert task.cancelled()
+    assert not manager.rooms
+    assert manager.snapshot(player)["game"] is None
+    assert all(message["type"] != "error" for message in socket.messages)
+
+
+@pytest.mark.asyncio
+async def test_ai_moves_after_player_disconnects_while_thinking() -> None:
+    manager, player, socket = await start_ai(ai_min_think_seconds=0.2)
+    await manager.handle(player, {"type": "game.move", "payload": {"column": 2}})
+    game = manager._game_for(player)
+    assert game is not None
+
+    await manager.disconnect(player, socket)  # type: ignore[arg-type]
+    await next(iter(manager.ai_tasks.values()))
+    assert game.history == "34"
+    assert game.status == "playing"
+
+    replacement = FakeSocket()
+    await manager.connect(player, replacement)  # type: ignore[arg-type]
+    assert replacement.messages[-1]["payload"]["game"]["history"] == "34"

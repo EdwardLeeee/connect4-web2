@@ -16,6 +16,7 @@ from .solver import PerfectSolver
 
 ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 RECONNECT_SECONDS = 30
+AI_MIN_THINK_SECONDS = 0.5
 AI_ID = "__perfect_ai__"
 # The frontend stops reconnecting on this close code; do not renumber it.
 CLOSE_REPLACED = 4001
@@ -29,10 +30,12 @@ class GameManager:
         solver: PerfectSolver | None = None,
         *,
         reconnect_seconds: int = RECONNECT_SECONDS,
+        ai_min_think_seconds: float = AI_MIN_THINK_SECONDS,
     ) -> None:
         self.sessions = sessions or SessionStore()
         self.solver = solver or PerfectSolver()
         self.reconnect_seconds = reconnect_seconds
+        self.ai_min_think_seconds = ai_min_think_seconds
         self.rooms: dict[str, Game] = {}
         self.room_for: dict[str, str] = {}
         self.connections: dict[str, WebSocket] = {}
@@ -219,6 +222,8 @@ class GameManager:
     async def _run_ai(self, room_id: str, history: str) -> None:
         # Guard on the position rather than the revision: reconnects bump the revision while
         # the AI thinks, and only this task can change the position until it finishes.
+        loop = asyncio.get_running_loop()
+        started = loop.time()
         try:
             column = await asyncio.to_thread(self.solver.best_move, history)
         except Exception:
@@ -231,6 +236,12 @@ class GameManager:
                     game.revision += 1
             await self.broadcast(room_id)
             return
+
+        # Pacing only, so the AI does not answer instantly: the move is still the exact
+        # solution, and solver failures above are reported without waiting.
+        remaining = self.ai_min_think_seconds - (loop.time() - started)
+        if remaining > 0:
+            await asyncio.sleep(remaining)
 
         async with self.lock:
             game = self.rooms.get(room_id)

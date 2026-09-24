@@ -117,3 +117,5 @@
 
 - 單一 uvicorn worker；房間、配對與 session 都存在記憶體裡，程序重啟就會全部清空。
 - 求解器沒有啟發式或計時備援。故障時 `status` 為 `error`，`result_reason` 為 `solver_unavailable`。
+- AI 局在玩家落子後進入 `thinking`，至少維持 0.5 秒才落子；求解超過 0.5 秒時不再額外等待。
+  這只影響時間，不影響下法；求解器故障會立即回報 `error`，不等待。
