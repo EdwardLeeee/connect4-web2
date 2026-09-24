@@ -2,7 +2,19 @@ import { defineStore } from "pinia";
 import { i18n } from "../i18n";
 import type { Snapshot } from "../types";
 
-type ConnectionState = "connecting" | "online" | "offline";
+type ConnectionState = "connecting" | "online" | "offline" | "replaced";
+
+// The server closes an older socket with this code when the same session opens
+// a newer one (manager.py CLOSE_REPLACED). Reconnecting would evict the newer tab.
+const CLOSE_REPLACED = 4001;
+
+const PROFILE_ERRORS = new Set(["invalid_nickname", "invalid_locale"]);
+
+export class ProfileError extends Error {
+  constructor(readonly code: string) {
+    super(code);
+  }
+}
 
 export const useGameStore = defineStore("game", {
   state: () => ({
@@ -79,9 +91,16 @@ export const useGameStore = defineStore("game", {
           this.errorCode = String(message.payload?.code ?? "generic");
         }
       });
-      socket.addEventListener("close", () => {
+      socket.addEventListener("close", (event) => {
         if (this.socket === socket) this.socket = null;
         if (this.deliberatelyClosed) return;
+        if (event.code === CLOSE_REPLACED) {
+          this.deliberatelyClosed = true;
+          this.connection = "replaced";
+          if (this.retryTimer !== null) window.clearTimeout(this.retryTimer);
+          this.retryTimer = null;
+          return;
+        }
         this.connection = "offline";
         const delay = Math.min(500 * 2 ** this.retryCount, 5000);
         this.retryCount += 1;
@@ -112,13 +131,29 @@ export const useGameStore = defineStore("game", {
     },
 
     async saveProfile(nickname: string, locale: "zh-TW" | "en") {
-      const response = await fetch("/api/session", {
-        method: "PATCH",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nickname, locale }),
-      });
-      if (!response.ok) throw new Error("invalid_profile");
+      let response: Response;
+      try {
+        response = await fetch("/api/session", {
+          method: "PATCH",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nickname, locale }),
+        });
+      } catch {
+        throw new ProfileError("generic");
+      }
+      if (response.status === 422) {
+        // Session rules reply {"detail": "<code>"}; request validation replies
+        // with a list of issues, which has no user-facing code.
+        const body = await response.json().catch(() => null);
+        const detail: unknown = body?.detail;
+        throw new ProfileError(
+          typeof detail === "string" && PROFILE_ERRORS.has(detail)
+            ? detail
+            : "invalid_payload",
+        );
+      }
+      if (!response.ok) throw new ProfileError("generic");
       if (this.snapshot) {
         this.snapshot.session = await response.json();
       }

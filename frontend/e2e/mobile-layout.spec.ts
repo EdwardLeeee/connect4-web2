@@ -1,7 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { Snapshot } from "../src/types";
 
+const SERVER_TIME = 1_790_000_000;
+
 const gameSnapshot: Snapshot = {
+  server_time: SERVER_TIME,
   session: { nickname: "曜宇", locale: "zh-TW" },
   queue: { searching: false },
   room: { id: "room", code: null, mode: "ai" },
@@ -16,24 +19,43 @@ const gameSnapshot: Snapshot = {
       [null, null, "green", "pink", "green", null, null],
       [null, null, "pink", "green", "pink", null, null],
     ],
+    history: "433554",
     turn: "green",
     you: "green",
     winner: null,
     winning_cells: [],
     result_reason: null,
     players: {
-      green: { nickname: "曜宇", connected: true, is_ai: false },
-      pink: { nickname: "Perfect AI", connected: true, is_ai: true },
+      green: {
+        nickname: "曜宇",
+        connected: true,
+        is_ai: false,
+        grace_deadline: null,
+      },
+      pink: {
+        nickname: "Perfect AI",
+        connected: true,
+        is_ai: true,
+        grace_deadline: null,
+      },
     },
+    rematch: { green: false, pink: false },
     rematch_requested: false,
+    rematch_available: false,
+    series: { you: 0, opponent: 0, draws: 0 },
     grace_deadline: null,
   },
 };
 
 const emptyBoard = Array.from({ length: 6 }, () => Array<null>(7).fill(null));
 
+function human(nickname: string) {
+  return { nickname, connected: true, is_ai: false, grace_deadline: null };
+}
+
 function privateSnapshot(status: "waiting" | "playing" | "finished"): Snapshot {
   return {
+    server_time: SERVER_TIME,
     session: { nickname: "曜宇", locale: "zh-TW" },
     queue: { searching: false },
     room: { id: "private-room", code: "LAN427", mode: "private" },
@@ -42,17 +64,14 @@ function privateSnapshot(status: "waiting" | "playing" | "finished"): Snapshot {
       revision: 2,
       status,
       board: status === "waiting" ? emptyBoard : gameSnapshot.game!.board,
+      history: status === "waiting" ? "" : gameSnapshot.game!.history,
+      rematch_available: status === "finished",
       winner: status === "finished" ? "green" : null,
       result_reason: status === "finished" ? "connect_four" : null,
       players:
         status === "waiting"
-          ? {
-              green: { nickname: "曜宇", connected: true, is_ai: false },
-            }
-          : {
-              green: { nickname: "曜宇", connected: true, is_ai: false },
-              pink: { nickname: "小安", connected: true, is_ai: false },
-            },
+          ? { green: human("曜宇") }
+          : { green: human("曜宇"), pink: human("小安") },
     },
   };
 }
@@ -98,6 +117,7 @@ async function forceLanCopyFallback(page: Page) {
 
 function lobbySnapshot(locale: "zh-TW" | "en"): Snapshot {
   return {
+    server_time: SERVER_TIME,
     session: { nickname: locale === "zh-TW" ? "曜宇" : "Taylor", locale },
     queue: { searching: false },
     room: null,

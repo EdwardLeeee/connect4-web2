@@ -27,13 +27,37 @@ class FakeWebSocket {
 
   send() {}
 
-  emit(type: string) {
+  emit(type: string, init: CloseEventInit = {}) {
     if (type === "open") this.readyState = FakeWebSocket.OPEN;
     if (type === "close") this.readyState = FakeWebSocket.CLOSED;
+    const event =
+      type === "close" ? new CloseEvent(type, init) : new Event(type);
     for (const listener of this.listeners.get(type) ?? []) {
-      listener(new Event(type));
+      listener(event);
     }
   }
+}
+
+function stubSessionFetch() {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ nickname: "Player", locale: "en" }),
+    })),
+  );
+}
+
+function stubProfileResponse(status: number, body: unknown) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => ({
+      ok: status < 400,
+      status,
+      json: async () => body,
+    })),
+  );
 }
 
 describe("game connection recovery", () => {
@@ -82,5 +106,80 @@ describe("game connection recovery", () => {
 
     expect(events).toEqual(["session", "socket", "session", "socket"]);
     expect(FakeWebSocket.instances).toHaveLength(2);
+  });
+
+  it("stops reconnecting when a newer tab replaces the connection", async () => {
+    stubSessionFetch();
+    const store = useGameStore();
+    await store.initialise();
+    FakeWebSocket.instances[0].emit("open");
+
+    FakeWebSocket.instances[0].emit("close", { code: 4001 });
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect(store.connection).toBe("replaced");
+    expect(FakeWebSocket.instances).toHaveLength(1);
+    expect(store.canMove).toBe(false);
+  });
+
+  it("keeps retrying after an ordinary disconnect", async () => {
+    stubSessionFetch();
+    const store = useGameStore();
+    await store.initialise();
+    FakeWebSocket.instances[0].emit("open");
+
+    FakeWebSocket.instances[0].emit("close", { code: 1006 });
+    expect(store.connection).toBe("offline");
+    await vi.advanceTimersByTimeAsync(500);
+
+    expect(FakeWebSocket.instances).toHaveLength(2);
+  });
+});
+
+describe("profile errors", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("reports the session rule that rejected the profile", async () => {
+    stubProfileResponse(422, { detail: "invalid_nickname" });
+    const store = useGameStore();
+
+    await expect(store.saveProfile(" ", "en")).rejects.toMatchObject({
+      code: "invalid_nickname",
+    });
+  });
+
+  it("treats request validation issues as an invalid payload", async () => {
+    stubProfileResponse(422, {
+      detail: [{ loc: ["body", "nickname"], type: "string_type" }],
+    });
+    const store = useGameStore();
+
+    await expect(store.saveProfile("Ann", "en")).rejects.toMatchObject({
+      code: "invalid_payload",
+    });
+  });
+
+  it("does not blame the input for server or network failures", async () => {
+    stubProfileResponse(500, null);
+    const store = useGameStore();
+    await expect(store.saveProfile("Ann", "en")).rejects.toMatchObject({
+      code: "generic",
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+    );
+    await expect(store.saveProfile("Ann", "en")).rejects.toMatchObject({
+      code: "generic",
+    });
   });
 });

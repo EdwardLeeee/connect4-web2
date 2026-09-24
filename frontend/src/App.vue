@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
-import { useGameStore } from "./stores/game";
+import { ProfileError, useGameStore } from "./stores/game";
 
 const store = useGameStore();
 const router = useRouter();
@@ -11,11 +11,14 @@ const { t } = useI18n();
 const profileOpen = ref(false);
 const nickname = ref("");
 const locale = ref<"zh-TW" | "en">("zh-TW");
-const profileError = ref(false);
+const profileError = ref<string | null>(null);
 
-const connectionLabel = computed(() =>
-  store.connection === "online" ? "" : t(`connection.${store.connection}`),
-);
+const connectionLabel = computed(() => {
+  if (store.connection === "online") return "";
+  // A replaced tab keeps the offline wording until its own design is approved.
+  const state = store.connection === "replaced" ? "offline" : store.connection;
+  return t(`connection.${state}`);
+});
 
 watch(
   () => store.hasActivity,
@@ -44,12 +47,12 @@ onMounted(async () => {
 });
 
 async function saveProfile() {
-  profileError.value = false;
+  profileError.value = null;
   try {
     await store.saveProfile(nickname.value, locale.value);
     profileOpen.value = false;
-  } catch {
-    profileError.value = true;
+  } catch (error) {
+    profileError.value = error instanceof ProfileError ? error.code : "generic";
   }
 }
 </script>
@@ -130,7 +133,7 @@ async function saveProfile() {
             </span>
           </label>
           <p v-if="profileError" class="form-error">
-            {{ t("errors.invalid_payload") }}
+            {{ t(`errors.${profileError}`, t("errors.generic")) }}
           </p>
           <div class="button-row">
             <button

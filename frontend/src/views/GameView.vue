@@ -5,11 +5,22 @@ import ConnectBoard from "../components/ConnectBoard.vue";
 import PlayerStrip from "../components/PlayerStrip.vue";
 import { useGameStore } from "../stores/game";
 import { copyText } from "../utils/clipboard";
+import { gameOutcome, type GameOutcome } from "../utils/outcome";
 
 const store = useGameStore();
 const { t } = useI18n();
 const copied = ref(false);
 let copiedTimer: number | null = null;
+
+// Outcomes without approved wording yet reuse the closest existing message.
+const outcomeMessage: Record<GameOutcome, string> = {
+  win: "game.win",
+  lose: "game.lose",
+  draw: "game.draw",
+  forfeitWin: "game.forfeitWin",
+  forfeitLose: "game.lose",
+  leftWin: "game.win",
+};
 
 const statusTitle = computed(() => {
   const game = store.game;
@@ -17,12 +28,8 @@ const statusTitle = computed(() => {
   if (game.status === "thinking") return t("game.aiThinking");
   if (game.status === "paused") return t("game.paused");
   if (game.status === "error") return t("game.solverError");
-  if (game.status === "finished") {
-    if (game.result_reason === "draw") return t("game.draw");
-    if (game.result_reason === "forfeit" && game.winner === game.you)
-      return t("game.forfeitWin");
-    return game.winner === game.you ? t("game.win") : t("game.lose");
-  }
+  const outcome = gameOutcome(game);
+  if (outcome) return t(outcomeMessage[outcome]);
   return store.canMove ? t("game.yourTurn") : t("game.opponentTurn");
 });
 

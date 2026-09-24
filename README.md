@@ -108,5 +108,3 @@ journalctl --user-unit connect4.service --follow
 只有原生精確求解器自測通過，`GET /api/health` 才回傳 HTTP 200。更新版本時
 重新 `git pull --ff-only`、建置相同 production tag，再執行
 `systemctl --user restart connect4.service`。程序重啟會清除進行中的房間與配對。
-
-設計基準位於 [Figma](https://www.figma.com/design/TGSIdojzAJC6BKL31CbW8m)。
