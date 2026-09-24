@@ -1,18 +1,17 @@
 <script setup lang="ts">
-// L12/L13: an invite link lands here. Joining takes a tap; if the room cannot
-// be joined, the reason replaces the invitation on the same page.
-import { computed, ref, watch } from "vue";
+// L12/L13: an invite link lands here. The guest fills in the nickname their
+// friend will see, and joining takes a tap; if the room cannot be joined, the
+// reason replaces the invitation on the same page.
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
-import { useProfileSheet } from "../composables/useProfileSheet";
-import { useGameStore } from "../stores/game";
+import { ProfileError, useGameStore } from "../stores/game";
 import AppIcon from "./AppIcon.vue";
 
 const props = defineProps<{ code: string }>();
 const store = useGameStore();
 const router = useRouter();
 const { t } = useI18n();
-const profileOpen = useProfileSheet();
 
 const REASONS: Record<string, string> = {
   room_not_found: "lobby.inviteGoneBody",
@@ -22,6 +21,36 @@ const REASONS: Record<string, string> = {
 const joining = ref(false);
 const failure = ref<string | null>(null);
 const online = computed(() => store.connection === "online");
+
+// L12 v2 (round 7): prefilled with this device's nickname, focused on entry.
+// iPhone Safari keeps its keyboard down until the field is tapped.
+const nicknameEl = ref<HTMLInputElement | null>(null);
+const nickname = ref(store.session?.nickname ?? "");
+const edited = ref(false);
+const saveError = ref<string | null>(null);
+const nicknameEmpty = computed(() => nickname.value.trim() === "");
+const fieldError = computed(() =>
+  nicknameEmpty.value
+    ? t("profile.errNicknameEmpty")
+    : saveError.value && t(`errors.${saveError.value}`, t("errors.generic")),
+);
+
+// The session can arrive after the page; fill it in unless the guest typed.
+watch(
+  () => store.session?.nickname,
+  (name) => {
+    if (name && !edited.value) nickname.value = name;
+  },
+);
+
+onMounted(() => {
+  void nextTick(() => nicknameEl.value?.focus());
+});
+
+function onInput() {
+  edited.value = true;
+  saveError.value = null;
+}
 
 watch(
   () => store.errorCode,
@@ -37,8 +66,21 @@ watch(
   { flush: "sync" },
 );
 
-function join() {
+async function join() {
+  if (!online.value || nicknameEmpty.value || joining.value) return;
   joining.value = true;
+  saveError.value = null;
+  // Save a changed nickname first, so the friend sees it from the first
+  // snapshot of the game; a failed save keeps the guest on this page.
+  if (nickname.value.trim() !== store.session?.nickname) {
+    try {
+      await store.saveProfile(nickname.value, store.session?.locale ?? "zh-TW");
+    } catch (error) {
+      joining.value = false;
+      saveError.value = error instanceof ProfileError ? error.code : "generic";
+      return;
+    }
+  }
   store.send("room.join", { code: props.code });
 }
 
@@ -64,24 +106,42 @@ function toLobby() {
       </template>
       <template v-else>
         <h1>{{ t("lobby.inviteTitle") }}</h1>
-        <p class="lead">{{ t("lobby.inviteBody") }}</p>
+        <p class="lead">{{ t("lobby.inviteBodyName") }}</p>
         <div class="room-code-block">
           <span>{{ t("lobby.inviteRoom") }}</span>
           <strong>{{ code }}</strong>
         </div>
-        <p class="invite-as">
-          <AppIcon name="user" />
-          <span>{{
-            t("lobby.inviteAs", { name: store.session?.nickname ?? "…" })
-          }}</span>
-          <button class="link-btn" type="button" @click="profileOpen = true">
-            {{ t("lobby.editName") }}
-          </button>
+        <label class="invite-name">
+          <span class="field-label">{{ t("lobby.inviteNameLabel") }}</span>
+          <input
+            ref="nicknameEl"
+            v-model="nickname"
+            :class="{ 'has-error': fieldError }"
+            maxlength="18"
+            autocomplete="nickname"
+            enterkeyhint="go"
+            :aria-invalid="Boolean(fieldError)"
+            aria-describedby="invite-name-msg"
+            @input="onInput"
+            @keydown.enter.prevent="join"
+          />
+        </label>
+        <p
+          v-if="fieldError"
+          id="invite-name-msg"
+          class="form-error invite-name-msg"
+          role="alert"
+        >
+          <AppIcon name="warn" />
+          {{ fieldError }}
+        </p>
+        <p v-else id="invite-name-msg" class="invite-name-msg hint">
+          {{ t("lobby.inviteNameHint") }}
         </p>
         <button
           class="btn primary big"
           type="button"
-          :disabled="!online"
+          :disabled="!online || nicknameEmpty"
           @click="join"
         >
           <AppIcon name="arrow" />

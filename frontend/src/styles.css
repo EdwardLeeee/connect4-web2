@@ -3255,32 +3255,34 @@ select:focus-visible {
   background: var(--pink-soft);
 }
 
-.invite-as {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: var(--muted);
+/* L12 v2 (round 7): the guest's nickname, prefilled and focused */
+.invite-name {
+  width: 100%;
+  display: grid;
+  gap: 6px;
+  text-align: left;
+}
+
+.invite-name .field-label {
+  margin: 0;
   font-size: var(--fs-15);
-  font-weight: 600;
 }
 
-.invite-as .icon {
-  width: 18px;
-  height: 18px;
+.invite-name input {
+  height: 56px;
+  font-size: 20px;
+  font-weight: 700;
 }
 
-.link-btn {
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0 6px;
-  border: 0;
-  background: none;
-  color: var(--ink);
-  font-weight: 800;
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 4px;
+.invite-name-msg {
+  width: 100%;
+  margin: -6px 0 2px;
+  text-align: left;
+}
+
+.invite-name-msg.hint {
+  color: var(--muted);
+  font-size: var(--fs-13);
 }
 
 .emblem-icon {

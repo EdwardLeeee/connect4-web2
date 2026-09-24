@@ -792,39 +792,109 @@ test("phones share the invite through the system sheet", async ({
   expect(shared?.text).toContain("LAN427");
 });
 
-test("an invite link opens the invite page and joins only on a tap", async ({
+test("an invite link asks for a nickname and joins only on a tap", async ({
   page,
 }) => {
-  const sent: string[] = [];
+  // Saves and joins land in one list, so their order can be checked.
+  const events: string[] = [];
   await mockApp(page, snapshotFor("L12"), {
-    onMessage: (message) => sent.push(JSON.stringify(message)),
+    onMessage: (message) => {
+      if (message.type === "room.join") {
+        events.push(`join ${JSON.stringify(message.payload)}`);
+      }
+    },
+  });
+  await page.route("**/api/session", async (route) => {
+    if (route.request().method() !== "PATCH") return route.fallback();
+    const body = route.request().postDataJSON();
+    events.push(`save ${body.nickname}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(body),
+    });
   });
   await page.goto("/?room=lan427");
 
+  // L12 v2: prefilled with this device's nickname and focused.
   const card = page.locator(".invite-card");
+  const nickname = card.getByRole("textbox", { name: "你的暱稱" });
+  const join = card.getByRole("button", { name: "加入房間" });
   await expect(card.locator("h1")).toHaveText("朋友邀請你一起玩");
+  await expect(card.locator(".lead")).toHaveText(
+    "填好你的暱稱，按「加入房間」就開始對戰。",
+  );
   await expect(card.locator(".room-code-block strong")).toHaveText("LAN427");
-  await expect(card.locator(".invite-as")).toContainText("你的暱稱：曜宇");
+  await expect(nickname).toHaveValue("曜宇");
+  await expect(nickname).toBeFocused();
+  await expect(card.locator(".invite-name-msg")).toHaveText(
+    "你的朋友會看到這個名字呦",
+  );
   await expect(page.locator(".lobby")).toHaveCount(0);
   await expectTouchSafe(page, ".invite-card button");
   expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
   await page.waitForTimeout(300);
-  expect(sent.filter((message) => message.includes("room.join"))).toEqual([]);
+  expect(events).toEqual([]);
 
-  await card.getByRole("button", { name: "修改" }).click();
-  await expect(page.locator(".profile-sheet")).toBeVisible();
-  await page.locator(".profile-sheet .btn.secondary").click();
+  // Empty: the L10 error, and joining is off, by button or Enter.
+  await nickname.fill("  ");
+  await expect(card.locator(".invite-name-msg")).toHaveText("請先輸入暱稱");
+  await expect(nickname).toHaveClass(/has-error/);
+  await expect(nickname).toHaveAttribute("aria-invalid", "true");
+  await expect(join).toBeDisabled();
+  await nickname.press("Enter");
 
-  await card.getByRole("button", { name: "加入房間" }).click();
+  await nickname.fill("Ann");
+  await expect(card.locator(".invite-name-msg")).toHaveText(
+    "你的朋友會看到這個名字呦",
+  );
+  await expect(join).toBeEnabled();
+  await join.click();
+  // The new nickname is saved before the room is joined.
   await expect
-    .poll(() => sent.filter((message) => message.includes("room.join")))
-    .toEqual([
-      JSON.stringify({ type: "room.join", payload: { code: "LAN427" } }),
-    ]);
+    .poll(() => events)
+    .toEqual(["save Ann", 'join {"code":"LAN427"}']);
 
   await card.getByRole("button", { name: "不加入，先去大廳" }).click();
   await expect(page.locator(".lobby")).toBeVisible();
   await expect(page).toHaveURL(/\/$/);
+});
+
+test("a rejected nickname keeps the guest on the invite page", async ({
+  page,
+}) => {
+  const joins: unknown[] = [];
+  await mockApp(page, snapshotFor("L12"), {
+    onMessage: (message) => {
+      if (message.type === "room.join") joins.push(message.payload);
+    },
+  });
+  await page.route("**/api/session", async (route) => {
+    if (route.request().method() !== "PATCH") return route.fallback();
+    await route.fulfill({
+      status: 422,
+      contentType: "application/json",
+      body: JSON.stringify({ detail: "invalid_nickname" }),
+    });
+  });
+  await page.goto("/?room=LAN427");
+
+  const card = page.locator(".invite-card");
+  const nickname = card.getByRole("textbox", { name: "你的暱稱" });
+  await nickname.fill("Ann");
+  await nickname.press("Enter");
+  await expect(card.locator(".invite-name-msg")).toHaveText(
+    "暱稱需為 1–18 個字。",
+  );
+  await expect(nickname).toHaveClass(/has-error/);
+  await page.waitForTimeout(300);
+  expect(joins).toEqual([]);
+
+  // Typing again clears the server's message.
+  await nickname.fill("Anne");
+  await expect(card.locator(".invite-name-msg")).toHaveText(
+    "你的朋友會看到這個名字呦",
+  );
 });
 
 test("a room that cannot be joined is explained on the invite page", async ({
@@ -840,6 +910,11 @@ test("a room that cannot be joined is explained on the invite page", async ({
           );
       }
     },
+  });
+  // An unchanged nickname joins without saving it again.
+  const saves: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "PATCH") saves.push(request.url());
   });
   await page.goto("/?room=LAN427");
   // Count every toast that appears, even one that fades out again.
@@ -864,6 +939,7 @@ test("a room that cannot be joined is explained on the invite page", async ({
       () => (window as typeof window & { __toasts?: number }).__toasts,
     ),
   ).toBeUndefined();
+  expect(saves).toEqual([]);
   await card.getByRole("button", { name: "回到大廳" }).click();
   await expect(page.locator(".lobby")).toBeVisible();
 });
