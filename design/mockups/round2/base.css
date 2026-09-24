@@ -2697,6 +2697,7 @@ input.is-focused {
 }
 
 .link-btn {
+  min-width: 44px;
   min-height: 44px;
   padding: 0 6px;
   border: 0;
