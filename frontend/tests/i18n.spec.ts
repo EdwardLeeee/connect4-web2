@@ -1,3 +1,5 @@
+/// <reference types="node" />
+// vitest 5 globals no longer bring in Node types; this test reads backend sources.
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
