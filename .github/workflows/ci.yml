@@ -46,6 +46,8 @@ jobs:
         working-directory: frontend
 
   container:
+    # Build and publish only what passed every test; a red test job blocks release.
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
