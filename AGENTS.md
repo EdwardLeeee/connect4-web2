@@ -2,12 +2,11 @@
 
 ## Project Structure & Module Organization
 
-`backend/connect4_app/` contains the FastAPI application. Keep game rules in `domain.py`, anonymous sessions in `sessions.py`, WebSocket room orchestration in `manager.py`, and HTTP/ASGI wiring in `app.py`. The PyO3 exact solver lives in `native_solver/src/`. Vue 3 source is under `frontend/src/`; component tests use `frontend/tests/`, mobile browser tests use `frontend/e2e/`, and Python tests use `tests/`. Production assets are generated in `frontend/dist/` and must not be edited manually.
-Podman packaging is defined by `Containerfile`; keep host deployment examples under `deploy/`.
+`backend/connect4_app/` contains the FastAPI application. Keep game rules in `domain.py`, anonymous sessions in `sessions.py`, WebSocket room orchestration in `manager.py`, and HTTP/ASGI wiring in `app.py`. Production assets are generated in `frontend/dist/` and must not be edited manually.
 
 ## Build, Test, and Development Commands
 
-Create `.venv`, then run `.venv/bin/python -m pip install -e '.[dev]'`; maturin compiles the Rust extension during installation. Run `npm --prefix frontend install` for browser dependencies. Start local services with:
+Create `.venv`, then run `.venv/bin/python -m pip install -e '.[dev]'`; maturin compiles the Rust extension during installation. Start local services with:
 
 ```bash
 .venv/bin/uvicorn connect4_app.app:app --port 55555 --reload
@@ -19,11 +18,11 @@ Validate production packaging with `podman build --format docker --file Containe
 
 ## Coding Style & Naming Conventions
 
-Python uses four spaces, type hints, Ruff, `snake_case`, and 100-character lines. Rust follows `rustfmt`; keep Python-facing functions small and return `PyResult`. Vue/TypeScript uses two spaces, Prettier, `PascalCase.vue` components, `camelCase` values, and kebab-case CSS classes. Reuse the design tokens in `frontend/src/styles.css`.
+Python uses four spaces, type hints, Ruff, `snake_case`, and 100-character lines. Keep Python-facing functions small and return `PyResult`. Vue/TypeScript uses two spaces, Prettier, `PascalCase.vue` components, `camelCase` values, and kebab-case CSS classes. Reuse the design tokens in `frontend/src/styles.css`.
 
 ## Testing Guidelines
 
-Run `.venv/bin/pytest`, `.venv/bin/ruff check backend tests`, `npm --prefix frontend test`, and `npm --prefix frontend run build`. Run Playwright with `npm --prefix frontend run test:e2e` after installing Chromium/WebKit. Preserve the iPhone/Galaxy projects and 0.5% screenshot-diff ceiling. Name tests `test_*.py` or `*.spec.ts`; cover invalid turns and reconnect races as well as happy paths.
+Run Playwright with `npm --prefix frontend run test:e2e` after installing Chromium/WebKit. Preserve the iPhone/Galaxy projects and 0.5% screenshot-diff ceiling. Name tests `test_*.py` or `*.spec.ts`; cover invalid turns and reconnect races as well as happy paths.
 
 ## Commit & Pull Request Guidelines
 
