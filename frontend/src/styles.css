@@ -1723,7 +1723,10 @@ input.is-focused {
 /* phone portrait */
 @media (max-width: 620px) {
   :root {
-    --slot: 48px;
+    /* Round 7 (08): 48px until the 394px board no longer fits between the
+       14px margins (422px screens); below that the cell shrinks. 86px is the
+       margins, gaps, padding and frame: 28 + 6 × 6 + 2 × 9 + 2 × 2. */
+    --slot: min(48px, calc((100vw - 86px) / 7));
     --slot-gap: 6px;
     --board-pad: 9px;
     --sx: 14px;
@@ -2075,6 +2078,13 @@ input.is-focused {
 
   .head-note {
     font-size: var(--fs-13);
+  }
+
+  /* The board and its rail are centred under the match card (round 7, 08). */
+  .rail,
+  .board {
+    width: var(--board-w);
+    margin-inline: auto;
   }
 
   .rail {

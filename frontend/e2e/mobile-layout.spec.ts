@@ -311,6 +311,8 @@ test("game board is touch-safe and visually stable", async ({
         getComputedStyle(document.querySelector(".brand")!).fontSize,
       ),
       viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
+      slotExact: cell.getBoundingClientRect().width,
     };
   });
 
@@ -328,7 +330,9 @@ test("game board is touch-safe and visually stable", async ({
     expect(layout.headPlace).toBe("side");
     expect(layout.brandTextShown).toBe(false);
   } else {
-    expect(layout.slot).toBe(48);
+    // Round 7 (08): 48px until the board no longer fits, then it shrinks.
+    const slot = Math.min(48, (layout.viewportWidth - 86) / 7);
+    expect(Math.abs(layout.slotExact - slot)).toBeLessThanOrEqual(0.5);
     expect(layout.leaveHeight).toBe(48);
     expect(layout.brandFontSize).toBe(20);
     expect(layout.headPlace).toBe("unit");
@@ -338,6 +342,39 @@ test("game board is touch-safe and visually stable", async ({
   await expect(page).toHaveScreenshot(`${testInfo.project.name}-game.png`, {
     fullPage: true,
   });
+});
+
+test("the phone board fits the screen and is centred", async ({
+  page,
+}, testInfo) => {
+  test.skip(kind(testInfo) !== "phone", "Round 7 (08) is phone portrait.");
+  await mockApp(page, snapshotFor("P03"));
+  await page.goto("/play");
+  await expect(page.locator(".board")).toBeVisible();
+
+  const fit = await page.evaluate(() => {
+    const rect = (selector: string) =>
+      document.querySelector(selector)!.getBoundingClientRect();
+    return {
+      width: window.innerWidth,
+      board: rect(".board"),
+      rail: rect(".rail"),
+      targets: [...document.querySelectorAll(".col-target")].map(
+        (target) => target.getBoundingClientRect().width,
+      ),
+    };
+  });
+
+  // overflow-x is hidden, so a clipped column never shows up as scrolling;
+  // measure the board itself (iPhone 16e 390, 15 393 and 16 Pro 402 clipped).
+  expect(fit.board.left).toBeGreaterThanOrEqual(13.5);
+  expect(fit.board.right).toBeLessThanOrEqual(fit.width - 13.5);
+  expect(
+    Math.abs(fit.board.left - (fit.width - fit.board.right)),
+  ).toBeLessThanOrEqual(1);
+  expect(Math.abs(fit.rail.left - fit.board.left)).toBeLessThanOrEqual(1);
+  expect(Math.abs(fit.rail.right - fit.board.right)).toBeLessThanOrEqual(1);
+  for (const target of fit.targets) expect(target).toBeGreaterThanOrEqual(44);
 });
 
 test("Traditional Chinese lobby is aligned and touch-safe", async ({
@@ -925,19 +962,34 @@ test("the paused countdown follows the server deadline", async ({ page }) => {
   await expect(chip).toHaveClass(/is-urgent/);
 });
 
-test("AI thinking is only announced after 300ms", async ({ page }) => {
+test("AI thinking is announced as soon as it is the AI's turn", async ({
+  page,
+}) => {
+  // A04 (round 7): no 300ms wait; the clock stays paused throughout.
   await page.clock.install({ time: SERVER_TIME * 1000 });
   await page.clock.pauseAt(SERVER_TIME * 1000 + 30_000);
-  await mockApp(page, snapshotFor("P05"));
+  const start = snapshotFor("P03");
+  const app = await mockApp(page, start);
   await page.goto("/play");
-  await expect(page.locator(".board")).toBeVisible();
-  await expect(page.locator(".board-head:visible")).not.toContainText(
-    "AI 正在思考",
-  );
-  await page.clock.runFor(400);
-  await expect(page.locator(".board-head:visible")).toContainText(
-    "AI 正在思考",
-  );
+  const head = page.locator(".board-head:visible");
+  await expect(head).toContainText("輪到你了");
+
+  const game = start.game!;
+  const board = game.board.map((row) => [...row]);
+  board[3][4] = "green";
+  app.send({
+    ...start,
+    game: {
+      ...game,
+      revision: game.revision + 1,
+      status: "thinking",
+      turn: "pink",
+      board,
+      history: `${game.history}5`,
+    },
+  });
+  await expect(head).toContainText("AI 正在思考");
+  await expect(head.locator(".thinking-dots")).toBeVisible();
 });
 
 /** Drops need motion and a clock the test controls (A01). */
