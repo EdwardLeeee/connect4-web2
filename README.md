@@ -30,6 +30,19 @@ npm --prefix frontend run dev
 
 開啟 `http://127.0.0.1:5173`。正式執行時先跑 `npm --prefix frontend run build`，再以單一 Uvicorn worker 啟動；房間狀態目前存於記憶體，不可使用多 worker。
 
+### 改動流程
+
+`main` 受保護，不接受直接 push。每個改動走分支與 pull request，CI 的 `backend`、
+`frontend`、`container` 三個檢查都綠才能合併（squash）。多個 session 同時開發時，各自用
+獨立的 worktree，不要在共用的 checkout 切分支：
+
+```bash
+scripts/dev-worktree.sh front feat/win-animation   # 建 ../connect4-web2-worktrees/front
+```
+
+Dependabot 每週檢查 npm、pip、cargo 與 GitHub Actions 的更新；小版本與修補版在 CI 綠燈後
+自動合併，大版本等人審。
+
 ## 驗證
 
 ```bash
@@ -57,16 +70,17 @@ systemd user service、Nginx 與有效的 TLS 憑證；開發機不需要安裝�
 ### 發版與取得映像
 
 版本規則：小修改把最後一位 +1（3.0.0 → 3.0.1），大改把中間那位 +1（3.0.0 → 3.1.0）。
-不要手改版本號，在開發機的 `main` 上執行：
+不要手改版本號，在開發機任何一個 checkout 執行：
 
 ```bash
 scripts/release.sh patch     # 或 minor；加 --dry-run 只做檢查
 ```
 
-腳本會改 `pyproject.toml` 與 `frontend/package.json`、確認舊版本號沒有殘留在建置或
-部署檔案裡、跑 ruff／pytest／vitest／前端 build，然後 commit「Release X.Y.Z」、打
-`vX.Y.Z` tag 並 push。CI 的 `backend` 與 `frontend` 兩個 job 平行跑完整測試（含 e2e），
-都綠之後 `container` job 會確認 tag 與兩個 manifest 的版本一致，再把映像發布到
+腳本在一個暫時的 worktree 裡改 `pyproject.toml` 與 `frontend/package.json`、確認舊版本號
+沒有殘留在建置或部署檔案裡，開一個「Release X.Y.Z」的 pull request 並設定綠燈自動合併；
+合併後把 `vX.Y.Z` tag 打在合併出來的 main commit 上。CI 的 `backend` 與 `frontend` 兩個 job
+平行跑完整測試（含 e2e），都綠之後 `container` job 會確認 tag 與兩個 manifest 的版本一致，
+建立 GitHub Release，再把映像發布到
 `ghcr.io/edwardleeee/connect4-web:<tag>`（同時更新 `latest`）。GHCR 套件為
 Private，正式主機要先用一個只有 `read:packages` 權限的 GitHub personal access
 token（classic）登入一次：
