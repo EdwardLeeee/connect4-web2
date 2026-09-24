@@ -100,6 +100,8 @@ async def health() -> JSONResponse:
     solver_status = manager.solver.status(self_test=True)
     payload = {
         "status": "ok" if solver_status.ready else "degraded",
+        # The deployed application release, so a deploy can confirm what is live.
+        "version": __version__,
         "solver": {
             "ready": solver_status.ready,
             "engine": solver_status.engine,
