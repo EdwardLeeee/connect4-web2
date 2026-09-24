@@ -54,9 +54,19 @@ npm run test:e2e
 正式網址為 `https://connect4.oraclelee.com`。正式主機需要 Podman 3.4+、
 systemd user service、Nginx 與有效的 TLS 憑證；開發機不需要安裝以下服務。
 
-### 取得映像
+### 發版與取得映像
 
-每次推送 `v*` tag，GitHub Actions 會先跑完整測試，再把映像發布到
+版本規則：小修改把最後一位 +1（3.0.0 → 3.0.1），大改把中間那位 +1（3.0.0 → 3.1.0）。
+不要手改版本號，在開發機的 `main` 上執行：
+
+```bash
+scripts/release.sh patch     # 或 minor；加 --dry-run 只做檢查
+```
+
+腳本會改 `pyproject.toml` 與 `frontend/package.json`、確認舊版本號沒有殘留在建置或
+部署檔案裡、跑 ruff／pytest／vitest／前端 build，然後 commit「Release X.Y.Z」、打
+`vX.Y.Z` tag 並 push。CI 的 `backend` 與 `frontend` 兩個 job 平行跑完整測試（含 e2e），
+都綠之後 `container` job 會確認 tag 與兩個 manifest 的版本一致，再把映像發布到
 `ghcr.io/edwardleeee/connect4-web:<tag>`（同時更新 `latest`）。GHCR 套件為
 Private，正式主機要先用一個只有 `read:packages` 權限的 GitHub personal access
 token（classic）登入一次：
@@ -95,8 +105,9 @@ podman build --format docker --file Containerfile --tag localhost/connect4-web:p
 
 映像會分階段建置 Vue、Rust/PyO3 與 Python 套件；最終容器以非 root
 帳號執行單一 Uvicorn worker。不要在正式環境加入 `--reload` 或增加
-worker，因為房間與配對狀態目前存於單一程序記憶體。Podman 3.x 必須使用
-Docker image format，才能保留映像內的 `HEALTHCHECK`。
+worker，因為房間與配對狀態目前存於單一程序記憶體。正式主機目前是 Podman 4.9.3；
+不論版本都要用 Docker image format（`--format docker`），才能保留映像內的
+`HEALTHCHECK`。
 
 ### 安裝 rootless 背景服務
 
@@ -135,6 +146,7 @@ curl --fail https://connect4.oraclelee.com/api/health
 journalctl --user-unit connect4.service --follow
 ```
 
-只有原生精確求解器自測通過，`GET /api/health` 才回傳 HTTP 200。更新版本時
-執行 `deploy/deploy.sh <新 tag>`（或從原始碼重建相同 production tag 再
+只有原生精確求解器自測通過，`GET /api/health` 才回傳 HTTP 200。更新版本的順序是：
+開發機 `scripts/release.sh patch|minor` → 等 GitHub Actions 全綠 → 正式主機
+`deploy/deploy.sh vX.Y.Z`（或從原始碼重建相同 production tag 再
 `systemctl --user restart connect4.service`）。程序重啟會清除進行中的房間與配對。

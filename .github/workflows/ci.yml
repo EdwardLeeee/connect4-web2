@@ -5,8 +5,7 @@ on:
   pull_request:
 
 jobs:
-  test:
-    # Visual baselines are generated on Jammy; pin the renderer and font stack.
+  backend:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -16,13 +15,34 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      # tests/test_api.py serves frontend/dist, so the API tests need a built frontend.
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
       - run: python -m pip install --upgrade pip
       - run: pip install -e ".[dev]"
+      - run: ruff check backend tests
+      - run: pytest
+      - run: cargo fmt --manifest-path native_solver/Cargo.toml -- --check
+      - run: cargo clippy --manifest-path native_solver/Cargo.toml --all-targets -- -D warnings
+      - run: cargo test --manifest-path native_solver/Cargo.toml
+
+  frontend:
+    # Visual baselines are generated on Jammy; pin the renderer and font stack.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
       - run: npm ci
         working-directory: frontend
       - run: npm audit --audit-level=high
@@ -33,11 +53,6 @@ jobs:
         working-directory: frontend
       - run: npm run build
         working-directory: frontend
-      - run: cargo fmt --manifest-path native_solver/Cargo.toml -- --check
-      - run: cargo clippy --manifest-path native_solver/Cargo.toml --all-targets -- -D warnings
-      - run: cargo test --manifest-path native_solver/Cargo.toml
-      - run: ruff check backend tests
-      - run: pytest
       # Visual baselines use the Black/Medium CJK weights, which live in -extra.
       - run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk fonts-noto-cjk-extra
       - run: npx playwright install --with-deps chromium webkit
@@ -46,14 +61,26 @@ jobs:
         working-directory: frontend
 
   container:
-    # Build and publish only what passed every test; a red test job blocks release.
-    needs: test
+    # Build and publish only what passed every test; a red job blocks release.
+    needs: [backend, frontend]
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     steps:
       - uses: actions/checkout@v4
+      # A release tag must match the version in both manifests, or nothing is built.
+      - if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+          expected="${GITHUB_REF_NAME#v}"
+          py="$(sed -n 's/^version = "\(.*\)"$/\1/p' pyproject.toml)"
+          js="$(node -p "require('./frontend/package.json').version")"
+          echo "tag=${expected} pyproject=${py} package.json=${js}"
+          if [ "${py}" != "${expected}" ] || [ "${js}" != "${expected}" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match the manifest versions (use scripts/release.sh)"
+            exit 1
+          fi
       - run: >-
           docker build --file Containerfile --tag connect4-web:ci
           --label org.opencontainers.image.revision=${{ github.sha }}

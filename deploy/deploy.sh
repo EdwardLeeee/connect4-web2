@@ -15,7 +15,15 @@ HEALTH="http://127.0.0.1:55555/api/health"
 
 echo "pulling ${IMAGE}"
 podman pull "${IMAGE}"
-echo "image revision: $(podman image inspect --format '{{ index .Labels "org.opencontainers.image.revision" }}' "${IMAGE}")"
+revision="$(podman image inspect --format '{{ index .Labels "org.opencontainers.image.revision" }}' "${IMAGE}")"
+echo "image revision: ${revision:-(unknown)}"
+# Compare with the commit the tag points to on GitHub, so a moved tag or a stale image
+# is visible before it goes live. Images built before the label existed print (unknown).
+repo_dir="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd || true)"
+expected="$(git -C "${repo_dir:-.}" ls-remote --tags origin "refs/tags/${TAG}^{}" 2>/dev/null | cut -f1 || true)"
+if [ -n "${revision}" ] && [ -n "${expected}" ] && [ "${revision}" != "${expected}" ]; then
+    echo "WARNING: image revision ${revision} differs from tag ${TAG} on origin (${expected})" >&2
+fi
 if podman image exists "${PROD}"; then
     podman tag "${PROD}" "${PREV}"
 fi
