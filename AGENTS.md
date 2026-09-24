@@ -26,7 +26,7 @@ Run Playwright with `npm --prefix frontend run test:e2e` after installing Chromi
 
 ## Commit & Pull Request Guidelines
 
-History favors short, focused English or Chinese summaries. Use an imperative subject and avoid bundling unrelated work. Cut releases with `scripts/release.sh patch|minor`; never edit version numbers by hand. Pull requests should describe protocol or UI changes, link issues, list commands run, and include screenshots for visual changes.
+History favors short, focused English or Chinese summaries. Use an imperative subject and avoid bundling unrelated work. `main` is protected: work on a branch in your own worktree (`scripts/dev-worktree.sh <name> <branch>`), open a pull request, and merge only when the `backend`, `frontend`, and `container` checks are green. Cut releases with `scripts/release.sh patch|minor`; never edit version numbers by hand. Pull requests should describe protocol or UI changes, link issues, list commands run, and include screenshots for visual changes.
 
 ## Security & AI Guarantees
 

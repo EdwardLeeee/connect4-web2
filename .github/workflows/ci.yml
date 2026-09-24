@@ -4,6 +4,11 @@ on:
   push:
   pull_request:
 
+# A newer push to the same branch or pull request cancels the run still going.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend:
     runs-on: ubuntu-22.04
@@ -12,9 +17,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
+          cache: pip
+          cache-dependency-path: pyproject.toml
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native_solver
       # tests/test_api.py serves frontend/dist, so the API tests need a built frontend.
       - uses: actions/setup-node@v4
         with:
@@ -26,12 +36,15 @@ jobs:
       - run: npm run build
         working-directory: frontend
       - run: python -m pip install --upgrade pip
-      - run: pip install -e ".[dev]"
+      - run: pip install -e ".[dev]" pip-audit
       - run: ruff check backend tests
       - run: pytest
+      - run: pip-audit
       - run: cargo fmt --manifest-path native_solver/Cargo.toml -- --check
       - run: cargo clippy --manifest-path native_solver/Cargo.toml --all-targets -- -D warnings
       - run: cargo test --manifest-path native_solver/Cargo.toml
+      - run: cargo install cargo-audit --locked
+      - run: cargo audit --file native_solver/Cargo.lock
 
   frontend:
     # Visual baselines are generated on Jammy; pin the renderer and font stack.
@@ -55,17 +68,29 @@ jobs:
         working-directory: frontend
       # Visual baselines use the Black/Medium CJK weights, which live in -extra.
       - run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk fonts-noto-cjk-extra
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
       - run: npx playwright install --with-deps chromium webkit
         working-directory: frontend
       - run: npm run test:e2e
         working-directory: frontend
+      # A failed screenshot comparison leaves actual, expected and diff images here.
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: frontend/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
 
   container:
     # Build and publish only what passed every test; a red job blocks release.
     needs: [backend, frontend]
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
     steps:
       - uses: actions/checkout@v4
@@ -100,3 +125,8 @@ jobs:
           docker tag connect4-web:ci "${image}:latest"
           docker push "${image}:${GITHUB_REF_NAME}"
           docker push "${image}:latest"
+      # A GitHub Release with auto-generated notes gives every version a readable changelog.
+      - if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" --verify-tag --title "Connect 4 ${GITHUB_REF_NAME#v}" --generate-notes
