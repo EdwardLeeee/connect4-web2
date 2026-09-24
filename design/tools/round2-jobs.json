@@ -126,15 +126,36 @@
   "mobile": true
  },
  {
-  "url": "mockups/round2/screen.html?state=L11&vp=desktop&lang=zh-TW",
-  "out": "L11-lobby-invite-link-desktop-1440x900.png",
+  "url": "mockups/round2/screen.html?state=L12&vp=desktop&lang=zh-TW",
+  "out": "L12-invite-page-desktop-1440x900.png",
   "width": 1440,
   "height": 900,
   "mobile": false
  },
  {
-  "url": "mockups/round2/screen.html?state=L11&vp=mobile&lang=zh-TW",
-  "out": "L11-lobby-invite-link-mobile-430x932.png",
+  "url": "mockups/round2/screen.html?state=L12&vp=mobile&lang=zh-TW",
+  "out": "L12-invite-page-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L12&vp=mobile&lang=en",
+  "out": "L12-invite-page-mobile-en-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L13&vp=desktop&lang=zh-TW",
+  "out": "L13-invite-room-gone-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L13&vp=mobile&lang=zh-TW",
+  "out": "L13-invite-room-gone-mobile-430x932.png",
   "width": 430,
   "height": 932,
   "mobile": true

@@ -1,0 +1,137 @@
+[
+ {
+  "url": "mockups/round2/screen.html?state=P07&rs=r1&vp=desktop",
+  "out": "R3-1-result-R1-gold-trophy-P07-win-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P07&rs=r1&vp=mobile",
+  "out": "R3-1-result-R1-gold-trophy-P07-win-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P08&rs=r1&vp=mobile",
+  "out": "R3-1-result-R1-gold-trophy-P08-lose-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P09&rs=r1&vp=mobile",
+  "out": "R3-1-result-R1-gold-trophy-P09-draw-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P07&rs=r2&vp=desktop",
+  "out": "R3-1-result-R2-stamp-P07-win-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P07&rs=r2&vp=mobile",
+  "out": "R3-1-result-R2-stamp-P07-win-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P08&rs=r2&vp=mobile",
+  "out": "R3-1-result-R2-stamp-P08-lose-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P09&rs=r2&vp=mobile",
+  "out": "R3-1-result-R2-stamp-P09-draw-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L12&iv=a&vp=desktop",
+  "out": "R3-2-invite-A-own-screen-L12-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L12&iv=a&vp=mobile",
+  "out": "R3-2-invite-A-own-screen-L12-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L13&iv=a&vp=mobile",
+  "out": "R3-2-invite-A-own-screen-L13-room-gone-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L12&iv=b&vp=desktop",
+  "out": "R3-2-invite-B-dialog-L12-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L12&iv=b&vp=mobile",
+  "out": "R3-2-invite-B-dialog-L12-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L13&iv=b&vp=mobile",
+  "out": "R3-2-invite-B-dialog-L13-room-gone-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P02&vp=desktop",
+  "out": "R3-3-waiting-one-button-P02-desktop-1440x900.png",
+  "width": 1440,
+  "height": 900,
+  "mobile": false
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P02&cp=link&vp=mobile",
+  "out": "R3-3-waiting-one-button-P02-mobile-copy-link-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=P02&cp=share&vp=mobile",
+  "out": "R3-3-waiting-one-button-P02-mobile-share-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L04&vp=mobile",
+  "out": "R3-5-lobby-new-ai-copy-L04-mobile-430x932.png",
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/story.html?id=A03b",
+  "out": "R3-4-celebration-A03-v2-storyboard.png",
+  "width": 1440,
+  "height": 900,
+  "fullPage": true,
+  "freezeAt": false,
+  "dpr": 1.5
+ }
+]

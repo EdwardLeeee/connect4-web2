@@ -92,7 +92,9 @@ window.STATES = {
   L08: { ...lobby({ expanded: "friends", code: "ABC123" }), toast: "errRoomNotFound" },
   L09: { ...lobby({}), profile: { nickname: "曜宇", error: false } },
   L10: { ...lobby({}), profile: { nickname: "", error: true } },
-  L11: lobby({ expanded: "friends", code: "LAN427", invite: true }),
+
+  L12: { view: "invite", code: "LAN427" },
+  L13: { view: "invite", code: "LAN427", error: "gone" },
 
   P01: { view: "searching", waited: "0:12" },
   P02: { view: "waiting", room: { mode: "private", code: "LAN427" } },

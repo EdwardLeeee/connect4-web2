@@ -7,6 +7,8 @@ const params = new URLSearchParams(location.search);
 const stateId = params.get("state") ?? "P03";
 const lang = params.get("lang") ?? "zh-TW";
 const vp = params.get("vp") ?? "desktop";
+// round 3 (user picked): result panel R1 gold trophy, invite = its own page,
+// waiting room = one button (desktop copy link, phone share)
 const S = window.STATES[stateId];
 const T = window.STRINGS[lang];
 document.documentElement.lang = lang === "en" ? "en" : "zh-Hant";
@@ -36,6 +38,10 @@ const ICON = {
   chevron: svg('<path d="M6 9l6 6 6-6"/>'),
   back: svg('<path d="M20 12H5M11 6l-6 6 6 6"/>'),
   restart: svg('<path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v5h5"/>'),
+  trophy: svg('<path d="M8 4h8v5a4 4 0 01-8 0z"/><path d="M8 6H5a3 3 0 003 4M16 6h3a3 3 0 01-3 4"/><path d="M12 13v4M8.5 20h7M9.5 17h5"/>'),
+  flag: svg('<path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/>'),
+  equal: svg('<path d="M6 9.5h12M6 14.5h12"/>'),
+  user: svg('<circle cx="12" cy="8" r="4"/><path d="M4.5 20a7.5 7.5 0 0115 0"/>'),
 };
 
 const token = (colour, extra = "") =>
@@ -101,14 +107,11 @@ function lobby() {
   const ex = (name) => (L.expanded === name ? " is-expanded" : "");
   const chevron = (id, labelId, name) =>
     `<button class="card-toggle" type="button" aria-labelledby="${labelId}" aria-controls="${id}" aria-expanded="${L.expanded === name}">${ICON.chevron}</button>`;
-  const invite = L.invite
-    ? `<div class="invite-banner" role="status">${ICON.link}<div><strong>${t("inviteBanner")} <b class="code">${esc(L.code)}</b></strong><small>${t("inviteHint")}</small></div></div>`
-    : "";
   const offlineBanner = offline
     ? `<div class="notice-banner" role="status">${ICON.wifiOff}<span>${t("lobbyOffline")}</span></div>`
     : "";
   return `<section class="lobby">
-    ${offlineBanner}${invite}
+    ${offlineBanner}
     <div class="lobby-grid">
       <article class="mode-card ai-card">
         <div class="card-head">
@@ -128,7 +131,7 @@ function lobby() {
           ${btn(t("createRoom"), "secondary", { disabled: offline })}
           <form class="join-row">
             <input class="code-input${L.code ? " filled" : ""}" value="${esc(L.code)}" placeholder="${t("roomCode")}" maxlength="6" aria-label="${t("roomCode")}" />
-            ${btn(t("joinRoom"), L.invite ? "primary" : "dark", { disabled: offline })}
+            ${btn(t("joinRoom"), "dark", { disabled: offline })}
           </form>
         </div>
       </article>
@@ -175,9 +178,8 @@ function waiting() {
           <span>${t("roomCode")}</span>
           <strong>${esc(code)}</strong>
         </div>
-        <div class="waiting-actions">
+        <div class="waiting-actions single">
           ${phone ? btn(t("shareInvite"), "primary", { icon: ICON.share }) : btn(t("copyLink"), "primary", { icon: ICON.link })}
-          ${phone ? btn(t("copyCode"), "secondary", { icon: ICON.copy }) : btn(t("copied"), "secondary is-done", { icon: ICON.check })}
           ${btn(t("leave"), "ghost")}
         </div>
       </div>
@@ -187,6 +189,24 @@ function waiting() {
       </figure>
     </div>
   </section>`;
+}
+
+function inviteCard() {
+  const gone = S.error === "gone";
+  return `<div class="center-card invite-card${gone ? " is-gone" : ""}">
+      <span class="big-icon">${gone ? ICON.warn : ICON.friends}</span>
+      <p class="eyebrow">${t("inviteEyebrow")}</p>
+      <h1>${gone ? t("inviteGone") : t("inviteTitle")}</h1>
+      <p class="lead">${gone ? t("inviteGoneBody", { code: esc(S.code) }) : t("inviteBody")}</p>
+      ${gone ? "" : `<div class="room-code-block"><span>${t("inviteRoom")}</span><strong>${esc(S.code)}</strong></div>
+      <p class="invite-as">${ICON.user}<span>${t("inviteAs", { name: "曜宇" })}</span><button class="link-btn" type="button">${t("editName")}</button></p>`}
+      ${gone ? btn(t("backToLobby"), "primary big", { icon: ICON.back }) : btn(t("joinRoom"), "primary big", { icon: ICON.arrow })}
+      ${gone ? "" : btn(t("notNow"), "ghost")}
+    </div>`;
+}
+
+function invite() {
+  return `<section class="center-screen">${inviteCard()}</section>`;
 }
 
 function otherTab() {
@@ -417,6 +437,9 @@ function game() {
       actions = [btn(t("rematchAccept"), "primary"), btn(t("leave"), "secondary")];
       rematchRow = `<div class="rematch-row incoming">${token(opp, "stat-token")}<div><strong>${t("rematchIncoming", { name: oppName })}</strong><small>${t("rematchIncomingSub", { name: G.you === (G.first ?? "green") ? oppName : t("you") })}</small></div></div>`;
     }
+    // outcome colours are not the player colours: trophy / flag / equals
+    const icon = { win: ICON.trophy, lose: ICON.flag, draw: ICON.equal, error: ICON.warn }[tone];
+    if (!(r === "forfeit" && !iWon)) emblem = `<span class="emblem-icon">${icon}</span>`;
     result = `<div class="card result-card ${tone}" role="status">
         <div class="result-top">${emblem}<div><h2>${title}</h2><p>${sub}</p></div></div>
         ${rematchRow}
@@ -493,7 +516,9 @@ const view =
         ? waiting()
         : S.view === "otherTab"
           ? otherTab()
-          : game();
+          : S.view === "invite"
+            ? invite()
+            : game();
 
 document.body.innerHTML = `<div class="app view-${S.view}${S.profile ? " has-sheet" : ""}">
   ${deviceFrame()}

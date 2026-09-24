@@ -8,6 +8,11 @@ const t = (key, vars = {}) => (T[key] ?? key).replace(/\{(\w+)\}/g, (_, n) => va
 const tok = (colour, extra = "", style = "") =>
   `<i class="token ${colour} ${extra}"${style ? ` style="${style}"` : ""}></i>`;
 
+const CONFETTI_COLOURS = ["var(--mint)", "var(--pink)", "var(--sun)", "var(--white)"];
+
+const ICON_TROPHY =
+  '<svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 01-8 0z"/><path d="M8 6H5a3 3 0 003 4M16 6h3a3 3 0 01-3 4"/><path d="M12 13v4M8.5 20h7M9.5 17h5"/></svg>';
+
 // rows: strings; G/P token, g/p ghost, D/E dropping green/pink, . empty
 function board(rows, o = {}) {
   const cols = rows[0].length;
@@ -103,25 +108,28 @@ const STORIES = {
   },
 
   A03: {
-    title: "勝利：連線高亮＋墨線＋結局面板",
-    lead: "最後一顆落定後，四顆連線棋子依序放大，墨線畫過四顆，星星爆開，結局面板進場。棋盤不被遮住。",
-    frames: [
-      [0, "最後一顆落定（A01 結束）"],
-      [70, "第 1 顆放大到 1.18"],
-      [210, "依序放大，每顆間隔 70ms"],
-      [380, "墨線開始從第一顆畫向最後一顆"],
-      [540, "線畫完；星星爆開"],
-      [700, "結局面板進場（桌機由右，手機由下）"],
-      [820, "面板回彈（ease-back）"],
-      [1010, "完成：四顆維持 1.06 倍＋白邊"],
-    ].map(([ms, cap]) => ({ t: ms, cap, html: sceneWin() })),
+    title: "勝利：約 3 秒的慶祝（連線、墨線、彩紙、獎盃、結局面板）",
+    lead: "連線棋子依序彈起、墨線畫過、彩紙從棋盤上方灑落約 1.7 秒、獎盃彈出，結局面板在 1.4 秒時才進場；之後勝利棋子再輕輕脈動 3 次。只在你贏的時候灑彩紙。",
+    frames: [0, 300, 700, 1000, 1300, 1600, 2000, 2600, 3200].map((ms) => ({
+      t: ms,
+      cap: {
+        0: "最後一顆落定",
+        300: "連線棋子依序彈起（間隔 120ms）",
+        700: "墨線畫過四顆（500ms）",
+        1000: "星星爆開，彩紙開始灑落",
+        1300: "彩紙滿版",
+        1600: "結局面板進場（1.4 秒起）",
+        2000: "獎盃彈出；勝利棋子開始脈動",
+        2600: "彩紙落到底、淡出",
+        3200: "完成；面板停住，棋子再脈動 3 次",
+      }[ms],
+      html: sceneWin2(),
+    })),
     spec: [
-      ["觸發", "<code>status</code> 由 <code>playing</code> 變 <code>finished</code> 且 <code>winning_cells</code> 有 4 格；平手與判勝時略過連線，只播面板。"],
-      ["棋子", "<code>c4-win-pop</code> 240ms ease-back，第 i 顆延遲 i × 70ms（由連線起點排序）。"],
-      ["墨線", "SVG line，<code>stroke-dasharray</code> = 線長；300ms 後 320ms ease-out 畫完。"],
-      ["星星", "兩顆，位於連線兩端；520ms 後 420ms 放大淡出。"],
-      ["結局面板", "650ms 後 360ms ease-back；桌機 <code>translateX(24px)</code>，手機 <code>translateY(40px)</code>。面板不可蓋住棋盤。"],
-      ["reduced-motion", "連線、放大一次到位；面板只做 120ms 淡入；不出現星星。"],
+      ["觸發", "你贏的時候（連四勝、對手離線判負、對手離開）。輸或平手不灑彩紙：輸時只有連線和墨線，面板在 0.9 秒時進場；平手面板直接進場。"],
+      ["時間軸", "彈起 0–660ms；墨線 450–950ms；星星 900ms 起；彩紙 900–3200ms（28 片，錯開 0–600ms，每片 1.7 秒）；面板 1400ms 起 420ms；獎盃 1700ms；棋子脈動 2000ms 起 3 次。"],
+      ["彩紙", "薄荷、粉紅、向日葵、白四色，2px 墨框；方片、圓片、細條三種形狀；只在棋盤範圍內落下。"],
+      ["reduced-motion", "沒有彩紙、沒有脈動；連線與面板一次到位（面板 120ms 淡入）。"],
     ],
   },
 
@@ -167,19 +175,19 @@ const STORIES = {
 
   A06: {
     title: "等待：配對中的跳動棋子、複製房號回饋",
-    lead: "配對等待時三顆棋子依序跳動；等朋友時按「複製房號」會彈一下並改成「已複製」，之後維持不變。",
+    lead: "配對等待時三顆棋子依序跳動。等朋友時桌機只有「複製邀請連結」一顆按鈕，按下彈一下並改成「已複製邀請連結」，之後維持不變；手機只有「分享邀請」，跳出系統分享選單。",
     frames: [0, 150, 300, 450, 600]
       .map((ms) => ({ t: ms, cap: "三顆依序跳起，間隔 150ms", html: `<div class="scene" style="padding:10px"><div class="searching-anim"><span class="lane">${tok("green")}${tok("pink")}${tok("green")}</span></div></div>` }))
       .concat([
-        { t: 5000, cap: "複製前", html: `<div class="scene" style="padding:20px">${btnHtml(t("copyCode"), "secondary")}</div>` },
-        { t: 90, cap: "按下：90ms 彈到 1.06，改成「已複製」", html: `<div class="scene" style="padding:20px">${btnHtml("✓ " + t("copied"), "secondary is-done")}</div>` },
-        { t: 5000, cap: "之後一直維持「已複製」，不再變回「複製房號」", html: `<div class="scene" style="padding:20px">${btnHtml("✓ " + t("copied"), "secondary is-done")}</div>` },
+        { t: 5000, cap: "桌機：複製前", html: `<div class="scene" style="padding:20px">${btnHtml(t("copyLink"), "primary")}</div>` },
+        { t: 90, cap: "按下：90ms 彈到 1.06，改成「已複製邀請連結」", html: `<div class="scene" style="padding:20px">${btnHtml("✓ " + t("copiedLink"), "primary is-done")}</div>` },
+        { t: 5000, cap: "之後一直維持「已複製邀請連結」，不變回原字", html: `<div class="scene" style="padding:20px">${btnHtml("✓ " + t("copiedLink"), "primary is-done")}</div>` },
       ]),
     spec: [
       ["配對中", "<code>hop</code> 900ms 無限循環，三顆依序延遲 0／150／300ms，上跳 18px 並傾斜 12°。"],
       ["等待時間", "「已等待 0:12」從進入配對起算，每秒更新；純前端計時。"],
-      ["複製", "<code>c4-pop</code> 180ms；按過之後維持「✓ 已複製」直到離開等待畫面，不自動恢復（使用者決定，避免誤會沒複製成功）。複製失敗仍走錯誤 toast。"],
-      ["分享", "手機用 <code>navigator.share</code>，失敗或不支援時退回複製邀請連結。"],
+      ["複製（桌機）", "<code>c4-pop</code> 180ms；按過之後維持「✓ 已複製邀請連結」直到離開等待畫面，不自動恢復（使用者決定）。複製失敗仍走錯誤 toast。"],
+      ["分享（手機）", "唯一的按鈕「分享邀請」呼叫 <code>navigator.share({ title, text, url })</code>；瀏覽器不支援時，這顆按鈕改成「複製邀請連結」，行為同桌機。使用者取消分享選單不算錯誤。"],
       ["reduced-motion", "棋子靜止；複製只換字不彈跳。"],
     ],
   },
@@ -265,6 +273,35 @@ function sceneWin() {
     </div>
   </div>`;
 }
+
+function confetti(n = 28) {
+  return Array.from({ length: n }, (_, i) => {
+    const shape = ["", "round", "strip"][i % 3];
+    const x = (i * 37) % 94;
+    const dx = ((i * 53) % 120) - 60;
+    const r = ((i * 97) % 720) - 360;
+    const d = 900 + ((i * 131) % 600);
+    const fall = 300 + ((i * 71) % 60);
+    return `<i class="confetti ${shape}" style="--x:${x}%;--dx:${dx}px;--r:${r}deg;--d:${d}ms;--fall-h:${fall}px;--c:${CONFETTI_COLOURS[i % 4]}"></i>`;
+  }).join("");
+}
+
+function confettiLayer() {
+  return `<span class="confetti-layer">${confetti()}</span>`;
+}
+
+function sceneWin2() {
+  const rows = [".......", ".......", "....G..", "...GP..", "..GPGG.", "PGPGPP."];
+  const b = board(rows, { win: ["5:1", "4:2", "3:3", "2:4"], last: "2:4" }).replace('<div class="grid">', `${confettiLayer()}<div class="grid">`);
+  return `<div class="scene" style="${geo(34, 6, 8)};flex-direction:row;align-items:center;gap:22px">
+    ${b}
+    <div class="card result-card win" style="width:230px">
+      <div class="result-top" style="padding:12px 14px"><span class="emblem-icon">${ICON_TROPHY}</span><div><h2 style="font-size:22px">${t("win")}</h2><p style="font-size:13px">${t("winSub", { n: 13 })}</p></div></div>
+      <div class="result-actions" style="padding:12px;gap:8px"><button class="btn primary" style="min-height:40px;font-size:15px">${t("rematch")}</button><button class="btn secondary" style="min-height:40px;font-size:15px">${t("leave")}</button></div>
+    </div>
+  </div>`;
+}
+
 
 function sceneThinking(kind) {
   const rows = [".......", ".......", ".......", "....G..", "..GPG..", "..PGP.."];
@@ -355,7 +392,7 @@ function reducedGrid() {
   const cards = [
     ["A01 落子", "不位移，棋子直接出現在落點；上一手框線照常。", board([".", ".", ".", ".", "G", "P"], { last: "4:0" })],
     ["A02 預覽", "棋子直接跳到新欄位上方；亮框與預覽 120ms 淡入。", board(withCell(B7, 3, 4, "g"), { hc: 4 })],
-    ["A03 勝利", "連線與放大一次到位；結局面板 120ms 淡入；沒有星星。", board(["....G..", "...GP..", "..GPGG.", "PGPGPP."], { win: ["3:1", "2:2", "1:3", "0:4"] })],
+    ["A03 勝利", "連線與放大一次到位；沒有彩紙、星星、脈動；結局面板 120ms 淡入。", board(["....G..", "...GP..", "..GPGG.", "PGPGPP."], { win: ["3:1", "2:2", "1:3", "0:4"] })],
     ["A04 思考", "三點靜止，只顯示「正在思考」文字。", `<div class="board-head theirs"><div class="turn-status" style="padding:3px 10px 3px 4px">${tok("pink", "status-token", "width:20px;height:20px")}<strong style="font-size:13px">${t("aiThinking")}</strong><span class="dots thinking-dots"><i></i><i></i><i></i></span></div></div>`],
     ["A05 倒數", "圓環每秒跳一格，不脈動；最後 10 秒只變粉紅。", `<span class="move-chip countdown is-urgent" style="--p:.3;animation:none"><i class="ring" style="animation:none"></i>0:09</span>`],
     ["A06 等待", "棋子靜止；「已複製」只換字、不彈跳。", `<div class="searching-anim"><span class="lane">${tok("green")}${tok("pink")}${tok("green")}</span></div>`],
@@ -369,6 +406,8 @@ function reducedGrid() {
 
 // ---------- mount ----------
 const S = STORIES[id];
+const solo = new URLSearchParams(location.search).get("solo") !== null;
+if (solo) S.frames = [S.frames[0]];
 document.title = `${id} ${S.title}`;
 const frames = S.reduced
   ? reducedGrid()

@@ -7,17 +7,17 @@ window.STRINGS = {
     restart: "重新開始",
     rematch: "再來一局",
     backToLobby: "回到大廳", // NEW
-    copyCode: "複製房號", // NEW (was common.copy)
     copied: "已複製",
     shareInvite: "分享邀請", // NEW
     copyLink: "複製邀請連結", // NEW
+    copiedLink: "已複製邀請連結", // NEW
     cancel: "取消",
     save: "儲存",
     connecting: "連線中…",
     offline: "連線中斷，正在重試…",
 
     aiTitle: "挑戰 AI",
-    aiBody: "每一步都算到終局。你能找出擊敗 AI 的那一手嗎？",
+    aiBody: "挑戰者，你能想出擊敗 AI 的戰術嗎？", // changed
     aiAction: "立即對戰",
     friendTitle: "和朋友一起玩",
     friendBody: "分享一組房號，立刻和朋友來場鬥智對決。",
@@ -28,8 +28,17 @@ window.STRINGS = {
     matchBody: "立即配對線上玩家，看看誰能先連成四子。",
     matchAction: "開始配對",
     lobbyOffline: "連線恢復前無法開始對局。", // NEW
-    inviteBanner: "朋友邀請你加入房間", // NEW
-    inviteHint: "房號已帶入，按「加入房間」就能開始。", // NEW
+    inviteEyebrow: "邀請", // NEW
+    inviteTitle: "朋友邀請你一起玩", // NEW
+    inviteBody: "按下「加入房間」，朋友那邊就會開始對戰。", // NEW
+    inviteRoom: "房間", // NEW
+    inviteAs: "你的暱稱：{name}", // NEW
+    editName: "修改", // NEW
+    notNow: "不加入，先去大廳", // NEW
+    inviteGone: "這個房間無法加入", // NEW
+    inviteGoneBody: "房號 {code} 不存在，可能房主已經離開。請朋友重新分享邀請。", // NEW (room_not_found)
+    inviteFullBody: "房間 {code} 已經滿了，請朋友重新開一個房間。", // NEW (room_full)
+    inviteHostOffBody: "房主目前離線，請稍後再試一次。", // NEW (host_disconnected)
 
     profileTitle: "玩家設定",
     nickname: "暱稱",
@@ -111,17 +120,17 @@ window.STRINGS = {
     restart: "Restart",
     rematch: "Rematch",
     backToLobby: "Back to lobby",
-    copyCode: "Copy code",
     copied: "Copied",
     shareInvite: "Share invite",
     copyLink: "Copy invite link",
+    copiedLink: "Invite link copied",
     cancel: "Cancel",
     save: "Save",
     connecting: "Connecting…",
     offline: "Connection lost. Retrying…",
 
     aiTitle: "Challenge AI",
-    aiBody: "It sees every line to the end. Can you find the move that wins?",
+    aiBody: "Challenger, can you find a strategy that beats the AI?",
     aiAction: "Play now",
     friendTitle: "Play with friends",
     friendBody: "Share a room code and turn any moment into a friendly showdown.",
@@ -132,8 +141,17 @@ window.STRINGS = {
     matchBody: "Jump into a live match and race to connect four first.",
     matchAction: "Find a match",
     lobbyOffline: "You can start a game once the connection is back.",
-    inviteBanner: "A friend invited you to room",
-    inviteHint: "The code is filled in. Tap “Join room” to start.",
+    inviteEyebrow: "Invite",
+    inviteTitle: "A friend invited you to play",
+    inviteBody: "Tap “Join room” and the game starts for both of you.",
+    inviteRoom: "Room",
+    inviteAs: "Playing as {name}",
+    editName: "Edit",
+    notNow: "Not now, go to lobby",
+    inviteGone: "This room can’t be joined",
+    inviteGoneBody: "Room {code} doesn’t exist; the host may have left. Ask your friend to share a new invite.",
+    inviteFullBody: "Room {code} is already full. Ask your friend to open a new room.",
+    inviteHostOffBody: "The host is offline right now. Please try again in a moment.",
 
     profileTitle: "Player settings",
     nickname: "Nickname",

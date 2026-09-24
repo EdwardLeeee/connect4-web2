@@ -615,8 +615,7 @@ select {
   border-width: 2px;
 }
 
-.notice-banner,
-.invite-banner {
+.notice-banner {
   margin-bottom: 22px;
   padding: 12px 16px;
   display: flex;
@@ -630,22 +629,6 @@ select {
 
 .notice-banner {
   background: var(--pink-soft);
-}
-
-.invite-banner {
-  background: var(--mint-soft);
-}
-
-.invite-banner strong,
-.invite-banner small {
-  display: block;
-}
-
-.invite-banner small {
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: var(--fs-13);
-  font-weight: 500;
 }
 
 .code {
@@ -1396,22 +1379,6 @@ kbd {
   border-bottom: var(--bw) solid var(--ink);
 }
 
-.win .result-top {
-  background: var(--mint);
-}
-
-.lose .result-top {
-  background: var(--pink);
-}
-
-.draw .result-top {
-  background: var(--sun);
-}
-
-.error .result-top {
-  background: var(--pink-soft);
-}
-
 .result-top h2 {
   font-size: var(--fs-28);
   font-weight: 900;
@@ -1915,8 +1882,7 @@ input.is-focused {
     padding: 8px;
   }
 
-  .notice-banner,
-  .invite-banner {
+  .notice-banner {
     margin-bottom: 16px;
     padding: 10px 12px;
     font-size: var(--fs-15);
@@ -1949,9 +1915,12 @@ input.is-focused {
     display: contents;
   }
 
-  .room-code-block {
+  .waiting-card .room-code-block {
     order: 1;
     margin: 0;
+  }
+
+  .room-code-block {
     padding: 10px;
   }
 
@@ -2681,5 +2650,112 @@ input.is-focused {
   }
   40% {
     transform: translateY(-18px) rotate(-12deg);
+  }
+}
+
+/* ================= round 3 options ================= */
+
+/* waiting room: one invite button only */
+.waiting-actions.single {
+  grid-template-columns: 1fr;
+}
+
+.waiting-actions.single .btn.ghost {
+  justify-self: center;
+}
+
+/* invite landing page (/?room=CODE) */
+.invite-card {
+  width: min(480px, 100%);
+}
+
+.invite-card .room-code-block {
+  margin-top: 4px;
+}
+
+.invite-card > .btn.big {
+  width: 100%;
+}
+
+.invite-card.is-gone .big-icon {
+  background: var(--pink-soft);
+}
+
+.invite-as {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: var(--fs-15);
+  font-weight: 600;
+}
+
+.invite-as .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.link-btn {
+  min-height: 44px;
+  padding: 0 6px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-weight: 800;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.invite-sheet {
+  display: grid;
+  gap: 14px;
+}
+
+.invite-sheet h2 {
+  margin: 0;
+}
+
+.invite-sheet .invite-as {
+  justify-content: flex-start;
+}
+
+.invite-sheet .room-code-block {
+  margin: 0;
+}
+
+/* result panel (round 3, R1): gold trophy / ink / white — outcome colours are not player colours */
+.win .result-top {
+  background:
+    repeating-conic-gradient(from 0deg at 12% 50%, var(--sun) 0 9deg, #ffe38a 9deg 18deg);
+}
+
+.lose .result-top {
+  color: var(--white);
+  background: var(--ink);
+}
+
+.lose .result-top .emblem-icon {
+  box-shadow: 4px 4px 0 #5d584f;
+}
+
+.draw .result-top {
+  background: var(--white);
+  border-bottom-style: dashed;
+}
+
+.error .result-top {
+  background: var(--sun-soft);
+}
+
+.emblem-icon {
+  color: var(--ink);
+  background: var(--white);
+}
+
+@media (max-width: 620px), (orientation: landscape) and (max-height: 500px) {
+  .invite-card > .btn.big {
+    min-height: 56px;
   }
 }

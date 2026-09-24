@@ -1,6 +1,6 @@
 # Connect 4 UI 規格：方向 C「粗線派對」（第二階段）
 
-- **狀態**：使用者 2026-09-24 核准，並做了第 0 節列的調整。這份文件和 `design/artboards/round2/` 的 78 張圖就是 RD 實作的規格、QA 的基準。
+- **狀態**：使用者 2026-09-24 核准，並做了第 0 節列的調整。這份文件和 `design/artboards/round2/` 的 81 張圖（外加一張勝利動畫 GIF）就是 RD 實作的規格、QA 的基準。
   圖只存在本機，不進 git；要看就在本機重現或用 eog 開。
 - **方向**：使用者 2026-09-24 選 C，不做亮／暗切換，等待畫面加 QR code 與分享連結。
 - **協定**：以 `docs/protocol.md` 為準（connect4-back 已定案）。線上／排隊人數（presence）這一輪不做，畫面上也沒有。
@@ -34,21 +34,32 @@
   - 對局卡上 AI 那一列的標示從「後手 · 精確求解器」改成「**後手 · Super AI**」。
 - **AI 思考動效**：AI 幾乎都是立即落子，所以拿掉 AI 的巡行動畫、秒數和長說明。
   - 真人對戰輪到對手時，改成「{name} 正在思考」加三點跳動（A04）。
-- **複製房號**：按過之後一直顯示「已複製」，不再變回「複製房號」，避免誤會（A06）。
+- **等朋友畫面**：只留一顆按鈕（第三輪）。
+  - 桌機是「複製邀請連結」，按過之後一直顯示「已複製邀請連結」，不變回原字。
+  - 手機是「分享邀請」，會跳出手機的分享選單。
+  - 「複製房號」按鈕拿掉，房號仍用大字顯示（A06）。
 - **AI 局結算文案**：改成「挑戰者別氣餒，再挑戰一次？」。
 - **真人對戰再來一局**：**顏色不互換，但先後手每局輪流**。
   - 上一局後下的人，下一局先下；每位玩家的顏色整場不變。
   - 使用者 2026-09-24 補充：原本後端固定綠方先手，只取消換色會讓同一個人永遠先手，這不是想要的結果。
   - 後端已改：先手不再綁定綠色，snapshot 用 `game.first`（"green" | "pink"）告訴前端這局誰先手（connect4-back 已定案，見 `docs/protocol.md`）。
   - AI 局不變：玩家一律綠色、先手，「重新開始」也不換。
-- **邀請連結**：打開後帶入房號，**按一下「加入房間」才加入**，不自動加入。
+- **邀請連結**：打開後進入**專屬邀請頁**（L12），整頁只有一顆大按鈕「加入房間」；按一下才加入，不自動加入。
+  - 房間無法加入時，在同一頁說明原因（L13），只有「回到大廳」一顆按鈕。
+- **挑戰 AI 的描述**改成「挑戰者，你能想出擊敗 AI 的戰術嗎？」（第三輪）。
+- **結局面板**不再沿用棋子顏色（第三輪，選 R1）：
+  - 勝：向日葵底加放射光芒，徽章是獎盃。
+  - 敗：墨黑底、白字，徽章是旗子。
+  - 平：白底，下緣虛線，徽章是等號。
+  - 求解器故障：淡黃底加警示圖示。
+- **勝利慶祝**加長到約 3 秒（第三輪）：依序是連線棋子彈起、墨線、星星、彩紙、獎盃、結局面板，最後勝利棋子脈動 3 次（A03）。
 - **設計圖檔**：只存本機，不 push。規格與 mockup 原始檔可以進 git。
 
 ## 1. 怎麼看這套圖
 
 `eog design/artboards/round2/` 會依檔名排序，順序如下：
 1. A01–A10：動效分鏡。
-2. L01–L11：大廳與個人設定。
+2. L01–L13：大廳、個人設定、邀請頁。
 3. P01–P18：對局。
 
 檔名格式是 `{ID}-{路由}-{狀態}-{viewport}.png`。viewport 有以下幾種：
@@ -60,7 +71,7 @@
 | desktop-en | 1440×900 | 英文桌機 |
 | tablet | 768×1024 | 平板（只出 L03） |
 | mobile | 430×932 | iPhone 14 Pro Max PWA standalone。上 59px、下 34px 是 safe area，畫了動態島與 home indicator |
-| mobile-en | 430×932 | 英文手機（L02、L07、P06、P10、P11、P12、P15：最長的英文文案） |
+| mobile-en | 430×932 | 英文手機（L02、L07、L12、P06、P10、P11、P12、P15：最長的英文文案） |
 | keyboard | 430×932 | 鍵盤彈出（只出 L10） |
 | safari | 430×739 | Safari 工具列展開後的可見高度（L04、P03、P07）。739 是假設值，要實機確認 |
 | landscape | 892×412 | Galaxy S26 Ultra 橫向（L04、P03、P04、P07） |
@@ -126,7 +137,7 @@
 - 手機大廳的「立即對戰」大按鈕是 56。
 - 等朋友畫面的文字按鈕「離開」至少 44。
 - profile 欄位高 48、字級 16。
-- 78 張圖的水平溢位全部是 0。
+- 81 張圖（外加一張勝利動畫 GIF）的水平溢位全部是 0。
 
 ## 4. 頁面 × 狀態（觸發條件以 snapshot 判斷）
 
@@ -142,9 +153,10 @@
 | L08 | 錯誤 toast | `error` 事件 | 粉紅貼紙 toast，有 44px 關閉鈕；桌機在右下，手機橫跨底部 |
 | L09 | 個人設定（桌機 modal） | 點頭像 | 欄位高 48，語言用原生 select 加自畫箭頭 |
 | L10 | 個人設定（手機 sheet） | 點頭像；422 `invalid_nickname` | 欄位錯誤時底色轉粉紅、外框加粗，錯誤文字放在欄位下方；鍵盤彈出時 sheet 貼在鍵盤上方（keyboard 圖） |
-| L11 | 邀請連結開啟 | 網址帶 `/?room=CODE` | 薄荷色橫幅「朋友邀請你加入房間 CODE」；朋友卡自動展開；房號已帶入；「加入房間」改成主要按鈕。**不自動加入** |
+| L12 | 邀請頁 | 網址帶 `/?room=CODE` | 專屬頁：「朋友邀請你一起玩」、房號、你的暱稱（可修改，開 L09／L10）、一顆大的「加入房間」、文字按鈕「不加入，先去大廳」。**不自動加入** |
+| L13 | 邀請頁：無法加入 | 按下加入後收到 `room_not_found`／`room_full`／`host_disconnected` | 同一頁改成警示圖示和原因說明（三種錯誤各有文案：`inviteGoneBody`／`inviteFullBody`／`inviteHostOffBody`），只有「回到大廳」 |
 | P01 | 配對中 | `queue.searching` | 三顆棋子跳動，顯示「已等待 m:ss」和取消按鈕 |
-| P02 | 等朋友 | `game.status = waiting` | 大字房號、QR code。桌機的主按鈕是「複製邀請連結」，圖上畫的是按下後「已複製」的狀態，而且之後不會變回原字；手機的主按鈕是「分享邀請」（`navigator.share`），另有「複製房號」和「離開」 |
+| P02 | 等朋友 | `game.status = waiting` | 大字房號、QR code，加上一顆主要按鈕：桌機是「複製邀請連結」（按過後維持「已複製邀請連結」）；手機是「分享邀請」（`navigator.share`，瀏覽器不支援時改成「複製邀請連結」）；另有文字按鈕「離開」 |
 | P03 | 我的回合 | `playing && turn == you` | 軌道上的棋子、欄位亮框、預覽落點、上一手框、鍵盤提示 |
 | P04 | 對手回合 | `playing && turn != you` | 狀態籤「{name} 正在思考」加三點跳動；軌道空白；棋盤不接受操作；隨機配對也顯示本場比分 |
 | P05 | AI 思考 | `thinking` 持續超過 300ms | 狀態籤「AI 正在思考」加三點；300ms 內就落子則不顯示；沒有秒數、沒有超時 |
@@ -187,7 +199,11 @@
   - 錯誤：粉紅。
   - 自己離線：灰。
 - **結局面板**：
-  - 上半是色帶加徽章：勝利用薄荷、落敗用粉紅、平手用向日葵、錯誤用淡粉。
+  - 上半是色帶加徽章，**不用棋子的綠／粉紅**：
+    - 勝：向日葵放射光芒＋獎盃。
+    - 敗：墨黑底白字＋旗子（自己離線判負時換成斷線圖示）。
+    - 平：白底＋等號。
+    - 故障：淡黃＋警示。
   - 中段是再來一局的狀態列（可選）。
   - 下半是按鈕：桌機直排，手機兩欄並排，主要按鈕在右。
 - **對局卡**：
@@ -203,10 +219,10 @@
 |---|---|---|---|
 | A01 | 落子重力＋壓扁＋回彈＋一次小彈 | 260 + 30×下落列數 ms；下落段 ease-in | 直接出現在落點 |
 | A02 | 滑鼠／觸控預覽 | 棋子滑動 140ms；亮框與預覽淡入 100ms | 瞬移；只淡入 120ms |
-| A03 | 勝利連線＋結局面板 | 放大 240ms，每顆錯開 70ms；墨線 320ms；面板在 650ms 時開始進場，歷時 360ms ease-back | 一次到位；面板淡入 |
+| A03 | 勝利慶祝（約 3 秒） | 彈起 300ms，每顆錯開 120ms；墨線 450–950ms；星星 900ms；彩紙 900–3200ms；面板 1400ms 起 420ms（輸 900ms、平 300ms，只有贏才有彩紙）；獎盃 1700ms；棋子脈動 3 次 | 一次到位；沒有彩紙；面板淡入 |
 | A04 | 思考中（真人對手、AI） | 三點跳動 900ms 循環，每點錯開 150ms；AI 超過 300ms 才顯示 | 三點靜止 |
 | A05 | 離線 30 秒倒數 | 30 秒線性；最後 10 秒每 1 秒脈動一次 | 每秒跳一格，不脈動 |
-| A06 | 配對跳動、複製回饋 | 跳動 900ms 循環，每顆錯開 150ms；複製彈跳 180ms，之後維持「已複製」 | 靜止；只換字 |
+| A06 | 配對跳動、複製回饋 | 跳動 900ms 循環，每顆錯開 150ms；桌機複製彈跳 180ms，之後維持「已複製邀請連結」 | 靜止；只換字 |
 | A07 | 大廳 → 對局 | 大廳淡出 160ms，對局升起 240ms，狀態籤彈出 160ms | 交叉淡入淡出 120ms |
 | A08 | reduced-motion 總表 | — | — |
 | A09 | 鍵盤操作 | 同 A02、A01 | 同 A02、A01 |
@@ -230,10 +246,10 @@
 
 | 項目 | 誰 | 說明 |
 |---|---|---|
-| 樣式、元件、版面、動效 | front | 以本規格和 78 張圖為準 |
-| 深連結 `/?room=CODE` | front（新路由） | 開啟後停在大廳、展開朋友卡並帶入房號，不自動加入（L11） |
+| 樣式、元件、版面、動效 | front | 以本規格和 81 張圖（外加一張勝利動畫 GIF）為準 |
+| 深連結 `/?room=CODE` | front（新路由） | 開啟後顯示專屬邀請頁（L12），按「加入房間」才送 `room.join`；錯誤顯示在同一頁（L13） |
 | QR code | front（新依賴） | 候選 `qrcode-generator` 或同級、可產 SVG 的套件；實作時量體積，預估 gzip 後在 10KB 內（未量測）。QR 內容就是深連結 |
-| 分享 | front | 手機用 `navigator.share({ title, text, url })`；不支援就複製邀請連結 |
+| 分享 | front | 手機唯一的按鈕「分享邀請」用 `navigator.share({ title, text, url })`；不支援時同一顆按鈕改成「複製邀請連結」 |
 | 鍵盤操作（A09） | front | roving tabindex，←／→／Home／End／Enter／空白鍵，`aria-live` 朗讀 |
 | 在這裡繼續（P15） | front | `reclaim()`，已列在 front 的 F1 |
 | 字型 | front | 自架 Space Grotesk 拉丁子集，`unicode-range` 限定拉丁字元 |
@@ -283,7 +299,7 @@
 1. Safari 工具列展開時的可見高度 739 是假設值。手機矮視窗規則用 ≤780 作門檻，要在實機確認。
 2. PingFang TC 和 Space Grotesk 混排時，數字與中文的基線可能略有落差，QA 時要看手數籤、比分、倒數。
 3. QR 套件的選擇與實際體積由 front 實作時量測。
-4. 已決定：`/?room=` 深連結只帶入房號，按一下「加入房間」才加入。
+4. 已決定：`/?room=` 深連結開啟專屬邀請頁，按一下「加入房間」才加入。
 5. 這套規格只涵蓋亮色，不做暗色（使用者 2026-09-24 決定）。
 
 ## 12. 新增與改寫的文案（zh-TW／en；完整字串見 `design/mockups/round2/strings.js`）
@@ -291,12 +307,22 @@
 | key | zh-TW | en | 備註 |
 |---|---|---|---|
 | `backToLobby` | 回到大廳 | Back to lobby | 新增 |
-| `copyCode` | 複製房號 | Copy code | 新增（was common.copy) |
 | `shareInvite` | 分享邀請 | Share invite | 新增 |
 | `copyLink` | 複製邀請連結 | Copy invite link | 新增 |
+| `copiedLink` | 已複製邀請連結 | Invite link copied | 新增 |
+| `aiBody` | 挑戰者，你能想出擊敗 AI 的戰術嗎？ | Challenger, can you find a strategy that beats the AI? | 改寫 |
 | `lobbyOffline` | 連線恢復前無法開始對局。 | You can start a game once the connection is back. | 新增 |
-| `inviteBanner` | 朋友邀請你加入房間 | A friend invited you to room | 新增 |
-| `inviteHint` | 房號已帶入，按「加入房間」就能開始。 | The code is filled in. Tap “Join room” to start. | 新增 |
+| `inviteEyebrow` | 邀請 | Invite | 新增 |
+| `inviteTitle` | 朋友邀請你一起玩 | A friend invited you to play | 新增 |
+| `inviteBody` | 按下「加入房間」，朋友那邊就會開始對戰。 | Tap “Join room” and the game starts for both of you. | 新增 |
+| `inviteRoom` | 房間 | Room | 新增 |
+| `inviteAs` | 你的暱稱：{name} | Playing as {name} | 新增 |
+| `editName` | 修改 | Edit | 新增 |
+| `notNow` | 不加入，先去大廳 | Not now, go to lobby | 新增 |
+| `inviteGone` | 這個房間無法加入 | This room can’t be joined | 新增 |
+| `inviteGoneBody` | 房號 {code} 不存在，可能房主已經離開。請朋友重新分享邀請。 | Room {code} doesn’t exist; the host may have left. Ask your friend to share a new invite. | 新增（room_not_found) |
+| `inviteFullBody` | 房間 {code} 已經滿了，請朋友重新開一個房間。 | Room {code} is already full. Ask your friend to open a new room. | 新增（room_full) |
+| `inviteHostOffBody` | 房主目前離線，請稍後再試一次。 | The host is offline right now. Please try again in a moment. | 新增（host_disconnected) |
 | `yourTurnHint` | 選一欄落子 | Pick a column | 新增 |
 | `opponentTurn` | {name} 正在思考 | {name} is thinking | 新增（was game.opponentTurn) |
 | `moveNo` | 第 {n} 手 | Move {n} | 新增 |
@@ -353,7 +379,7 @@
   - `youDropped`：你在第 N 欄落子。
   - `opponentDropped`：對手在第 N 欄落子。
 
-## 13. Artboard 索引（68 張畫面＋10 張分鏡）
+## 13. Artboard 索引（71 張畫面＋10 張分鏡＋1 張 GIF）
 
 | ID | 檔名（design/artboards/round2/，副檔名 .png） |
 |---|---|
@@ -367,7 +393,8 @@
 | L08 | `L08-lobby-error-toast-desktop-1440x900`<br>`L08-lobby-error-toast-mobile-430x932` |
 | L09 | `L09-profile-modal-desktop-1440x900` |
 | L10 | `L10-profile-sheet-error-mobile-430x932`<br>`L10-profile-sheet-error-keyboard-430x932` |
-| L11 | `L11-lobby-invite-link-desktop-1440x900`<br>`L11-lobby-invite-link-mobile-430x932` |
+| L12 | `L12-invite-page-desktop-1440x900`<br>`L12-invite-page-mobile-430x932`<br>`L12-invite-page-mobile-en-430x932` |
+| L13 | `L13-invite-room-gone-desktop-1440x900`<br>`L13-invite-room-gone-mobile-430x932` |
 | P01 | `P01-play-searching-desktop-1440x900`<br>`P01-play-searching-mobile-430x932` |
 | P02 | `P02-play-waiting-friend-desktop-1440x900`<br>`P02-play-waiting-friend-mobile-430x932` |
 | P03 | `P03-play-your-turn-desktop-1440x900`<br>`P03-play-your-turn-desktop-1366x768`<br>`P03-play-your-turn-mobile-430x932`<br>`P03-play-your-turn-safari-430x739`<br>`P03-play-your-turn-landscape-892x412` |
@@ -388,7 +415,7 @@
 | P18 | `P18-play-opponent-left-after-finish-desktop-1440x900`<br>`P18-play-opponent-left-after-finish-mobile-430x932` |
 | A01 | `A01-drop-gravity-bounce-storyboard` |
 | A02 | `A02-column-preview-storyboard` |
-| A03 | `A03-win-line-result-panel-storyboard` |
+| A03 | `A03-win-celebration-storyboard`<br>`A03-win-celebration-animated.gif`（動畫，eog 可播放） |
 | A04 | `A04-ai-thinking-sweep-storyboard` |
 | A05 | `A05-paused-countdown-storyboard` |
 | A06 | `A06-waiting-feedback-storyboard` |
