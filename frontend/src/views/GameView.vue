@@ -3,15 +3,18 @@ import { computed, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import BoardHead from "../components/BoardHead.vue";
 import ConnectBoard from "../components/ConnectBoard.vue";
+import EndingScene from "../components/EndingScene.vue";
 import MatchCard from "../components/MatchCard.vue";
 import ResultCard from "../components/ResultCard.vue";
 import SearchingScreen from "../components/SearchingScreen.vue";
 import WaitingScreen from "../components/WaitingScreen.vue";
 import { useCountdown } from "../composables/useCountdown";
 import { useDropQueue } from "../composables/useDropQueue";
+import { useEnding } from "../composables/useEnding";
 import { useMedia } from "../composables/useMedia";
 import { useGameStore } from "../stores/game";
 import type { Color } from "../types";
+import { endingFor } from "../utils/ending";
 import {
   lastMove,
   movesSince,
@@ -51,13 +54,9 @@ const opponentCountdown = computed(() =>
 // with (first load, reconnect) is shown as it is (A01, A03).
 const reducedMotion = useMedia("(prefers-reduced-motion: reduce)");
 const drops = useDropQueue(reducedMotion);
-const celebrating = ref(false);
-const confetti = ref(false);
-const resultEntering = ref(false);
-// A03 starts once the last token has landed; until then the result panel
-// keeps its place but stays hidden.
-const resultHeld = ref(false);
-let celebrateTimer: number | null = null;
+// Round 7 endings start once the last token has landed; until the panel's
+// turn it keeps its place but stays hidden.
+const ending = useEnding(reducedMotion);
 const reconnectedName = ref<string | null>(null);
 const announcement = ref("");
 let reconnectedTimer: number | null = null;
@@ -76,7 +75,7 @@ watch(
       store.room?.id === oldRoom && store.connectionEpoch === oldEpoch;
     if (!game || !live) {
       drops.reset();
-      stopCelebration();
+      ending.cancel();
       return;
     }
 
@@ -106,12 +105,10 @@ watch(
       oldStatus === "thinking" ||
       oldStatus === "paused";
     if ((status === "finished" || status === "error") && wasLive) {
-      const won = status === "finished" && game.winner === game.you;
-      const fourInARow =
-        status === "finished" && game.winning_cells.length >= 4;
-      startCelebration(fourInARow, won, drops.idleIn());
+      // A solver error has no ending of its own; its panel just comes in.
+      ending.start(endingFor(game, opponentName.value), drops.idleIn());
     } else if (status !== oldStatus) {
-      stopCelebration();
+      ending.cancel();
     }
 
     if (oldStatus === "paused" && status === "playing") {
@@ -126,35 +123,7 @@ watch(
   },
 );
 
-function stopCelebration() {
-  if (celebrateTimer !== null) window.clearTimeout(celebrateTimer);
-  celebrateTimer = null;
-  celebrating.value = false;
-  confetti.value = false;
-  resultEntering.value = false;
-  resultHeld.value = false;
-}
-
-function startCelebration(fourInARow: boolean, won: boolean, wait: number) {
-  stopCelebration();
-  const begin = () => {
-    celebrateTimer = null;
-    resultHeld.value = false;
-    celebrating.value = fourInARow;
-    // A03: confetti whenever you win: four in a row, a forfeit, or a leave.
-    confetti.value = won;
-    resultEntering.value = true;
-  };
-  if (wait <= 0) {
-    begin();
-    return;
-  }
-  resultHeld.value = true;
-  celebrateTimer = window.setTimeout(begin, wait);
-}
-
 onUnmounted(() => {
-  if (celebrateTimer !== null) window.clearTimeout(celebrateTimer);
   if (reconnectedTimer !== null) window.clearTimeout(reconnectedTimer);
 });
 
@@ -228,8 +197,8 @@ function onAction(action: ResultAction) {
         :winning-cells="store.game.winning_cells"
         :last="last"
         :drops="drops.states.value"
-        :celebrating="celebrating"
-        :confetti="confetti"
+        :ending="ending.ending.value"
+        :skipped="ending.skipped.value"
         :finished="store.game.status === 'finished'"
         :overlay="overlay"
         @move="store.send('game.move', { column: $event })"
@@ -252,8 +221,8 @@ function onAction(action: ResultAction) {
         :opponent="opponent"
         :opponent-name="opponentName"
         :you-move-first="store.game.you === store.game.first"
-        :entering="resultEntering"
-        :held="resultHeld"
+        :entering="ending.panelEntering.value"
+        :held="ending.panelHeld.value"
         @action="onAction"
       />
       <MatchCard
@@ -298,5 +267,10 @@ function onAction(action: ResultAction) {
       </p>
     </aside>
     <p class="sr-only" aria-live="polite">{{ announcement }}</p>
+    <EndingScene
+      v-if="ending.stage.value === 'playing' && ending.ending.value"
+      :ending="ending.ending.value"
+      @skip="ending.skip"
+    />
   </section>
 </template>

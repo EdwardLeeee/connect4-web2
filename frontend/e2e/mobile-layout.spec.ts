@@ -1147,43 +1147,151 @@ test("moves that arrive together drop one after another", async ({ page }) => {
   await expect(cell(page, 5, 1)).toHaveClass(/is-last/);
 });
 
-test("the winning move lands before the celebration starts", async ({
-  page,
-}) => {
-  await playDrops(page);
-  const finished = snapshotFor("P07");
+/** A finished snapshot one move earlier: the last token not yet played. */
+function oneMoveBefore(
+  finished: Snapshot,
+  row: number,
+  column: number,
+  turn: "green" | "pink",
+): Snapshot {
   const game = finished.game!;
-  const board = game.board.map((row) => [...row]);
-  board[2][4] = null;
-  const app = await mockApp(page, {
+  const board = game.board.map((cells) => [...cells]);
+  board[row][column] = null;
+  return {
     ...finished,
     game: {
       ...game,
       revision: game.revision - 1,
-      status: "playing",
-      turn: "green",
+      status:
+        finished.room?.mode === "ai" && turn === "pink"
+          ? "thinking"
+          : "playing",
+      turn,
       board,
       history: game.history.slice(0, -1),
       winner: null,
       result_reason: null,
       winning_cells: [],
-      series: { you: 0, opponent: 0, draws: 0 },
     },
-  });
+  };
+}
+
+// Round 7 endings (A03 C5, A11 F5, A12 T5). Desktop only until the phone
+// drafts are approved; timings are from the last token landing.
+test("the winning move lands, then C5 plays and the panel comes in at 3.3s", async ({
+  page,
+}, testInfo) => {
+  test.skip(kind(testInfo) !== "desktop", "Phone endings await drafts.");
+  await playDrops(page);
+  const finished = snapshotFor("P07");
+  const app = await mockApp(page, oneMoveBefore(finished, 2, 4, "green"));
   await page.goto("/play");
   await expect(page.locator(".board")).toBeVisible();
 
   app.send(finished);
+  const board = page.locator(".board");
   const card = page.locator(".result-card");
   await expect(cell(page, 2, 4).locator(".token")).toHaveClass(/is-dropping/);
-  await expect(page.locator(".board")).not.toHaveClass(/is-celebrating/);
-  await expect(card).toHaveClass(/is-held/);
+  await expect(board).not.toHaveClass(/ending-win/);
   await expect(card).toBeHidden();
 
   await page.clock.runFor(dropDuration(2) + 50);
-  await expect(page.locator(".board")).toHaveClass(/is-celebrating/);
+  await expect(board).toHaveClass(/ending-win/);
+  await expect(board.locator(".win-line line.gold")).toHaveCount(1);
+  await expect(board.locator(".star")).toHaveCount(6);
+  const sticker = page.locator(".ending-sticker");
+  await expect(sticker).toContainText("你贏了！");
+  await expect(sticker).toContainText("連成四子，共 13 手");
+  await expect(sticker).toContainText("點一下畫面可以跳過");
+  await expect(page.locator(".ending-cannon .shot")).toHaveCount(64);
+
+  await page.clock.runFor(3299);
+  await expect(card).toBeHidden();
+  await page.clock.runFor(1);
   await expect(card).toHaveClass(/is-entering/);
   await expect(card).toBeVisible();
+  await page.clock.runFor(5500 - 3300);
+  await expect(page.locator(".ending-scene")).toHaveCount(0);
+  // The board keeps the gold line after the ending.
+  await expect(board.locator(".win-line line.gold")).toHaveCount(1);
+});
+
+test("a tap skips the ending straight to the panel", async ({
+  page,
+}, testInfo) => {
+  test.skip(kind(testInfo) !== "desktop", "Phone endings await drafts.");
+  await playDrops(page);
+  const finished = snapshotFor("P07");
+  const app = await mockApp(page, oneMoveBefore(finished, 2, 4, "green"));
+  await page.goto("/play");
+  await expect(page.locator(".board")).toBeVisible();
+  app.send(finished);
+  await page.clock.runFor(dropDuration(2) + 50 + 1000);
+  await expect(page.locator(".ending-sticker")).toBeVisible();
+
+  await page.locator(".ending-skip").click();
+  await expect(page.locator(".ending-scene")).toHaveCount(0);
+  await expect(page.locator(".board")).toHaveClass(/is-ending-skipped/);
+  await expect(page.locator(".result-card")).toBeVisible();
+});
+
+test("a loss plays F5 and a draw plays T5", async ({ page }, testInfo) => {
+  test.skip(kind(testInfo) !== "desktop", "Phone endings await drafts.");
+  await playDrops(page);
+  const loss = snapshotFor("P08");
+  const app = await mockApp(page, oneMoveBefore(loss, 2, 4, "pink"));
+  await page.goto("/play");
+  await expect(page.locator(".board")).toBeVisible();
+
+  // F5: the AI's winning token lands, the storm starts, the panel at 4s.
+  app.send(loss);
+  await page.clock.runFor(dropDuration(2) + 50);
+  const board = page.locator(".board");
+  await expect(board).toHaveClass(/ending-lose/);
+  await expect(board.locator(".cell.is-mine")).toHaveCount(6);
+  await expect(page.locator(".ending-storm .streak")).toHaveCount(90);
+  const sticker = page.locator(".ending-sticker");
+  await expect(sticker).toContainText("這局輸了");
+  await expect(sticker).toContainText("Super AI 拿下這局");
+  await expect(sticker).toContainText("點一下畫面可以跳過");
+  const card = page.locator(".result-card");
+  await page.clock.runFor(3999);
+  await expect(card).toBeHidden();
+  await page.clock.runFor(1);
+  await expect(card).toBeVisible();
+
+  // T5 on a fresh page: the board fills up, tug of war, the panel at 5.3s.
+  const draw = snapshotFor("P09");
+  const tab = await page.context().newPage();
+  await tab.emulateMedia({ reducedMotion: "no-preference" });
+  await tab.clock.install({ time: SERVER_TIME * 1000 });
+  await tab.clock.pauseAt(SERVER_TIME * 1000 + 30_000);
+  const drawApp = await mockApp(tab, oneMoveBefore(draw, 0, 6, "pink"));
+  await tab.goto("/play");
+  await expect(tab.locator(".board")).toBeVisible();
+  drawApp.send(draw);
+  await tab.clock.runFor(dropDuration(0) + 50);
+  await expect(tab.locator(".board")).toHaveClass(/ending-draw/);
+  await expect(tab.locator(".tug-stage")).toHaveCount(1);
+  await expect(tab.locator(".ending-rain .confetti")).toHaveCount(60);
+  await expect(tab.locator(".ending-sticker")).toContainText("平手！");
+  await tab.clock.runFor(5299);
+  await expect(tab.locator(".result-card")).toBeHidden();
+  await tab.clock.runFor(1);
+  await expect(tab.locator(".result-card")).toBeVisible();
+  await tab.close();
+});
+
+test("with reduced motion only the result panel comes in", async ({ page }) => {
+  // The config applies reduced motion; tokens and panel appear at once.
+  const finished = snapshotFor("P07");
+  const app = await mockApp(page, oneMoveBefore(finished, 2, 4, "green"));
+  await page.goto("/play");
+  await expect(page.locator(".board")).toBeVisible();
+  app.send(finished);
+  await expect(page.locator(".result-card")).toBeVisible();
+  await expect(page.locator(".ending-scene")).toHaveCount(0);
+  await expect(page.locator(".board")).not.toHaveClass(/ending-/);
 });
 
 test("your turn follows your own colour when you play pink", async ({
