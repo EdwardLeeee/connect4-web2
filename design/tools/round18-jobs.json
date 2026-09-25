@@ -1,0 +1,30 @@
+[
+ {
+  "url": "mockups/round2/screen.html?state=L09&vp=desktop&lang=zh-TW&pp=b",
+  "name": "R18-01-網站隱私權小字-B-連結加版本號-desktop",
+  "tag": "01 網站也顯示隱私權小字｜B 連結加版本號（桌機）",
+  "sub": "個人設定面板最下面、「取消／儲存」下方置中一行，樣式同 app（R17-02 B）",
+  "still": true,
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L09&vp=desktop&lang=en&pp=b",
+  "name": "R18-01-網站隱私權小字-B-連結加版本號-desktop-en",
+  "tag": "01 網站也顯示隱私權小字｜B 連結加版本號（桌機、英文）",
+  "sub": "個人設定面板最下面、「取消／儲存」下方置中一行，樣式同 app（R17-02 B）",
+  "still": true,
+  "width": 1440,
+  "height": 900
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L09&vp=safari&lang=zh-TW&pp=b",
+  "name": "R18-01-網站隱私權小字-B-連結加版本號-mobile-safari",
+  "tag": "01 網站也顯示隱私權小字｜B 連結加版本號（手機瀏覽器）",
+  "sub": "個人設定面板最下面、「取消／儲存」下方置中一行，樣式同 app（R17-02 B）",
+  "still": true,
+  "width": 430,
+  "height": 739,
+  "mobile": true
+ }
+]
