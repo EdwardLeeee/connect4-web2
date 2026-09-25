@@ -108,7 +108,7 @@ Google 保管。上傳金鑰由 `mobile/scripts/android-upload-key.sh` 產生（
       **`.p8` 只能下載一次，下載後立刻備份到密碼管理器。** 記下 Key ID 與頁面上的 Issuer ID。
    2. Apps → ＋ → New App：平台 iOS、名稱、主要語言、Bundle ID 選 `com.oraclelee.connect4`、SKU。
       名稱全站不能重複，這一步才會知道「四子棋」或「Four In A Row」有沒有被占用；被占用就回報 ceo。
-6. 到 [Membership details](https://developer.apple.com/account#MembershipDetailsCard) 抄 Team ID。
+6. 在 [Apple Developer 帳號頁](https://developer.apple.com/account) 的 Membership details 卡片抄 Team ID。
 7. 存成 secrets：
    `mobile/scripts/ios-signing.sh secrets <.mobileprovision> <AuthKey_XXXX.p8> <Key ID> <Issuer ID> <Team ID>`，
    會設定 `IOS_DIST_CERT_P12_BASE64`、`IOS_DIST_CERT_P12_PASSWORD`、`IOS_PROFILE_BASE64`、

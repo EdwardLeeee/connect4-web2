@@ -88,6 +88,7 @@ jobs:
         run: |
           set -euo pipefail
           xcodebuild -version
+          xcodebuild -list -project App.xcodeproj
           version="$(node -p "require('../../../frontend/package.json').version")"
           xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
             -sdk iphonesimulator -destination "generic/platform=iOS Simulator" \
@@ -115,7 +116,7 @@ jobs:
         run: |
           xcodebuild -project App.xcodeproj -scheme App -configuration Release \
             -destination "generic/platform=iOS" -derivedDataPath "${RUNNER_TEMP}/dd-release" \
-            CODE_SIGNING_ALLOWED=NO build
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
       # Best effort: shows how the name and the app look on a simulator.
       - name: Simulator screenshots
         continue-on-error: true

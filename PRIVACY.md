@@ -9,7 +9,8 @@ Applies to the Four In A Row app (四子棋) and https://connect4.oraclelee.com.
 
 - 不需要帳號。我們不收集姓名、email、電話、位置等個人資料；沒有廣告，也沒有分析工具。
 - 遊戲只存你設定的暱稱與語言，以及一組隨機產生、用來辨識連線的代碼。這些資料放在伺服器記憶體，
-  伺服器重啟就清除。暱稱會顯示給同一局的對手。app 把連線代碼存在手機上，網站則存在瀏覽器的 cookie。
+  伺服器重啟就清除。暱稱會顯示給同一局的對手。網站用 cookie 記住這組連線代碼（最長 30 天），
+  app 則把它存在手機上。
 - 跟一般網站一樣，伺服器與網路服務商 Cloudflare 會留有連線紀錄（例如 IP 位址、時間、瀏覽器資訊），
   只用於維運與安全，不用來追蹤或投放廣告，也不提供給其他人；紀錄會隨伺服器的紀錄輪替自動刪除。
   Cloudflare 依它自己的[隱私權政策](https://www.cloudflare.com/privacypolicy/)處理。
@@ -22,8 +23,8 @@ Applies to the Four In A Row app (四子棋) and https://connect4.oraclelee.com.
   number or location. There are no ads and no analytics.
 - The game keeps only the nickname and language you choose, plus a randomly generated code that
   identifies your connection. They live in the server's memory and are erased whenever the server
-  restarts. Your nickname is shown to your opponent in the same game. The app stores the connection
-  code on your phone; the website stores it in a browser cookie.
+  restarts. Your nickname is shown to your opponent in the same game. The website remembers the
+  connection code in a cookie (for up to 30 days); the app stores it on your phone.
 - Like any website, the server and our network provider Cloudflare keep connection logs (for example
   IP address, time and browser details). They are used only to run and secure the service, never
   for tracking or advertising, are not given to anyone else, and are deleted automatically as the
