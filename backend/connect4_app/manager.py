@@ -52,6 +52,9 @@ class GameManager:
             task = self.disconnect_tasks.pop(session_id, None)
             if task:
                 task.cancel()
+            # A searcher who kept their place while away is matchable again from now on.
+            if session_id in self.queue:
+                self._pair_from_queue(session_id)
             game = self._game_for(session_id)
             if game:
                 game.connected[session_id] = True
@@ -73,8 +76,12 @@ class GameManager:
             if self.connections.get(session_id) is not websocket:
                 return
             self.connections.pop(session_id, None)
-            with suppress(ValueError):
-                self.queue.remove(session_id)
+            if session_id in self.queue:
+                # Phones drop the socket when an app goes to the background. Keep the place
+                # for the reconnect window, but never match someone who is not there.
+                task = asyncio.create_task(self._expire_queue_place_after(session_id))
+                self.disconnect_tasks[session_id] = task
+                return
             game = self._game_for(session_id)
             if not game:
                 return
@@ -180,20 +187,46 @@ class GameManager:
         async with self.lock:
             self._require_available(session_id)
             self._prune_queue()
-            opponent = next((queued for queued in self.queue if queued != session_id), None)
-            if opponent:
-                self.queue.remove(opponent)
-                if secrets.randbelow(2):
-                    seats = {"green": session_id, "pink": opponent}
-                else:
-                    seats = {"green": opponent, "pink": session_id}
-                game = self._new_game(mode="matchmaking", seats=seats, status="playing")
-            elif session_id not in self.queue:
+            game = self._pair_from_queue(session_id)
+            if not game and session_id not in self.queue:
                 self.queue.append(session_id)
         if game:
             await self.broadcast(game.room_id)
         else:
             await self.send_snapshot(session_id)
+
+    def _pair_from_queue(self, session_id: str) -> Game | None:
+        """Match a connected searcher with the longest-waiting connected searcher."""
+        opponent = next(
+            (
+                queued
+                for queued in self.queue
+                if queued != session_id and queued in self.connections
+            ),
+            None,
+        )
+        if not opponent:
+            return None
+        self.queue.remove(opponent)
+        with suppress(ValueError):
+            self.queue.remove(session_id)
+        if secrets.randbelow(2):
+            seats: dict[Color, str] = {"green": session_id, "pink": opponent}
+        else:
+            seats = {"green": opponent, "pink": session_id}
+        return self._new_game(mode="matchmaking", seats=seats, status="playing")
+
+    async def _expire_queue_place_after(self, session_id: str) -> None:
+        try:
+            await asyncio.sleep(self.reconnect_seconds)
+            async with self.lock:
+                if session_id not in self.connections:
+                    with suppress(ValueError):
+                        self.queue.remove(session_id)
+        finally:
+            # A reconnect replaces this entry; only clear state this task still owns.
+            if self.disconnect_tasks.get(session_id) is asyncio.current_task():
+                self.disconnect_tasks.pop(session_id, None)
 
     async def _leave_queue(self, session_id: str, _payload: dict[str, Any]) -> None:
         async with self.lock:
@@ -501,10 +534,12 @@ class GameManager:
         )
 
     def _prune_queue(self) -> None:
+        # Keep searchers who are away but still inside their reconnect window.
         self.queue = deque(
             session_id
             for session_id in self.queue
-            if session_id in self.connections and not self._game_for(session_id)
+            if (session_id in self.connections or session_id in self.disconnect_tasks)
+            and not self._game_for(session_id)
         )
 
     def _room_code(self) -> str:

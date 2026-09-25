@@ -134,6 +134,18 @@ iOS／Android app 把網頁打包在 app 裡（Capacitor），頁面來源是 `c
 - 倒數請用伺服器時間計算：`offset = server_time - 收到 snapshot 時的本機秒數`，
   `剩餘秒數 = grace_deadline - (本機現在秒數 + offset)`。
 
+#### 配對中斷線
+
+手機把 app 切到背景時，WebSocket 會斷線。配對中的人斷線後，伺服器會把他的位置保留 30 秒
+（和對局的斷線寬限期相同）：
+
+- 離開期間，他仍在佇列裡，但**不會被配對**；別人加入配對時只會配給在線的人，佇列裡只剩離線的人時，
+  新加入的人就照常等待。
+- 30 秒內重連，snapshot 的 `queue.searching` 維持 `true`；伺服器會在重連當下立刻嘗試配對，如果有
+  人正在等，回傳的 snapshot 就直接帶著新的一局。
+- 超過 30 秒沒回來，伺服器會把他移出佇列；之後重連時 `queue.searching` 為 `false`。
+- 換分頁（4001）不算斷線，位置不受影響。
+
 #### 再來一局
 
 - `rematch_available`：現在投票能不能成局。
