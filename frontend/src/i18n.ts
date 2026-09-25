@@ -137,6 +137,8 @@ const messages = {
     connection: {
       connecting: "連線中…",
       offline: "連線中斷，正在重試…",
+      // Phones (spec: 窄螢幕 01); Chinese fits as it is.
+      offlineShort: "連線中斷，正在重試…",
     },
     errors: {
       room_not_found: "找不到這個房間。",
@@ -302,6 +304,8 @@ const messages = {
     connection: {
       connecting: "Connecting…",
       offline: "Connection lost. Retrying…",
+      // Phones (spec: 窄螢幕 01): the long text wraps next to the brand.
+      offlineShort: "Reconnecting…",
     },
     errors: {
       room_not_found: "That room does not exist.",

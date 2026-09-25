@@ -5,6 +5,7 @@ import { useRoute, useRouter } from "vue-router";
 import AppIcon from "./components/AppIcon.vue";
 import OtherTabScreen from "./components/OtherTabScreen.vue";
 import ProfileSheet from "./components/ProfileSheet.vue";
+import { useMedia } from "./composables/useMedia";
 import { useProfileSheet } from "./composables/useProfileSheet";
 import { useGameStore } from "./stores/game";
 import { roomCodeFrom } from "./utils/invite";
@@ -17,11 +18,15 @@ const profileOpen = useProfileSheet();
 
 // Pill in the top bar while connecting or reconnecting; a replaced tab shows
 // its own screen instead (P15).
-const connectionLabel = computed(() =>
-  store.connection === "connecting" || store.connection === "offline"
-    ? t(`connection.${store.connection}`)
-    : "",
-);
+// Narrow screens (320–389px, spec 01): phones use the short "offline" text.
+const phone = useMedia("(max-width: 620px)");
+const connectionLabel = computed(() => {
+  if (store.connection === "connecting") return t("connection.connecting");
+  if (store.connection === "offline") {
+    return t(phone.value ? "connection.offlineShort" : "connection.offline");
+  }
+  return "";
+});
 
 const view = computed(() => {
   if (store.connection === "replaced") return "otherTab";
@@ -51,7 +56,13 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="app" :class="[`view-${view}`, { 'has-sheet': profileOpen }]">
+  <div
+    class="app"
+    :class="[
+      `view-${view}`,
+      { 'has-sheet': profileOpen, 'has-connection': connectionLabel },
+    ]"
+  >
     <header class="topbar">
       <RouterLink class="brand" to="/" aria-label="Connect 4 home">
         <span class="brand-mark" aria-hidden="true">

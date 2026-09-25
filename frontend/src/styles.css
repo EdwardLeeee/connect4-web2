@@ -4266,3 +4266,68 @@ input.has-error:focus {
     display: none;
   }
 }
+
+/* ================= narrow screens 320–389px (design/spec.md, 2026-09-26) ================= */
+
+/* 01: while the connection pill shows on a phone, the brand keeps only its
+   two-token mark (still the home link) and the pill stays on one line. */
+@media (max-width: 620px) {
+  .app.has-connection .brand-text {
+    display: none;
+  }
+
+  .connection-pill {
+    white-space: nowrap;
+  }
+}
+
+/* 02: the two result buttons sit side by side while both labels fit; when
+   either would be cut or overflow the panel (ResultCard measures), they
+   stack with the main action on top. */
+.result-actions.is-stacked {
+  grid-template-columns: 1fr;
+}
+
+.result-actions.is-stacked .btn.primary {
+  order: 0;
+}
+
+/* 03: the lobby demo board shrinks to stay inside the AI card; unchanged
+   from 358px up. 122 = lobby margins 40 + card frame and padding 32 +
+   six gaps 30 + board padding 16 + frame 4. */
+@media (max-width: 620px) {
+  .ai-card .mini-board {
+    --m: min(34px, calc((100vw - 122px) / 7));
+  }
+}
+
+/* 05: below 360px the match card's tokens shrink 34 -> 28px and the
+   spacing tightens, so names like "Super AI" fit. The offline countdown
+   ring scales with the token (28/34). */
+@media (max-width: 359px) {
+  .match-card {
+    grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr);
+  }
+
+  .player {
+    padding: 7px 6px;
+    gap: 6px;
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .match-card > .player.right {
+    grid-template-columns: minmax(0, 1fr) 28px;
+  }
+
+  .player-token-wrap,
+  .token.player-token {
+    width: 28px;
+    height: 28px;
+  }
+
+  .token-ring {
+    inset: -5px;
+    -webkit-mask: radial-gradient(circle, transparent 16.5px, #000 17px);
+    mask: radial-gradient(circle, transparent 16.5px, #000 17px);
+  }
+}
