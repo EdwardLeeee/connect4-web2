@@ -1539,6 +1539,66 @@ test("moves that arrive together drop one after another", async ({ page }) => {
   await expect(cell(page, 5, 1)).toHaveClass(/is-last/);
 });
 
+/** Plays a column the way this device does: a tap, or a click on desktop. */
+async function play(page: Page, testInfo: TestInfo, column: number) {
+  const target = page.locator(".col-target").nth(column);
+  if (kind(testInfo) === "desktop") await target.click();
+  else await target.tap();
+}
+
+test("your move drops as you let go, before the server answers", async ({
+  page,
+}, testInfo) => {
+  await playDrops(page);
+  const start = snapshotFor("P03");
+  const sent: string[] = [];
+  const app = await mockApp(page, start, {
+    onMessage: (message) => sent.push(message.type),
+  });
+  await page.goto("/play");
+  await expect(page.locator(".board")).toHaveClass(/is-interactive/);
+
+  // A1: the server has not answered yet, and the token is already falling.
+  await play(page, testInfo, 4);
+  const yours = cell(page, 3, 4).locator(".token");
+  await expect(yours).toHaveClass(/green/);
+  await expect(yours).toHaveClass(/is-dropping/);
+  await expect.poll(() => sent).toEqual(["game.move"]);
+  await expect(page.locator(".board")).not.toHaveClass(/is-interactive/);
+  // A tap's compatibility mousedown focuses the column; its preview must not
+  // come back and hover there while the server answers.
+  await expect(page.locator(".hand")).toHaveCount(0);
+  const token = await yours.elementHandle();
+
+  // The server's snapshot confirms it: the same token drops on.
+  await page.clock.runFor(100);
+  app.send(afterMoves(start, false));
+  await expect(page.locator(".game > .sr-only")).toHaveText("你在第 5 欄落子");
+  expect(await token!.evaluate((element) => element.isConnected)).toBe(true);
+  await expect(yours).toHaveClass(/is-dropping/);
+  await page.clock.runFor(dropDuration(3) - 100 + 50);
+  await expect(yours).not.toHaveClass(/is-dropping/);
+  await expect(cell(page, 3, 4)).toHaveClass(/is-last/);
+});
+
+test("a move the server turns down is taken back", async ({
+  page,
+}, testInfo) => {
+  await playDrops(page);
+  const app = await mockApp(page, snapshotFor("P03"));
+  await page.goto("/play");
+  await expect(page.locator(".board")).toHaveClass(/is-interactive/);
+
+  await play(page, testInfo, 4);
+  await expect(cell(page, 3, 4).locator(".token")).toHaveCount(1);
+  await app.sockets[0].send(
+    JSON.stringify({ type: "error", payload: { code: "not_your_turn" } }),
+  );
+  await expect(cell(page, 3, 4).locator(".token")).toHaveCount(0);
+  await expect(page.locator(".toast")).toBeVisible();
+  await expect(page.locator(".board")).toHaveClass(/is-interactive/);
+});
+
 /** A finished snapshot one move earlier: the last token not yet played. */
 function oneMoveBefore(
   finished: Snapshot,

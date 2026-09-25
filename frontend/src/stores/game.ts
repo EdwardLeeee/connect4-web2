@@ -100,6 +100,9 @@ export const useGameStore = defineStore("game", {
     hiddenAt: null as number | null,
     // The last message sent while reconnecting, sent once the connection is back.
     held: null as Message | null,
+    // A1: your move, on the board from the moment you let go until the
+    // server's snapshot has it (index = its place in history).
+    pendingMove: null as { column: number; index: number } | null,
     // Increments on every successful connection, so views can tell a live
     // change apart from the state a fresh connection starts with.
     connectionEpoch: 0,
@@ -123,7 +126,8 @@ export const useGameStore = defineStore("game", {
         this.game &&
         this.game.status === "playing" &&
         this.game.turn === this.game.you &&
-        this.connection === "online",
+        this.connection === "online" &&
+        !this.pendingMove,
       );
     },
   },
@@ -191,6 +195,7 @@ export const useGameStore = defineStore("game", {
             this.endQuiet();
           }
           this.snapshot = message.payload as Snapshot;
+          this.settleMove();
           if (typeof this.snapshot.server_time === "number") {
             this.clockOffset = this.snapshot.server_time - Date.now() / 1000;
           }
@@ -199,11 +204,13 @@ export const useGameStore = defineStore("game", {
           if (first) this.sendHeld();
         } else if (message.type === "error") {
           this.errorCode = String(message.payload?.code ?? "generic");
+          this.pendingMove = null;
         }
       });
       socket.addEventListener("close", (event) => {
         if (this.socket !== socket) return;
         this.socket = null;
+        this.pendingMove = null;
         this.clearProbe();
         if (this.deliberatelyClosed) return;
         if (event.code === CLOSE_REPLACED) {
@@ -271,6 +278,7 @@ export const useGameStore = defineStore("game", {
         if (this.socket !== socket) return;
         // Its close event may never come; stop listening and start over.
         this.socket = null;
+        this.pendingMove = null;
         socket.close();
         this.connection = "offline";
         this.beginQuiet();
@@ -306,6 +314,36 @@ export const useGameStore = defineStore("game", {
       if (held && this.snapshot && stillApplies(held.type, this.snapshot)) {
         this.send(held.type, held.payload);
       }
+    },
+
+    /**
+     * Plays a column (A1): the token drops at once and the server's snapshot
+     * confirms it, or a refusal takes it back. Returns whether it was sent.
+     */
+    move(column: number): boolean {
+      const game = this.game;
+      if (
+        !game ||
+        !this.canMove ||
+        this.socket?.readyState !== WebSocket.OPEN
+      ) {
+        return false;
+      }
+      this.pendingMove = { column, index: game.history.length };
+      this.send("game.move", { column });
+      return true;
+    },
+
+    /** Ends a pending move once a snapshot has it or no longer allows it. */
+    settleMove() {
+      const pending = this.pendingMove;
+      const game = this.game;
+      const waiting =
+        pending &&
+        game?.status === "playing" &&
+        game.turn === game.you &&
+        game.history.length === pending.index;
+      if (!waiting) this.pendingMove = null;
     },
 
     /** Takes the session back from the tab that replaced this one. */

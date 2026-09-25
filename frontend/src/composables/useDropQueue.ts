@@ -50,6 +50,11 @@ export function useDropQueue(reducedMotion: Ref<boolean>) {
     }
   }
 
+  /** Forgets a cell's drop, for a move taken back (A1). */
+  function remove({ row, column }: { row: number; column: number }) {
+    delete states.value[`${row}:${column}`];
+  }
+
   /** Milliseconds until the last queued drop has landed and settled. */
   function idleIn(): number {
     const left = busyUntil - Date.now();
@@ -64,5 +69,5 @@ export function useDropQueue(reducedMotion: Ref<boolean>) {
   }
 
   onUnmounted(reset);
-  return { states, enqueue, idleIn, reset };
+  return { states, enqueue, remove, idleIn, reset };
 }

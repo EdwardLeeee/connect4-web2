@@ -1,7 +1,7 @@
 // What the play screen shows for a snapshot: the status chip above the board
 // (design/spec.md §4) and the result panel (P07–P18). Pure, so each page ID
 // can be checked without rendering.
-import type { Color, GameState } from "../types";
+import type { Cell, Color, GameState } from "../types";
 import { gameOutcome } from "./outcome";
 
 export type RoomMode = "ai" | "private" | "matchmaking";
@@ -287,6 +287,27 @@ export function movesSince(game: GameState, from: number): Move[] {
       colour: number % 2 === 1 ? game.first : second,
     };
   });
+}
+
+/** The row a token dropped in `column` lands on, or -1 when it is full. */
+export function landingRow(board: Cell[][], column: number): number {
+  for (let row = board.length - 1; row >= 0; row -= 1) {
+    if (board[row][column] === null) return row;
+  }
+  return -1;
+}
+
+/** The board with one more token dropped in `column`. */
+export function withToken(
+  board: Cell[][],
+  column: number,
+  colour: Color,
+): Cell[][] {
+  const row = landingRow(board, column);
+  if (row < 0) return board;
+  const next = board.map((cells) => [...cells]);
+  next[row][column] = colour;
+  return next;
 }
 
 /** The last move: its column is history's last digit, its cell the top token. */

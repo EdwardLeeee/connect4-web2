@@ -16,11 +16,13 @@ import { useGameStore } from "../stores/game";
 import type { Color } from "../types";
 import { endingFor } from "../utils/ending";
 import {
+  landingRow,
   lastMove,
   movesSince,
   opponentOf,
   resultPanel,
   statusHead,
+  withToken,
   type ResultAction,
   type RoomMode,
 } from "../utils/presentation";
@@ -61,6 +63,36 @@ const reconnectedName = ref<string | null>(null);
 const announcement = ref("");
 let reconnectedTimer: number | null = null;
 
+// A1: your move drops as you let go. The server's snapshot then confirms it,
+// and the drop carries on, or refuses it and the token is taken back.
+let dropped: { index: number; row: number; column: number } | null = null;
+const board = computed(() => {
+  const game = store.game;
+  if (!game) return [];
+  const pending = store.pendingMove;
+  return pending ? withToken(game.board, pending.column, game.you) : game.board;
+});
+
+function onMove(column: number) {
+  const game = store.game;
+  if (!game) return;
+  const row = landingRow(game.board, column);
+  if (row < 0 || !store.move(column)) return;
+  dropped = { index: game.history.length, row, column };
+  drops.enqueue([{ row, column }]);
+}
+
+watch(
+  () => store.pendingMove,
+  (pending) => {
+    if (pending || !dropped) return;
+    // Confirmed: the history watcher sees the move and lets it drop on.
+    if ((store.game?.history.length ?? 0) > dropped.index) return;
+    drops.remove(dropped);
+    dropped = null;
+  },
+);
+
 watch(
   () =>
     [
@@ -76,6 +108,7 @@ watch(
     if (!game || !live) {
       drops.reset();
       ending.cancel();
+      dropped = null;
       return;
     }
 
@@ -85,9 +118,13 @@ watch(
       history.length > oldHistory.length &&
       history.startsWith(oldHistory)
     ) {
-      // Every new move drops in turn, even when several arrive together.
+      // Every new move drops in turn, even when several arrive together;
+      // yours has been dropping since you let go.
       const moves = movesSince(game, oldHistory.length);
-      drops.enqueue(moves);
+      drops.enqueue(
+        moves.filter((_, i) => oldHistory.length + i !== dropped?.index),
+      );
+      dropped = null;
       announcement.value = moves
         .map(({ column, colour }) =>
           colour === game.you
@@ -97,6 +134,7 @@ watch(
         .join(" ");
     } else if (history !== oldHistory) {
       drops.reset();
+      dropped = null;
     }
 
     // A forfeit ends a paused game, so a live finish can come from "paused".
@@ -191,7 +229,7 @@ function onAction(action: ResultAction) {
         :late="store.game.status === 'thinking'"
       />
       <ConnectBoard
-        :board="store.game.board"
+        :board="board"
         :you="store.game.you"
         :interactive="store.canMove"
         :winning-cells="store.game.winning_cells"
@@ -201,7 +239,7 @@ function onAction(action: ResultAction) {
         :skipped="ending.skipped.value"
         :finished="store.game.status === 'finished'"
         :overlay="overlay"
-        @move="store.send('game.move', { column: $event })"
+        @move="onMove"
         @announce="announcement = $event"
       />
     </div>
