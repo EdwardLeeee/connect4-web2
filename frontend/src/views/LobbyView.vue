@@ -20,7 +20,7 @@ const roomCodeInput = ref<HTMLInputElement | null>(null);
 const joinError = ref(false);
 const expandedPanel = ref<"friends" | "matchmaking" | null>(null);
 
-const offline = computed(() => store.connection !== "online");
+const offline = computed(() => store.shownConnection !== "online");
 
 function togglePanel(panel: "friends" | "matchmaking") {
   expandedPanel.value = expandedPanel.value === panel ? null : panel;
@@ -46,7 +46,7 @@ function onRoomCodeInput() {
   <InviteScreen v-if="invitedCode" :code="invitedCode" />
   <section v-else class="lobby">
     <div
-      v-if="store.connection === 'offline'"
+      v-if="store.shownConnection === 'offline'"
       class="notice-banner"
       role="status"
     >
