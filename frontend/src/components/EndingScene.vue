@@ -16,6 +16,11 @@ const { t } = useI18n();
 const COLOURS = ["var(--mint)", "var(--pink)", "var(--sun)", "var(--white)"];
 const SHAPES = ["", "round", "strip"];
 const height = window.innerHeight;
+// Round 16: phone portrait, where the result panel sits below the board.
+const phone = window.matchMedia?.("(max-width: 620px)").matches ?? false;
+// The cannons reach less far on small screens.
+const reachX = Math.min(1, window.innerWidth / 1000);
+const reachY = Math.min(1, height / 900);
 
 // Fixed offsets, so every ending looks the same (as in the drafts).
 const shots = computed(() =>
@@ -26,8 +31,8 @@ const shots = computed(() =>
         side,
         shape: SHAPES[i % 3],
         style: {
-          "--dx": `${dir * (260 + ((i * 53) % 420))}px`,
-          "--up": `${-(420 + ((i * 71) % 380))}px`,
+          "--dx": `${dir * (260 + ((i * 53) % 420)) * reachX}px`,
+          "--up": `${-(420 + ((i * 71) % 380)) * reachY}px`,
           "--r": `${((i * 97) % 900) - 450}deg`,
           "--d": `${750 + ((i * 29) % 260)}ms`,
           "--dur": `${1800 + ((i * 61) % 600)}ms`,
@@ -58,6 +63,7 @@ const drawRain = Array.from({ length: 60 }, (_, i) => ({
 }));
 
 // The sticker flies into the result panel; the second bolt strikes the board.
+const stickerEl = ref<HTMLElement | null>(null);
 const flyStyle = ref<Record<string, string>>({});
 const strikeStyle = ref<Record<string, string>>({});
 
@@ -66,19 +72,31 @@ function onKey(event: KeyboardEvent) {
 }
 
 onMounted(() => {
+  // From the sticker's layout centre (its own slap and spin aside) to the
+  // panel: up and right on desktop, down on phones (r7.js flyTo()).
   const card = document.querySelector(".result-card")?.getBoundingClientRect();
-  if (card) {
+  const el = stickerEl.value;
+  if (card && el) {
+    const cx = el.offsetLeft + el.offsetWidth / 2;
+    const cy = el.offsetTop + el.offsetHeight / 2;
     flyStyle.value = {
-      "--fly-x": `${card.x + card.width / 2 - window.innerWidth / 2}px`,
-      "--fly-y": `${card.y + 50 - window.innerHeight / 2}px`,
+      "--fly-x": `${card.x + card.width / 2 - cx}px`,
+      "--fly-y": `${card.y + Math.min(card.height / 2, 60) - cy}px`,
     };
   }
+  // On phones the sticker covers the top of the board, so the bolt strikes
+  // its right side and lands on the visible lower half.
   const board = document.querySelector(".board")?.getBoundingClientRect();
   if (board) {
-    strikeStyle.value = {
-      left: `${board.x + board.width * 0.42}px`,
-      top: `${board.y - 150}px`,
-    };
+    strikeStyle.value = phone
+      ? {
+          left: `${board.x + board.width * 0.74}px`,
+          top: `${board.y + board.height * 0.62 - 180}px`,
+        }
+      : {
+          left: `${board.x + board.width * 0.42}px`,
+          top: `${board.y - 150}px`,
+        };
   }
   window.addEventListener("keydown", onKey);
 });
@@ -117,15 +135,6 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
         />
         <div class="storm-flash" />
         <svg class="bolt b1" viewBox="0 0 60 120">
-          <path
-            d="M34 2 L8 64 H28 L18 118 L54 46 H32 L44 2 Z"
-            fill="#ffd23f"
-            stroke="#1b1b1f"
-            stroke-width="4"
-            stroke-linejoin="round"
-          />
-        </svg>
-        <svg class="bolt b2" viewBox="0 0 60 120" :style="strikeStyle">
           <path
             d="M34 2 L8 64 H28 L18 118 L54 46 H32 L44 2 Z"
             fill="#ffd23f"
@@ -289,7 +298,25 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
         </div>
       </template>
 
+      <!-- the second bolt: below the sticker on desktop, above it on phones -->
+      <svg
+        v-if="ending.kind === 'lose'"
+        class="bolt b2"
+        viewBox="0 0 60 120"
+        :style="strikeStyle"
+        aria-hidden="true"
+      >
+        <path
+          d="M34 2 L8 64 H28 L18 118 L54 46 H32 L44 2 Z"
+          fill="#ffd23f"
+          stroke="#1b1b1f"
+          stroke-width="4"
+          stroke-linejoin="round"
+        />
+      </svg>
+
       <div
+        ref="stickerEl"
         class="ending-sticker"
         :class="`is-${ending.kind}`"
         :style="flyStyle"

@@ -2848,7 +2848,7 @@ input.is-focused {
 }
 
 @media (max-width: 620px) {
-  .result-card.is-entering {
+  .result-card {
     --from-x: 0;
     --from-y: 40px;
   }
@@ -3301,6 +3301,12 @@ input.has-error:focus {
 .token.is-queued,
 .result-card.is-held {
   visibility: hidden;
+}
+
+/* While hidden, the panel waits where its entry starts, as in the drafts, so
+   an ending sticker flies to that spot (r7.js flyTo() measures it there). */
+.result-card.is-held {
+  transform: translate(var(--from-x, 24px), var(--from-y, 0));
 }
 
 /* "Your turn" follows your own piece colour; green players keep mint. */
@@ -3938,7 +3944,7 @@ input.has-error:focus {
     c4-lightning 420ms linear 2750ms both;
 }
 
-.ending-storm .bolt {
+.ending-scene .bolt {
   position: absolute;
   width: 110px;
   height: 220px;
@@ -3946,14 +3952,16 @@ input.has-error:focus {
   filter: drop-shadow(0 0 14px rgb(255 210 63 / 90%));
 }
 
-.ending-storm .bolt.b1 {
+.ending-scene .bolt.b1 {
   top: 60px;
   left: 18%;
   animation: c4-bolt 520ms linear 1550ms both;
 }
 
-/* the second bolt strikes the board (placed over it by EndingScene) */
-.ending-storm .bolt.b2 {
+/* the second bolt strikes the board (placed over it by EndingScene); it sits
+   beside the storm layer so phones can lift it above the sticker */
+.ending-scene .bolt.b2 {
+  z-index: 2;
   width: 130px;
   height: 260px;
   animation: c4-bolt 520ms linear 2750ms both;
@@ -4142,6 +4150,92 @@ input.has-error:focus {
 .ending-rain .confetti {
   top: -30px;
   animation-duration: var(--dur, 2600ms);
+}
+
+/* Round 16: phone portrait. The timeline is the same; stickers shrink to
+   the screen and sit at ~38% height above the board, then fly down into the
+   panel below it; rays, bolts and the tug stage scale with the screen. */
+@media (max-width: 620px) {
+  .ending-sticker {
+    --sw: min(460px, calc(100vw - 48px));
+    top: 38%;
+    width: var(--sw);
+    margin: -140px 0 0 calc(var(--sw) / -2);
+    padding: 22px 18px 14px;
+    gap: 6px;
+    border-width: 4px;
+    border-radius: 26px;
+    box-shadow: 8px 8px 0 var(--ink);
+  }
+
+  .ending-sticker .big-trophy {
+    width: 96px;
+    height: 96px;
+    border-width: 4px;
+  }
+
+  .ending-sticker .big-trophy .icon {
+    width: 54px;
+    height: 54px;
+  }
+
+  .ending-sticker strong {
+    font-size: clamp(40px, 12vw, 56px);
+  }
+
+  .ending-sticker > span:not(.big-trophy) {
+    font-size: 17px;
+  }
+
+  .ending-sticker small {
+    font-size: 13px;
+  }
+
+  .ending-sticker.is-lose {
+    --sw: min(420px, calc(100vw - 48px));
+    width: var(--sw);
+    margin: -130px 0 0 calc(var(--sw) / -2);
+  }
+
+  .ending-sticker.is-draw {
+    --sw: min(400px, calc(100vw - 48px));
+    width: var(--sw);
+    margin: -80px 0 0 calc(var(--sw) / -2);
+  }
+
+  .ending-sticker.is-lose strong,
+  .ending-sticker.is-draw strong {
+    font-size: clamp(38px, 11vw, 48px);
+  }
+
+  .ending-sticker .cloud {
+    width: 118px;
+    height: 110px;
+  }
+
+  .ending-rays {
+    top: 38%;
+    width: 190vw;
+    height: 190vw;
+    margin: -95vw 0 0 -95vw;
+  }
+
+  .ending-scene .bolt {
+    width: 72px;
+    height: 144px;
+  }
+
+  /* strikes the board's visible lower half, drawn above the sticker */
+  .ending-scene .bolt.b2 {
+    z-index: 7;
+    width: 90px;
+    height: 180px;
+  }
+
+  .tug-stage {
+    top: 40%;
+    width: 80vw;
+  }
 }
 
 /* A08: with reduced motion only the result panel fades in. */

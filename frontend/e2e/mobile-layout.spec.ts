@@ -1176,12 +1176,11 @@ function oneMoveBefore(
   };
 }
 
-// Round 7 endings (A03 C5, A11 F5, A12 T5). Desktop only until the phone
-// drafts are approved; timings are from the last token landing.
+// Round 7 endings (A03 C5, A11 F5, A12 T5; round 16 on phones). Timings are
+// from the last token landing.
 test("the winning move lands, then C5 plays and the panel comes in at 3.3s", async ({
   page,
 }, testInfo) => {
-  test.skip(kind(testInfo) !== "desktop", "Phone endings await drafts.");
   await playDrops(page);
   const finished = snapshotFor("P07");
   const app = await mockApp(page, oneMoveBefore(finished, 2, 4, "green"));
@@ -1204,6 +1203,24 @@ test("the winning move lands, then C5 plays and the panel comes in at 3.3s", asy
   await expect(sticker).toContainText("連成四子，共 13 手");
   await expect(sticker).toContainText("點一下畫面可以跳過");
   await expect(page.locator(".ending-cannon .shot")).toHaveCount(64);
+  // Round 16: on phones the sticker keeps 24px margins and flies down to the
+  // panel below the board; on desktop it flies up and right.
+  const flight = await sticker.evaluate((el: HTMLElement) => {
+    const style = getComputedStyle(el);
+    return {
+      width: el.offsetWidth,
+      screen: window.innerWidth,
+      x: Number.parseFloat(style.getPropertyValue("--fly-x")),
+      y: Number.parseFloat(style.getPropertyValue("--fly-y")),
+    };
+  });
+  if (kind(testInfo) === "phone") {
+    expect(flight.width).toBeLessThanOrEqual(flight.screen - 48);
+    expect(flight.y).toBeGreaterThan(0);
+  } else if (kind(testInfo) === "desktop") {
+    expect(flight.x).toBeGreaterThan(0);
+    expect(flight.y).toBeLessThan(0);
+  }
 
   await page.clock.runFor(3299);
   await expect(card).toBeHidden();
@@ -1216,10 +1233,7 @@ test("the winning move lands, then C5 plays and the panel comes in at 3.3s", asy
   await expect(board.locator(".win-line line.gold")).toHaveCount(1);
 });
 
-test("a tap skips the ending straight to the panel", async ({
-  page,
-}, testInfo) => {
-  test.skip(kind(testInfo) !== "desktop", "Phone endings await drafts.");
+test("a tap skips the ending straight to the panel", async ({ page }) => {
   await playDrops(page);
   const finished = snapshotFor("P07");
   const app = await mockApp(page, oneMoveBefore(finished, 2, 4, "green"));
@@ -1235,8 +1249,7 @@ test("a tap skips the ending straight to the panel", async ({
   await expect(page.locator(".result-card")).toBeVisible();
 });
 
-test("a loss plays F5 and a draw plays T5", async ({ page }, testInfo) => {
-  test.skip(kind(testInfo) !== "desktop", "Phone endings await drafts.");
+test("a loss plays F5 and a draw plays T5", async ({ page }) => {
   await playDrops(page);
   const loss = snapshotFor("P08");
   const app = await mockApp(page, oneMoveBefore(loss, 2, 4, "pink"));
