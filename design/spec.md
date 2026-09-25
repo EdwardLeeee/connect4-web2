@@ -162,6 +162,30 @@
 - **A11 失敗動畫、A12 平手動畫**：兩個新動效編號，對應上面的 F5 與 T5；A03 改為 C5。
 - **reduced-motion**：以上三個結局動畫都只保留結局面板 120ms 淡入。沒有閃光、震動、雨、彩紙、拔河。
 
+### 隱私權政策小字（網站與 app 都顯示；2026-09-25 使用者核准）
+
+設計稿：
+- app 版：`design/artboards/round17/R17-02-隱私權小字-B-連結加版本號-mobile{,-en}.png`
+- 網站版：`design/artboards/round18/R18-01-網站隱私權小字-B-連結加版本號-{desktop,desktop-en,mobile-safari}.png`
+
+設計稿只存本機。原本只在 app 裡顯示；使用者 2026-09-25 改成「網頁版也加上去，保持一致」。
+
+- **位置**：個人設定面板最下面、「取消／儲存」按鈕下方，置中一行。
+  - 桌機是 modal（L09）。
+  - 手機（瀏覽器與 app）是底部 sheet（L10）。
+- **內容**：「隱私權政策 · 版本 x.y.z」／「Privacy Policy · Version x.y.z」。
+  - 網站顯示網站的版本（與 `/health` 回報的版本一致）；app 顯示 app 自身的版本。
+  - 「隱私權政策」是連結，指向 `https://github.com/EdwardLeeee/connect4-web2/blob/main/PRIVACY.md`（repo 是公開的）。
+  - 網站在新分頁打開；app 用系統瀏覽器打開。
+- **樣式**：
+  - 13px、`--muted` 灰。
+  - 連結有 1px 底線（offset 3px），觸控高度 ≥44px。
+  - 中間的「·」不是連結。
+  - CSS 在 mockup `base.css` 的「round 17」段。
+- **新文案**：
+  - `privacyPolicy`：隱私權政策／Privacy Policy
+  - `appVersion`：版本 {v}／Version {v}
+
 ### App（iOS／Android）專用（2026-09-25，使用者核准；設計稿 `design/artboards/round17/`，只存本機）
 
 網站用 Capacitor 打包成 app。商店與手機桌面的名稱是中文「四子棋」、英文「Four In A Row」。遊戲畫面上方的 CONNECT 4、分享文字與網站外觀都不變，網站的圖示這次也不換。
@@ -174,14 +198,6 @@
     - `app-icon-android-fg.svg`：Android 自適應圖示的前景。108dp 畫布，棋盤縮成約 0.57 倍，整個落在中央 66dp 的安全圓裡，不會被圓形、圓角方形、水滴形裁到。
     - `app-icon-android-bg.svg`：自適應圖示的背景，純紙白 `#fff4dc`。
   - 各尺寸由 mobile 從原稿輸出；小到 20px 時仍看得出黃色棋盤和綠色斜線（設計稿右半部有實際大小的樣子）。
-- **隱私權政策小字：選項 B「連結加版本號」**（設計稿 `R17-02-隱私權小字-B-連結加版本號-mobile.png`、`…-mobile-en.png`）：
-  - **只在 app 裡顯示**。個人設定面板（手機底部 sheet）最下面、「取消／儲存」按鈕下方，置中一行。
-  - 內容：「隱私權政策 · 版本 3.1.0」／「Privacy Policy · Version 3.1.0」。
-    - 版本號取 app 自身的版本。
-    - 「隱私權政策」是連結，點了用系統瀏覽器打開 `https://github.com/EdwardLeeee/connect4-web2/blob/main/PRIVACY.md`（repo 是公開的）。
-  - 樣式：13px、`--muted` 灰；連結有 1px 底線（offset 3px）、觸控高度 ≥44px；中間的「·」不是連結。CSS 在 mockup `base.css` 的「round 17」段。
-  - 新文案：`privacyPolicy`（隱私權政策／Privacy Policy）、`appVersion`（版本 {v}／Version {v}）。
-  - 網站版（瀏覽器）不顯示這一行。
 - 還沒做、之後會通知：商店截圖與上架文案。副標題與關鍵字不能放「Connect 4」（Apple 2.3.7）。
 
 ## 1. 怎麼看這套圖
