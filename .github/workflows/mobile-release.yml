@@ -1,10 +1,22 @@
 name: Mobile release
 
-# Run by hand on a web release tag (Actions > Mobile release > Run workflow > Tags: vX.Y.Z).
-# The app bundles that tag's web build, so production must already run that version.
+# Run by hand from main (Actions > Mobile release > Run workflow) and name a web release
+# tag; every job builds that tag, so fixes to this file also apply to older tags.
+# The app bundles the tag's web build, so production must already run that version.
 # A platform whose signing secrets are missing is skipped and the summary says why.
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Web release tag to package, e.g. v3.1.0
+        type: string
+        required: true
+      production_checked:
+        description: >-
+          Tick only if the check below cannot reach the site (Cloudflare blocks GitHub
+          runners) and you confirmed /api/health reports this version or later
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -24,21 +36,41 @@ jobs:
       android: ${{ steps.signing.outputs.android }}
       ios: ${{ steps.signing.outputs.ios }}
     steps:
+      - name: Check the tag name
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          if ! [[ "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::'${TAG}' is not a web release tag like v3.1.0"
+            exit 1
+          fi
       - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ inputs.tag }}
       - id: version
         name: Check the tag against the manifest and the live server
+        env:
+          TAG: ${{ inputs.tag }}
+          PRODUCTION_CHECKED: ${{ inputs.production_checked }}
         run: |
           set -euo pipefail
-          if [ "${GITHUB_REF_TYPE}" != tag ] || [[ "${GITHUB_REF_NAME}" != v* ]]; then
-            echo "::error::run this workflow on a web release tag (v*), not ${GITHUB_REF}"
-            exit 1
-          fi
           version="$(node -p "require('./frontend/package.json').version")"
-          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
-            echo "::error::tag ${GITHUB_REF_NAME} does not match frontend/package.json ${version}"
+          if [ "v${version}" != "${TAG}" ]; then
+            echo "::error::tag ${TAG} does not match frontend/package.json ${version}"
             exit 1
           fi
-          live="$(curl --fail --silent --show-error https://connect4.oraclelee.com/api/health | jq -r .version)"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          live="$(curl --fail --silent --show-error --max-time 20 https://connect4.oraclelee.com/api/health \
+            | jq -r .version)" || live=""
+          if [ -z "${live}" ]; then
+            if [ "${PRODUCTION_CHECKED}" != true ]; then
+              echo "::error::could not read the production version from this runner (Cloudflare blocks GitHub runners). Open https://connect4.oraclelee.com/api/health yourself; if it reports ${version} or later, run again with production_checked ticked."
+              exit 1
+            fi
+            echo "::warning::production version not checked automatically; production_checked was ticked"
+            echo "App version ${version} (build ${GITHUB_RUN_NUMBER}); the production version was confirmed by hand, not by this run." >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
           if ! node -e '
             const [a, b] = process.argv.slice(1).map((v) => v.split(".").map(Number));
             for (let i = 0; i < 3; i++) if (a[i] !== b[i]) process.exit(a[i] > b[i] ? 0 : 1);
@@ -46,7 +78,6 @@ jobs:
             echo "::error::production runs ${live}; deploy ${version} before releasing the app"
             exit 1
           fi
-          echo "version=${version}" >> "${GITHUB_OUTPUT}"
           echo "App version ${version} (build ${GITHUB_RUN_NUMBER}); production runs ${live}." >> "${GITHUB_STEP_SUMMARY}"
       - id: signing
         name: Check which platforms can be signed
@@ -91,6 +122,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ inputs.tag }}
       - uses: actions/setup-node@v7
         with:
           node-version: "22"
@@ -155,6 +188,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ inputs.tag }}
       - uses: actions/setup-node@v7
         with:
           node-version: "22"

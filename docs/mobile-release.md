@@ -69,9 +69,14 @@ pull request 動到 `mobile/**`、`design/app-icon/**`、`frontend/**`（測試�
 ### `Mobile release`（`.github/workflows/mobile-release.yml`）
 
 1. 網頁版本照原本流程發布並上線（`scripts/release.sh`，再由 devops 部署）。
-2. Actions → Mobile release → Run workflow，「Use workflow from」選 **Tags** 裡的那個 `vX.Y.Z`。
-3. `preflight` 確認這是 `v*` tag、tag 與 `frontend/package.json` 一致、正式站 `/api/health` 的版本
-   不低於它，再檢查兩個平台的簽章 secrets。缺的平台會顯示「已跳過」，Summary 列出缺哪些。
+2. Actions → Mobile release → Run workflow：「Use workflow from」維持 **main**，`tag` 填 `vX.Y.Z`。
+   workflow 用 main 上的流程、建置那個 tag 的程式，所以流程修正也適用於舊 tag。
+   或用指令：`gh workflow run mobile-release.yml --ref main -f tag=vX.Y.Z`。
+3. `preflight` 確認 tag 與 `frontend/package.json` 一致、正式站 `/api/health` 的版本不低於它，再檢查
+   兩個平台的簽章 secrets。缺的平台會顯示「已跳過」，Summary 列出缺哪些。
+   正式站在 Cloudflare 後面，Cloudflare 會擋 GitHub runner 的請求（回 403），這時版本檢查會失敗並
+   說明原因：自己打開 https://connect4.oraclelee.com/api/health 確認版本後，勾選 `production_checked`
+   重新執行（加 `-f production_checked=true`），Summary 會註明這次的版本是人工確認。
 4. `android`：用上傳金鑰簽出 AAB，比對簽章指紋等於 repo 變數 `ANDROID_UPLOAD_CERT_SHA256`，
    以 artifact `android-aab` 保留 30 天。
 5. `ios`：封存並上傳到 App Store Connect，處理完成後出現在 TestFlight。
@@ -113,7 +118,7 @@ Google 保管。上傳金鑰由 `mobile/scripts/android-upload-key.sh` 產生（
    `mobile/scripts/ios-signing.sh secrets <.mobileprovision> <AuthKey_XXXX.p8> <Key ID> <Issuer ID> <Team ID>`，
    會設定 `IOS_DIST_CERT_P12_BASE64`、`IOS_DIST_CERT_P12_PASSWORD`、`IOS_PROFILE_BASE64`、
    `APPLE_TEAM_ID`、`ASC_API_KEY_ID`、`ASC_API_ISSUER_ID`、`ASC_API_KEY_P8_BASE64`。
-8. 在已上線的 `v*` tag 上執行 Mobile release，iOS job 不再跳過。
+8. 對已上線的 `v*` tag 執行 Mobile release，iOS job 不再跳過。
 
 Release 設定寫在 Xcode 專案 App target 裡（`CODE_SIGN_STYLE = Manual`、Apple Distribution、描述檔
 `Four In A Row App Store`、`DEVELOPMENT_TEAM = $(C4_APPLE_TEAM_ID)`）。不要改成在 xcodebuild 命令列

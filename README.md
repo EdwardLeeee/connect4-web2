@@ -71,8 +71,8 @@ app 才會帶上，網站本身的發版流程不變。
 
 - 改到 app 會打包的檔案時，pull request 會跑 `Mobile` workflow：建置 Android debug APK
   （artifact `connect4-debug-apk`，可直接側載）與 iOS 模擬器版。它不是必要檢查。
-- 發布：網頁版本上線後，在 Actions 的 `Mobile release` 選該版本的 `v*` tag 手動執行，產生簽章的
-  Android AAB 並把 iOS 版上傳到 TestFlight；缺哪個平台的簽章 secrets 就跳過哪個，並寫出原因。
+- 發布：網頁版本上線後，從 main 手動執行 Actions 的 `Mobile release` 並填入該版本的 `v*` tag，
+  產生簽章的 Android AAB 並把 iOS 版上傳到 TestFlight；缺哪個平台的簽章 secrets 就跳過哪個，並寫出原因。
 - Android 上傳金鑰只存在 GitHub secrets 與 `~/.config/connect4-mobile/`，務必另外備份到密碼管理器。
   iOS 簽章要等有 Apple Developer 會員後才啟用。
 - 隱私權政策：[PRIVACY.md](PRIVACY.md)。
