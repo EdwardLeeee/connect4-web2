@@ -5,18 +5,25 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import __version__
 from .manager import GameManager
-from .sessions import SESSION_COOKIE
+from .sessions import SESSION_COOKIE, Session
 
 ROOT = Path(__file__).resolve().parents[2]
 # WebSocket close codes are part of the client contract; do not renumber them.
 CLOSE_NO_SESSION = 4401
 CLOSE_ORIGIN_NOT_ALLOWED = 4403
+# Capacitor app pages: iOS serves capacitor://localhost, Android https://localhost.
+DEFAULT_APP_ORIGINS = "capacitor://localhost,https://localhost"
+# App WebSockets offer this subprotocol plus "connect4.token.<token>"; the server always
+# selects APP_PROTOCOL, because a browser fails the connection if none is selected.
+APP_PROTOCOL = "connect4.v1"
+TOKEN_PROTOCOL_PREFIX = "connect4.token."
 
 
 def resolve_frontend_dist() -> Path:
@@ -28,13 +35,27 @@ def resolve_frontend_dist() -> Path:
 
 FRONTEND_DIST = resolve_frontend_dist()
 COOKIE_SECURE = os.getenv("CONNECT4_COOKIE_SECURE", "0") == "1"
-ALLOWED_ORIGINS = {
-    origin.strip().rstrip("/")
-    for origin in os.getenv("CONNECT4_ALLOWED_ORIGINS", "").split(",")
-    if origin.strip()
-}
+
+
+def parse_origins(value: str) -> set[str]:
+    return {origin.strip().rstrip("/") for origin in value.split(",") if origin.strip()}
+
+
+ALLOWED_ORIGINS = parse_origins(os.getenv("CONNECT4_ALLOWED_ORIGINS", ""))
+# An empty value turns app mode off.
+APP_ORIGINS = parse_origins(os.getenv("CONNECT4_APP_ORIGINS", DEFAULT_APP_ORIGINS))
 
 app = FastAPI(title="Connect 4", version=__version__)
+# Only the app origins may read responses cross-origin. They authenticate with a bearer
+# token, never with the site cookie, so credentials stay off.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=sorted(APP_ORIGINS),
+    allow_methods=["GET", "PATCH"],
+    allow_headers=["Authorization", "Content-Type"],
+    allow_credentials=False,
+    max_age=600,
+)
 manager = GameManager()
 
 
@@ -66,17 +87,48 @@ def set_session_cookie(response: Response, session_id: str) -> None:
     )
 
 
-def session_response(request: Request, response: Response):
+def is_app_origin(origin: str | None) -> bool:
+    return bool(origin) and origin.rstrip("/") in APP_ORIGINS
+
+
+def bearer_token(request: Request) -> str | None:
+    scheme, _, token = request.headers.get("authorization", "").partition(" ")
+    if scheme.casefold() != "bearer":
+        return None
+    return token.strip() or None
+
+
+def protocol_token(protocols: list[str]) -> str | None:
+    for protocol in protocols:
+        if protocol.startswith(TOKEN_PROTOCOL_PREFIX):
+            return protocol.removeprefix(TOKEN_PROTOCOL_PREFIX) or None
+    return None
+
+
+def resolve_session(request: Request) -> tuple[Session, bool, bool]:
+    """Return the session, whether it was just created, and whether an app is asking."""
+    if is_app_origin(request.headers.get("origin")):
+        # Browsers cannot forge Origin, so the site's own pages never receive a token and
+        # the HttpOnly cookie never becomes readable by page scripts.
+        session, created = manager.sessions.resolve(bearer_token(request))
+        return session, created, True
     session, created = manager.sessions.resolve(request.cookies.get(SESSION_COOKIE))
-    if created:
-        set_session_cookie(response, session.id)
-    return session, created
+    return session, created, False
+
+
+def session_body(session: Session, app_client: bool) -> dict[str, str]:
+    body = {"nickname": session.nickname, "locale": session.locale}
+    if app_client:
+        body["token"] = session.id
+    return body
 
 
 @app.get("/api/session")
 async def get_session(request: Request, response: Response) -> dict[str, str]:
-    session, _ = session_response(request, response)
-    return {"nickname": session.nickname, "locale": session.locale}
+    session, created, app_client = resolve_session(request)
+    if created and not app_client:
+        set_session_cookie(response, session.id)
+    return session_body(session, app_client)
 
 
 @app.patch("/api/session")
@@ -84,13 +136,13 @@ async def update_session(
     request: Request,
     update: SessionUpdate,
 ) -> Response:
-    session, created = manager.sessions.resolve(request.cookies.get(SESSION_COOKIE))
+    session, created, app_client = resolve_session(request)
     try:
         manager.sessions.update(session, update.nickname, update.locale)
     except ValueError as error:
         return JSONResponse({"detail": str(error)}, status_code=422)
-    response = JSONResponse({"nickname": session.nickname, "locale": session.locale})
-    if created:
+    response = JSONResponse(session_body(session, app_client))
+    if created and not app_client:
         set_session_cookie(response, session.id)
     return response
 
@@ -115,16 +167,30 @@ async def health() -> JSONResponse:
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket) -> None:
-    if not origin_allowed(websocket.headers.get("origin"), websocket.headers.get("host", "")):
-        await websocket.close(code=CLOSE_ORIGIN_NOT_ALLOWED, reason="Origin not allowed")
-        return
-    session = manager.sessions.get(websocket.cookies.get(SESSION_COOKIE))
-    if not session:
-        await websocket.close(
-            code=CLOSE_NO_SESSION, reason="Create a session through /api/session first"
-        )
-        return
-    await websocket.accept()
+    origin = websocket.headers.get("origin")
+    protocols = websocket.scope.get("subprotocols") or []
+    if is_app_origin(origin) and APP_PROTOCOL in protocols:
+        session = manager.sessions.get(protocol_token(protocols))
+        # Accept before closing so the app really receives 4401 and fetches a new token;
+        # a close during the handshake reaches browsers only as 1006.
+        await websocket.accept(subprotocol=APP_PROTOCOL)
+        if not session:
+            await websocket.close(
+                code=CLOSE_NO_SESSION, reason="Fetch a new token from /api/session"
+            )
+            return
+    else:
+        # The site keeps its handshake-time rejections, which browsers report as 1006.
+        if not origin_allowed(origin, websocket.headers.get("host", "")):
+            await websocket.close(code=CLOSE_ORIGIN_NOT_ALLOWED, reason="Origin not allowed")
+            return
+        session = manager.sessions.get(websocket.cookies.get(SESSION_COOKIE))
+        if not session:
+            await websocket.close(
+                code=CLOSE_NO_SESSION, reason="Create a session through /api/session first"
+            )
+            return
+        await websocket.accept()
     await manager.connect(session.id, websocket)
     try:
         while True:

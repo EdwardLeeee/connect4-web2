@@ -9,13 +9,51 @@
 1. `GET /api/session` 取得 `c4_session` cookie（HttpOnly）。
 2. 開啟 `/ws`。伺服器接受連線後，立刻送出一則 `state.snapshot`。
 
+手機 app 不用 cookie，改用 token，見下方「App 連線」。
+
 ### Close code（不得改號）
 
 | code | 意義 | 建議的前端處理 |
 |---|---|---|
 | 4001 | 同一 session 開了較新的連線，這條被取代 | 停止重連，顯示「已在其他分頁開啟」 |
-| 4401 | 沒有 session cookie，或 session 已不存在（例如伺服器重啟） | 先重新 `GET /api/session`，再連線 |
-| 4403 | Origin 不在允許清單內 | 不重連 |
+| 4401 | 只會送給 app：token 無效或 session 已不存在（例如伺服器重啟） | 帶舊 token 重新 `GET /api/session`，改用回應裡的新 token 再連線 |
+| 4403 | Origin 不在允許清單內（程式裡的代碼） | 不重連 |
+
+**瀏覽器實際看到的代碼。** 網站沒有 session，或 Origin 不在清單內時，伺服器在握手階段就拒絕
+（HTTP 403），不會完成連線，所以瀏覽器收到的是 `1006`，不是 4401 或 4403。網站前端的處理是：
+除了 4001 之外，一律先重新 `GET /api/session` 再退避重連。只有 app 模式會先完成握手再以 4401
+關閉，讓 app 能分辨「token 失效」和「網路斷線」。
+
+## App 連線
+
+iOS／Android app 把網頁打包在 app 裡（Capacitor），頁面來源是 `capacitor://localhost`（iOS）
+或 `https://localhost`（Android），要跨網域連正式站。app 不用 cookie，改用 session token。
+
+- **哪些請求算 app**：請求的 `Origin` 在 `CONNECT4_APP_ORIGINS` 清單內（預設就是上面兩個）。
+  其他來源一律走網站的 cookie 流程，拿不到 token。
+- **取得 token**：`GET /api/session` 或 `PATCH /api/session`，app 模式的回應會多一個欄位：
+
+  ```ts
+  { nickname: string; locale: "zh-TW" | "en"; token: string }
+  ```
+
+  app 每次都用回應裡的 `token` 覆蓋本機儲存的值；不會發 cookie。
+- **HTTP 認證**：`Authorization: Bearer <token>`。沒帶 token 或 token 無效時，伺服器會建立新的
+  session 並回傳新 token（和網站 cookie 失效時一樣）。
+- **WebSocket 認證**：瀏覽器的 WebSocket 不能自訂 header，所以 token 放在子協定裡：
+
+  ```js
+  new WebSocket("wss://connect4.oraclelee.com/ws", ["connect4.v1", `connect4.token.${token}`]);
+  ```
+
+  伺服器一定會選用 `connect4.v1` 回應。用戶端提供了子協定、伺服器卻沒有選的話，Chrome 會直接讓
+  連線失敗。token 有效就照常送出 `state.snapshot`；token 無效或沒帶時，完成握手後立即以 4401 關閉。
+  app 來源沒有提供 `connect4.v1` 時，連線會在握手階段被拒絕。
+- **CORS**：只有 app 來源可以跨網域讀取回應。允許的方法是 `GET`、`PATCH`，允許的 header 是
+  `Authorization`、`Content-Type`；不帶 credentials；預檢結果快取 600 秒。
+- **token 絕不放在網址裡**（nginx 的存取日誌會記下網址）。網址裡的 `?token=` 會被忽略。
+- **版本**：`connect4.v1` 是 app 協定的版本。之後若有不相容的改動會新增 `connect4.v2`，並繼續接受
+  `connect4.v1`，已安裝的舊版 app 不會因此失效。
 
 ## 用戶端 → 伺服器
 
