@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       smoke:
-        description: Play one AI game in the Android app on an emulator (uses the production server)
+        description: Play one AI game in the iOS app on a simulator (uses the production server)
         type: boolean
         default: false
 
@@ -148,39 +148,57 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-  android-smoke:
+  # One full game against the AI in the iOS app, then the privacy link. It runs on a
+  # macOS runner because Cloudflare blocks the Ubuntu runners from the production site.
+  ios-smoke:
     if: github.event_name == 'workflow_dispatch' && inputs.smoke
-    needs: android
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: |
+            frontend/package-lock.json
+            mobile/package-lock.json
+      # Pinned Ruby and xcodeproj, so a runner image update cannot change the test target.
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+      - run: gem install --no-document xcodeproj -v 1.28.1
       - run: npm ci
         working-directory: frontend
-      - uses: actions/download-artifact@v8
-        with:
-          name: connect4-debug-apk
-      - name: Enable KVM
+      - run: npm run build
+        working-directory: frontend
+      - run: npm ci
+        working-directory: mobile
+      - run: npx cap sync ios
+        working-directory: mobile
+      - run: ruby mobile/scripts/add-ui-test-target.rb mobile/ios/App/App.xcodeproj
+      - name: Play one game against the AI and open the privacy policy
+        working-directory: mobile/ios/App
         run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 36
-          target: google_apis
-          arch: x86_64
-          script: |
-            adb install -r app-debug.apk
-            node mobile/scripts/android-smoke.mjs smoke-screenshots
+          set -euo pipefail
+          udid="$(xcrun simctl list devices available -j | node -e '
+            const d = JSON.parse(require("fs").readFileSync(0, "utf8")).devices;
+            const phones = Object.entries(d).filter(([rt]) => rt.includes("iOS")).flatMap(([, list]) => list)
+              .filter((x) => x.name.startsWith("iPhone"));
+            console.log(phones.at(-1).udid);')"
+          xcodebuild test -project App.xcodeproj -scheme App -destination "platform=iOS Simulator,id=${udid}" \
+            -resultBundlePath "${RUNNER_TEMP}/smoke.xcresult" CODE_SIGNING_ALLOWED=NO
+      - name: Export the screenshots
+        if: always()
+        run: |
+          mkdir -p smoke-screenshots
+          if [ -d "${RUNNER_TEMP}/smoke.xcresult" ]; then
+            xcrun xcresulttool export attachments --path "${RUNNER_TEMP}/smoke.xcresult" \
+              --output-path smoke-screenshots
+          fi
       - if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: android-smoke-screenshots
+          name: ios-smoke-screenshots
           path: smoke-screenshots/
           retention-days: 14
           if-no-files-found: ignore
