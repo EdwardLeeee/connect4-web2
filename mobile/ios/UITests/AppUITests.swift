@@ -62,7 +62,9 @@ final class AppUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(moves, 4, "a finished game needs at least 4 of our moves")
 
         // The privacy link must open in Safari while the app keeps its page.
-        let profile = web.buttons.matching(NSPredicate(format: "label CONTAINS %@", "玩家")).firstMatch
+        // The default nickname is "玩家 NNNN"; narrow screens show only its first character.
+        let profile = web.buttons.matching(
+            NSPredicate(format: "label == %@ OR label CONTAINS %@", "玩", "玩家")).firstMatch
         XCTAssertTrue(profile.waitForExistence(timeout: 10), "no profile button")
         profile.tap()
         let privacy = matching(web.links, "label CONTAINS %@", "隱私權政策", "Privacy Policy").firstMatch
