@@ -2,7 +2,6 @@
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useMedia } from "../composables/useMedia";
-import { isNative } from "../native";
 import { useGameStore } from "../stores/game";
 import { copyText } from "../utils/clipboard";
 import { canShare, inviteUrl, shareInvite } from "../utils/invite";
@@ -12,10 +11,10 @@ import AppIcon from "./AppIcon.vue";
 const props = defineProps<{ code: string }>();
 const store = useGameStore();
 const { t } = useI18n();
-// P02: one invite button. Phones share through the system sheet; desktops,
-// and phones without it, copy the link. The app always shares.
+// P02: one invite button. Phones share through the system sheet (Capacitor's
+// in the app); desktops, tablets and phones without it copy the link.
 const phone = useMedia("(max-width: 620px)");
-const sharing = computed(() => isNative() || (phone.value && canShare()));
+const sharing = computed(() => phone.value && canShare());
 const qr = computed(() => qrPath(inviteUrl(props.code)));
 // A06: once copied, the button keeps saying so until this screen closes.
 const copied = ref(false);
