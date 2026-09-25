@@ -481,3 +481,134 @@ async def test_ai_moves_after_player_disconnects_while_thinking() -> None:
 def test_ai_waits_one_second_by_default() -> None:
     assert AI_MIN_THINK_SECONDS == 1.0
     assert GameManager(solver=CentreSolver()).ai_min_think_seconds == 1.0  # type: ignore[arg-type]
+
+
+async def queued_players(
+    count: int, reconnect_seconds: int = 30
+) -> tuple[GameManager, list[str], list[FakeSocket]]:
+    sessions = SessionStore()
+    players = [add_session(sessions, f"P{index}") for index in range(count)]
+    manager = GameManager(
+        sessions,
+        CentreSolver(),  # type: ignore[arg-type]
+        reconnect_seconds=reconnect_seconds,
+        ai_min_think_seconds=0,
+    )
+    sockets = [FakeSocket() for _ in players]
+    for player, socket in zip(players, sockets, strict=True):
+        await manager.connect(player, socket)  # type: ignore[arg-type]
+    return manager, players, sockets
+
+
+def searching(socket: FakeSocket) -> bool:
+    return socket.messages[-1]["payload"]["queue"]["searching"]
+
+
+@pytest.mark.asyncio
+async def test_searcher_keeps_their_place_through_a_short_disconnect() -> None:
+    manager, [ada], [socket] = await queued_players(1)
+    await manager.handle(ada, {"type": "queue.join", "payload": {}})
+    await manager.disconnect(ada, socket)  # type: ignore[arg-type]
+    assert ada in manager.queue
+
+    returned = FakeSocket()
+    await manager.connect(ada, returned)  # type: ignore[arg-type]
+    assert searching(returned) is True
+    assert returned.messages[-1]["payload"]["game"] is None
+    assert ada not in manager.disconnect_tasks
+
+
+@pytest.mark.asyncio
+async def test_an_away_searcher_is_not_matched() -> None:
+    manager, [ada, lin], [ada_socket, lin_socket] = await queued_players(2)
+    await manager.handle(ada, {"type": "queue.join", "payload": {}})
+    await manager.disconnect(ada, ada_socket)  # type: ignore[arg-type]
+
+    await manager.handle(lin, {"type": "queue.join", "payload": {}})
+    assert lin_socket.messages[-1]["payload"]["game"] is None
+    assert searching(lin_socket) is True
+    assert list(manager.queue) == [ada, lin]
+    assert not manager.rooms
+
+
+@pytest.mark.asyncio
+async def test_a_returning_searcher_is_matched_with_whoever_waits() -> None:
+    manager, [ada, lin], [ada_socket, lin_socket] = await queued_players(2)
+    await manager.handle(ada, {"type": "queue.join", "payload": {}})
+    await manager.disconnect(ada, ada_socket)  # type: ignore[arg-type]
+    await manager.handle(lin, {"type": "queue.join", "payload": {}})
+
+    returned = FakeSocket()
+    await manager.connect(ada, returned)  # type: ignore[arg-type]
+    game = manager._game_for(ada)
+    assert game is not None
+    assert game is manager._game_for(lin)
+    assert game.mode == "matchmaking"
+    assert game.status == "playing"
+    assert not manager.queue
+    assert returned.messages[-1]["payload"]["game"]["status"] == "playing"
+    assert lin_socket.messages[-1]["payload"]["game"]["status"] == "playing"
+
+
+@pytest.mark.asyncio
+async def test_two_away_searchers_are_matched_once_both_return() -> None:
+    manager, [ada, lin], [ada_socket, lin_socket] = await queued_players(2)
+    await manager.handle(ada, {"type": "queue.join", "payload": {}})
+    await manager.disconnect(ada, ada_socket)  # type: ignore[arg-type]
+    await manager.handle(lin, {"type": "queue.join", "payload": {}})
+    await manager.disconnect(lin, lin_socket)  # type: ignore[arg-type]
+
+    await manager.connect(ada, FakeSocket())  # type: ignore[arg-type]
+    assert manager._game_for(ada) is None
+    assert list(manager.queue) == [ada, lin]
+
+    await manager.connect(lin, FakeSocket())  # type: ignore[arg-type]
+    game = manager._game_for(lin)
+    assert game is not None
+    assert game is manager._game_for(ada)
+    assert not manager.queue
+
+
+@pytest.mark.asyncio
+async def test_queue_place_expires_after_the_reconnect_window() -> None:
+    manager, [ada], [socket] = await queued_players(1, reconnect_seconds=1)
+    await manager.handle(ada, {"type": "queue.join", "payload": {}})
+    await manager.disconnect(ada, socket)  # type: ignore[arg-type]
+    await asyncio.sleep(1.2)
+    assert ada not in manager.queue
+    assert ada not in manager.disconnect_tasks
+
+    returned = FakeSocket()
+    await manager.connect(ada, returned)  # type: ignore[arg-type]
+    assert searching(returned) is False
+
+
+@pytest.mark.asyncio
+async def test_queue_expiry_follows_the_latest_disconnect() -> None:
+    manager, [ada], [socket] = await queued_players(1, reconnect_seconds=1)
+    await manager.handle(ada, {"type": "queue.join", "payload": {}})
+    await manager.disconnect(ada, socket)  # type: ignore[arg-type]
+    await asyncio.sleep(0.1)
+    returned = FakeSocket()
+    await manager.connect(ada, returned)  # type: ignore[arg-type]
+    await asyncio.sleep(0.4)
+    await manager.disconnect(ada, returned)  # type: ignore[arg-type]
+
+    await asyncio.sleep(0.7)  # past the first disconnect's window, inside the second
+    assert ada in manager.queue
+    await asyncio.sleep(0.5)
+    assert ada not in manager.queue
+
+
+@pytest.mark.asyncio
+async def test_replacing_the_tab_keeps_the_queue_place() -> None:
+    manager, [ada], [old_socket] = await queued_players(1)
+    await manager.handle(ada, {"type": "queue.join", "payload": {}})
+    new_socket = FakeSocket()
+    await manager.connect(ada, new_socket)  # type: ignore[arg-type]
+    await manager.disconnect(ada, old_socket)  # type: ignore[arg-type]
+
+    assert old_socket.close_code == CLOSE_REPLACED
+    assert ada in manager.queue
+    assert ada not in manager.disconnect_tasks
+    assert searching(new_socket) is True
