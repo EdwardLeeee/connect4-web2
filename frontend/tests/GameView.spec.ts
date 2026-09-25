@@ -148,3 +148,110 @@ describe("round 7 endings in the game view", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 });
+
+describe("your move drops as you let go (A1)", () => {
+  /** P03 after your move in column 5 and, optionally, the AI's in column 2. */
+  function played(start: Snapshot, reply: boolean): Snapshot {
+    const game = start.game!;
+    const board = game.board.map((row) => [...row]);
+    board[3][4] = "green";
+    if (reply) board[5][1] = "pink";
+    return {
+      ...start,
+      game: {
+        ...game,
+        revision: game.revision + (reply ? 2 : 1),
+        status: reply ? "playing" : "thinking",
+        turn: reply ? "green" : "pink",
+        board,
+        history: `${game.history}${reply ? "52" : "5"}`,
+      },
+    };
+  }
+
+  async function yourTurn() {
+    setActivePinia(createPinia());
+    const store = useGameStore();
+    const start = pageSnapshot("P03", "zh-TW");
+    store.snapshot = start;
+    store.connection = "online";
+    const sent: string[] = [];
+    store.socket = {
+      readyState: WebSocket.OPEN,
+      send: (data: string) => sent.push(JSON.parse(data).type),
+    } as unknown as WebSocket;
+    const host = document.createElement("div");
+    document.body.append(host);
+    i18n.global.locale.value = "zh-TW";
+    app = createApp(GameView);
+    app.use(i18n);
+    app.mount(host);
+    await nextTick();
+    const token = (row: number, column: number) =>
+      host
+        .querySelectorAll(".grid .cell")
+        [row * 7 + column].querySelector(".token");
+    const tap = async (column: number) => {
+      host.querySelectorAll<HTMLButtonElement>(".col-target")[column].click();
+      await nextTick();
+    };
+    /** What the socket handler does with the server's answer. */
+    const answer = async (snapshot: Snapshot) => {
+      store.snapshot = snapshot;
+      store.settleMove();
+      await nextTick();
+    };
+    return { store, start, sent, token, tap, answer };
+  }
+
+  it("drops at once, and the same token drops on when the server confirms", async () => {
+    const { store, start, sent, token, tap, answer } = await yourTurn();
+    await tap(4);
+    const mine = token(3, 4)!;
+    expect(mine.classList).toContain("green");
+    expect(mine.classList).toContain("is-dropping");
+    expect(sent).toEqual(["game.move"]);
+    expect(store.canMove).toBe(false);
+
+    await advance(100);
+    await answer(played(start, false));
+    expect(token(3, 4)).toBe(mine);
+    expect(mine.classList).toContain("is-dropping");
+
+    await advance(dropDuration(3) - 100 + 50);
+    expect(mine.classList).not.toContain("is-dropping");
+    expect(mine.parentElement!.classList).toContain("is-last");
+  });
+
+  it("does not drop it again when the answer comes after it landed", async () => {
+    const { start, token, tap, answer } = await yourTurn();
+    await tap(4);
+    await advance(dropDuration(3) + 200);
+    await answer(played(start, false));
+    expect(token(3, 4)!.className).not.toMatch(/is-dropping|is-queued/);
+  });
+
+  it("queues an instant AI reply behind your token", async () => {
+    const { start, token, tap, answer } = await yourTurn();
+    await tap(4);
+    await advance(100);
+    await answer(played(start, true));
+    expect(token(3, 4)!.classList).toContain("is-dropping");
+    expect(token(5, 1)!.classList).toContain("is-queued");
+    await advance(dropDuration(3) - 100);
+    expect(token(5, 1)!.classList).toContain("is-dropping");
+  });
+
+  it("takes the token back when the server turns the move down", async () => {
+    const { store, token, tap } = await yourTurn();
+    await tap(4);
+    expect(token(3, 4)).not.toBeNull();
+
+    // What the socket handler does with an error.
+    store.errorCode = "not_your_turn";
+    store.pendingMove = null;
+    await nextTick();
+    expect(token(3, 4)).toBeNull();
+    expect(store.canMove).toBe(true);
+  });
+});
