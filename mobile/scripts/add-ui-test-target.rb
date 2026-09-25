@@ -17,6 +17,8 @@ group = project.main_group.new_group("AppUITests")
 ui_tests.add_file_references([group.new_reference(tests)])
 ui_tests.build_configurations.each do |config|
   config.build_settings.merge!(
+    # xcodeproj leaves PRODUCT_NAME empty for UI-test bundles ("-Runner.app/.xctest").
+    "PRODUCT_NAME" => "$(TARGET_NAME)",
     "TEST_TARGET_NAME" => "App",
     "PRODUCT_BUNDLE_IDENTIFIER" => "com.oraclelee.connect4.uitests",
     "GENERATE_INFOPLIST_FILE" => "YES",
