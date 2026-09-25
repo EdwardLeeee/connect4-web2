@@ -4238,6 +4238,28 @@ input.has-error:focus {
   }
 }
 
+/* App only (spec: App（iOS／Android）專用; mockup base.css round 17): the
+   privacy policy link and the app version under Cancel / Save. */
+.privacy-line {
+  margin: 10px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: var(--fs-13);
+}
+
+.privacy-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--muted);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
 /* A08: with reduced motion only the result panel fades in. */
 @media (prefers-reduced-motion: reduce) {
   .ending-scene {

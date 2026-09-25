@@ -51,6 +51,9 @@ const messages = {
       title: "玩家設定",
       nickname: "暱稱",
       errNicknameEmpty: "請先輸入暱稱",
+      // App only (spec: App（iOS／Android）專用).
+      privacyPolicy: "隱私權政策",
+      appVersion: "版本 {v}",
       language: "語言",
       chinese: "繁體中文",
       english: "English",
@@ -209,6 +212,9 @@ const messages = {
       title: "Player settings",
       nickname: "Nickname",
       errNicknameEmpty: "Enter a nickname first",
+      // App only (spec: App（iOS／Android）專用).
+      privacyPolicy: "Privacy Policy",
+      appVersion: "Version {v}",
       language: "Language",
       chinese: "繁體中文",
       english: "English",

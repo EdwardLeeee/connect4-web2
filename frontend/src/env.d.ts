@@ -8,3 +8,6 @@ interface ImportMetaEnv {
    * the page's own origin. */
   readonly VITE_SITE_ORIGIN?: string;
 }
+
+/** package.json's version, injected at build time (vite.config.ts). */
+declare const __APP_VERSION__: string;
