@@ -515,16 +515,45 @@ test("profile fields match and explain a rejected nickname", async ({
   expect(controls.select.appearance).toBe("none");
   expect(controls.chevronPointerEvents).toBe("none");
   await expectTouchSafe(page, ".profile-sheet button");
-  // The privacy policy line is app only (spec: App（iOS／Android）專用).
-  await expect(page.locator(".privacy-line")).toHaveCount(0);
+  // The privacy policy and version under the buttons, on the website as in
+  // the app (spec: 隱私權政策小字); the website opens it in a new tab.
+  const privacy = page.locator(".profile-sheet .privacy-line");
+  await expect(privacy).toBeVisible();
+  await expect(privacy.locator("a")).toHaveText("隱私權政策");
+  await expect(privacy.locator("a")).toHaveAttribute("target", "_blank");
+  await expect(privacy.locator("a")).toHaveAttribute(
+    "href",
+    "https://github.com/EdwardLeeee/connect4-web2/blob/main/PRIVACY.md",
+  );
+  await expect(privacy).toContainText(/版本 \d+\.\d+\.\d+/);
+  const privacyBox = await privacy.evaluate((line) => {
+    const sheet = line.closest(".profile-sheet")!;
+    const actions = sheet.querySelector(".sheet-actions")!;
+    const box = line.getBoundingClientRect();
+    const frame = sheet.getBoundingClientRect();
+    return {
+      belowButtons: box.top >= actions.getBoundingClientRect().bottom,
+      centred: Math.abs(
+        (box.left + box.right) / 2 - (frame.left + frame.right) / 2,
+      ),
+      size: getComputedStyle(line).fontSize,
+      linkHeight: line.querySelector("a")!.getBoundingClientRect().height,
+    };
+  });
+  expect(privacyBox.belowButtons).toBe(true);
+  expect(privacyBox.centred).toBeLessThanOrEqual(1);
+  expect(privacyBox.size).toBe("13px");
+  expect(privacyBox.linkHeight).toBeGreaterThanOrEqual(44);
 
   await language.selectOption("en");
   await expect(language).toHaveValue("en");
   await language.selectOption("zh-TW");
 
+  // Phones show the sheet (L10); desktops show the modal (L09).
   if (
     testInfo.project.name === "iphone-14promax-15plus-15promax-16plus" ||
-    testInfo.project.name === "galaxy-s26-ultra"
+    testInfo.project.name === "galaxy-s26-ultra" ||
+    kind(testInfo) === "desktop"
   ) {
     await expect(page).toHaveScreenshot(`${testInfo.project.name}-profile.png`);
   }

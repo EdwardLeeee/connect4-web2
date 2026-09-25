@@ -5,7 +5,8 @@ import { createApp, nextTick, type App } from "vue";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "../src/i18n";
 
-// The app-only privacy line (spec: App（iOS／Android）專用).
+// The privacy line at the foot of the sheet (spec: 隱私權政策小字), shown on
+// the website and in the app.
 const native = vi.hoisted(() => ({ on: false }));
 vi.mock("../src/native", () => ({ isNative: () => native.on }));
 
@@ -81,9 +82,21 @@ describe("profile sheet privacy line", () => {
     expect(open).toHaveBeenCalledWith(PRIVACY_URL, "_blank");
   });
 
-  it("never shows on the website", async () => {
+  it("shows on the website too, opening the policy in a new tab", async () => {
     native.on = false;
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
     const host = await mountSheet();
-    expect(host.querySelector(".privacy-line")).toBeNull();
+    const link = host.querySelector<HTMLAnchorElement>(".privacy-link")!;
+    expect(
+      [...host.querySelector(".privacy-line")!.children].map((part) =>
+        part.textContent?.trim(),
+      ),
+    ).toEqual(["隱私權政策", "·", `版本 ${version}`]);
+    expect(link.target).toBe("_blank");
+    expect(link.rel).toBe("noopener noreferrer");
+    // The browser follows the link itself; the app path is not taken.
+    link.addEventListener("click", (event) => event.preventDefault());
+    link.click();
+    expect(open).not.toHaveBeenCalled();
   });
 });

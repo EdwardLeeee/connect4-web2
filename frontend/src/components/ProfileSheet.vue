@@ -6,15 +6,17 @@ import { ProfileError, useGameStore } from "../stores/game";
 import AppIcon from "./AppIcon.vue";
 
 const emit = defineEmits<{ close: [] }>();
-// App only: the privacy policy and the app version at the foot of the sheet.
-// The website never shows this line.
-const native = isNative();
+// The privacy policy and the version at the foot of the sheet, on the
+// website and in the app alike (spec: 隱私權政策小字).
 const PRIVACY_URL =
   "https://github.com/EdwardLeeee/connect4-web2/blob/main/PRIVACY.md";
 const APP_VERSION = __APP_VERSION__;
 
-function openPrivacy() {
-  // Capacitor hands window.open(..., "_blank") to the system browser.
+function openPrivacy(event: MouseEvent) {
+  // The website follows the link into a new tab; the app hands it to the
+  // system browser, which Capacitor does for window.open(..., "_blank").
+  if (!isNative()) return;
+  event.preventDefault();
   window.open(PRIVACY_URL, "_blank");
 }
 const store = useGameStore();
@@ -114,13 +116,13 @@ async function save() {
           <span>{{ t("common.save") }}</span>
         </button>
       </div>
-      <p v-if="native" class="privacy-line">
+      <p class="privacy-line">
         <a
           class="privacy-link"
           :href="PRIVACY_URL"
           target="_blank"
           rel="noopener noreferrer"
-          @click.prevent="openPrivacy"
+          @click="openPrivacy"
           >{{ t("profile.privacyPolicy") }}</a
         >
         <span aria-hidden="true">·</span>
