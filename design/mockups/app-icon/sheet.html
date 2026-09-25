@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <title>App icon option sheet</title>
+    <style>
+      :root {
+        --paper: #fff4dc;
+        --ink: #1b1b1f;
+        --muted: #5d584f;
+        --sun: #ffd23f;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        width: 1440px;
+        height: 900px;
+        overflow: hidden;
+        font-family: "Noto Sans CJK TC", sans-serif;
+        color: var(--ink);
+        background: radial-gradient(rgb(226 196 130 / 55%) 1.3px, transparent 1.6px) 0 0 / 20px 20px, var(--paper);
+      }
+      .tag {
+        position: absolute; top: 14px; left: 14px; padding: 8px 16px;
+        border: 3px solid var(--ink); border-radius: 12px; background: var(--sun);
+        box-shadow: 4px 4px 0 var(--ink); font-size: 24px; font-weight: 900; line-height: 1.3;
+      }
+      .tag small { display: block; font-size: 15px; font-weight: 700; }
+      .col { position: absolute; top: 120px; }
+      h3 { margin: 0 0 12px; font-size: 17px; font-weight: 900; }
+      p.note { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+      .ios-big { width: 380px; height: 380px; border-radius: 22.4%; overflow: hidden; box-shadow: 0 8px 24px rgb(0 0 0 / 18%); }
+      .ios-big img, .raw img { width: 100%; height: 100%; display: block; }
+      .raw { width: 180px; height: 180px; border: 2px dashed var(--muted); }
+      .adaptive { position: relative; overflow: hidden; box-shadow: 0 6px 16px rgb(0 0 0 / 18%); }
+      .adaptive img { position: absolute; width: 150%; height: 150%; left: -25%; top: -25%; }
+      .adaptive.safe::after {
+        content: ""; position: absolute; inset: 0; margin: auto; width: 91.7%; height: 91.7%;
+        border: 2px dashed rgb(255 0 80 / 70%); border-radius: 50%;
+      }
+      .mask-circle { border-radius: 50%; }
+      .mask-squircle { border-radius: 30%; }
+      .mask-teardrop { border-radius: 50% 50% 50% 12%; }
+      .row { display: flex; gap: 22px; align-items: flex-start; }
+      .cap { margin-top: 6px; font-size: 13px; font-weight: 700; text-align: center; }
+      .home {
+        width: 400px; padding: 22px 20px 16px; border: 3px solid var(--ink); border-radius: 28px;
+        background: linear-gradient(160deg, #6b8fd6, #a36bd6 60%, #e08aa8);
+      }
+      .home .grid { display: grid; grid-template-columns: repeat(4, 60px); justify-content: space-between; row-gap: 18px; }
+      .app { display: grid; justify-items: center; gap: 5px; color: #fff; font-size: 11px; font-weight: 600; text-shadow: 0 1px 2px rgb(0 0 0 / 40%); }
+      .app .ic { width: 60px; height: 60px; border-radius: 22.4%; overflow: hidden; background: rgb(255 255 255 / 55%); }
+      .app .ic img { width: 100%; height: 100%; display: block; }
+      .home.android .grid { grid-template-columns: repeat(4, 56px); }
+      .home.android .ic { width: 56px; height: 56px; border-radius: 50%; position: relative; }
+      .home.android .ic img { position: absolute; width: 150%; height: 150%; left: -25%; top: -25%; }
+      .tiny { display: flex; gap: 18px; align-items: end; margin-top: 14px; }
+      .tiny div { overflow: hidden; border-radius: 22.4%; }
+      .tiny img { width: 100%; height: 100%; display: block; }
+    </style>
+  </head>
+  <body>
+    <script>
+      const q = new URLSearchParams(location.search);
+      const o = q.get("opt") ?? "a";
+      const ios = `../../app-icon/app-icon-ios.svg`;
+      const fg = `../../app-icon/app-icon-android-fg.svg`;
+      const bg = `../../app-icon/app-icon-android-bg.svg`;
+      const adaptive = (cls, size, safe = false) =>
+        `<div class="adaptive ${cls}${safe ? " safe" : ""}" style="width:${size}px;height:${size}px"><img src="${bg}"><img src="${fg}"></div>`;
+      const others = ["#f2c14e", "#4ea3f2", "#5cc98a", "#f27a4e", "#b0b0b0", "#e0e0e0", "#9b7bd6"];
+      const apps = (android) =>
+        others.slice(0, 3).map((c, i) => `<div class="app"><div class="ic" style="background:${c}"></div>App</div>`).join("") +
+        `<div class="app"><div class="ic">${android ? `<img src="${bg}"><img src="${fg}">` : `<img src="${ios}">`}</div>四子棋</div>` +
+        others.slice(3).map((c) => `<div class="app"><div class="ic" style="background:${c}"></div>App</div>`).join("");
+      document.body.innerHTML = `
+        <div class="tag">${q.get("tag") ?? ""}<small>${q.get("sub") ?? ""}</small></div>
+        <div class="col" style="left:40px">
+          <h3>iOS（1024×1024，系統自動加圓角）</h3>
+          <div class="ios-big"><img src="${ios}"></div>
+          <p class="note">原稿不透明、不自己加圓角；上圖是 iPhone 加上圓角後的樣子。</p>
+          <h3 style="margin-top:18px">原稿（未加圓角）</h3>
+          <div class="raw"><img src="${ios}"></div>
+        </div>
+        <div class="col" style="left:470px">
+          <h3>Android 自適應圖示（被裁成不同形狀）</h3>
+          <div class="row">
+            <div>${adaptive("mask-circle", 150, true)}<div class="cap">圓形（虛線＝安全範圍）</div></div>
+            <div>${adaptive("mask-squircle", 150)}<div class="cap">圓角方形</div></div>
+          </div>
+          <div class="row" style="margin-top:14px">
+            <div>${adaptive("mask-teardrop", 150)}<div class="cap">水滴形</div></div>
+            <div><div class="ios-big" style="width:150px;height:150px;border-radius:20%"><img src="${ios}"></div><div class="cap">Google Play 商店（512×512）</div></div>
+          </div>
+          <h3 style="margin-top:22px">小尺寸（設定、搜尋、通知）</h3>
+          <div class="tiny">
+            <div style="width:40px;height:40px"><img src="${ios}"></div>
+            <div style="width:29px;height:29px"><img src="${ios}"></div>
+            <div style="width:20px;height:20px"><img src="${ios}"></div>
+          </div>
+          <p class="note">40／29／20 px，接近手機設定與通知裡的大小。</p>
+        </div>
+        <div class="col" style="left:1000px">
+          <h3>手機桌面（約實際大小）</h3>
+          <div class="home"><div class="grid">${apps(false)}</div></div>
+          <p class="note">iPhone 桌面，圖示 60pt。</p>
+          <div class="home android" style="margin-top:14px"><div class="grid">${apps(true)}</div></div>
+          <p class="note">Android 桌面（圓形遮罩），圖示 56dp。</p>
+        </div>`;
+    </script>
+  </body>
+</html>
