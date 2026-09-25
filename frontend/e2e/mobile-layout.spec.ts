@@ -515,6 +515,8 @@ test("profile fields match and explain a rejected nickname", async ({
   expect(controls.select.appearance).toBe("none");
   expect(controls.chevronPointerEvents).toBe("none");
   await expectTouchSafe(page, ".profile-sheet button");
+  // The privacy policy line is app only (spec: App（iOS／Android）專用).
+  await expect(page.locator(".privacy-line")).toHaveCount(0);
 
   await language.selectOption("en");
   await expect(language).toHaveValue("en");
@@ -554,6 +556,67 @@ test("profile fields match and explain a rejected nickname", async ({
     "暱稱需為 1–18 個字。",
   );
   await expect(nickname).toHaveClass(/has-error/);
+});
+
+/** Serves the app build's native module: Capacitor is faked as present. */
+async function asApp(page: Page) {
+  await page.route(/\/src\/native\.ts(\?.*)?$/, (route) =>
+    route.fulfill({
+      contentType: "text/javascript",
+      body: [
+        "export const isNative = () => true;",
+        "export const tokenStore = { get: async () => null, set: async () => {} };",
+        'export const nativeShare = async () => "shared";',
+      ].join("\n"),
+    }),
+  );
+  await page.addInitScript(() => {
+    const opened: unknown[][] = [];
+    (window as typeof window & { __opened?: unknown[][] }).__opened = opened;
+    window.open = (...args: unknown[]) => {
+      opened.push(args);
+      return null;
+    };
+  });
+}
+
+test("the app shows the privacy policy and its version in the profile sheet", async ({
+  page,
+}) => {
+  await asApp(page);
+  await mockApp(page, snapshotFor("L10"));
+  await page.goto("/");
+  await page.locator(".profile").click();
+
+  const line = page.locator(".profile-sheet .privacy-line");
+  await expect(line).toBeVisible();
+  await expect(line.locator("a")).toHaveText("隱私權政策");
+  await expect(line).toContainText(/版本 \d+\.\d+\.\d+/);
+  const style = await line.evaluate((element) => {
+    const link = element.querySelector("a")!;
+    return {
+      size: getComputedStyle(element).fontSize,
+      linkHeight: link.getBoundingClientRect().height,
+      underline: getComputedStyle(link).textDecorationLine,
+    };
+  });
+  expect(style.size).toBe("13px");
+  expect(style.linkHeight).toBeGreaterThanOrEqual(44);
+  expect(style.underline).toBe("underline");
+  expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
+
+  // The system browser opens the policy on GitHub.
+  await line.locator("a").click();
+  expect(
+    await page.evaluate(
+      () => (window as typeof window & { __opened?: unknown[][] }).__opened,
+    ),
+  ).toEqual([
+    [
+      "https://github.com/EdwardLeeee/connect4-web2/blob/main/PRIVACY.md",
+      "_blank",
+    ],
+  ]);
 });
 
 test("brand icons and install metadata contain the green-pink mark", async ({

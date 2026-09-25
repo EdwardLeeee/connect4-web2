@@ -1,10 +1,22 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { isNative } from "../native";
 import { ProfileError, useGameStore } from "../stores/game";
 import AppIcon from "./AppIcon.vue";
 
 const emit = defineEmits<{ close: [] }>();
+// App only: the privacy policy and the app version at the foot of the sheet.
+// The website never shows this line.
+const native = isNative();
+const PRIVACY_URL =
+  "https://github.com/EdwardLeeee/connect4-web2/blob/main/PRIVACY.md";
+const APP_VERSION = __APP_VERSION__;
+
+function openPrivacy() {
+  // Capacitor hands window.open(..., "_blank") to the system browser.
+  window.open(PRIVACY_URL, "_blank");
+}
 const store = useGameStore();
 const { t } = useI18n();
 const nickname = ref(store.session?.nickname ?? "");
@@ -102,6 +114,18 @@ async function save() {
           <span>{{ t("common.save") }}</span>
         </button>
       </div>
+      <p v-if="native" class="privacy-line">
+        <a
+          class="privacy-link"
+          :href="PRIVACY_URL"
+          target="_blank"
+          rel="noopener noreferrer"
+          @click.prevent="openPrivacy"
+          >{{ t("profile.privacyPolicy") }}</a
+        >
+        <span aria-hidden="true">·</span>
+        <span>{{ t("profile.appVersion", { v: APP_VERSION }) }}</span>
+      </p>
     </form>
   </div>
 </template>

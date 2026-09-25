@@ -1,8 +1,18 @@
+import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 
+// The app shows its version next to the privacy policy (spec: App 專用);
+// release.sh bumps package.json, so the build takes it from there.
+const { version } = JSON.parse(
+  readFileSync(new URL("./package.json", import.meta.url), "utf8"),
+) as { version: string };
+
 export default defineConfig({
   plugins: [vue()],
+  define: {
+    __APP_VERSION__: JSON.stringify(version),
+  },
   server: {
     port: 5173,
     proxy: {
