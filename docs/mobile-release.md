@@ -89,9 +89,10 @@ Google 保管。上傳金鑰由 `mobile/scripts/android-upload-key.sh` 產生（
 - keystore 與密碼在 `~/.config/connect4-mobile/android/`（權限 700），不在任何 repo 裡。
   **請另外備份 `upload-keystore.jks` 與 `store-password.txt` 到密碼管理器。**
 - GitHub secrets：`ANDROID_UPLOAD_KEYSTORE_BASE64`、`ANDROID_UPLOAD_KEYSTORE_PASSWORD`、
-  `ANDROID_UPLOAD_KEY_ALIAS`（`upload`）、`ANDROID_UPLOAD_KEY_PASSWORD`。secrets 寫入後讀不回來，
-  不能當備份。
-- repo 變數 `ANDROID_UPLOAD_CERT_SHA256`：上傳憑證的 SHA-256 指紋（公開資訊）。
+  `ANDROID_UPLOAD_KEY_PASSWORD`。secrets 寫入後讀不回來，不能當備份。
+- repo 變數（公開資訊）：`ANDROID_UPLOAD_KEY_ALIAS`（`upload`）與 `ANDROID_UPLOAD_CERT_SHA256`
+  （上傳憑證的 SHA-256 指紋）。alias 不放 secret，是因為 GitHub 會把紀錄裡所有和 secret 相同的字
+  （例如「upload」）遮成 `***`。
 - 遺失上傳金鑰時，可以在 Play Console 申請重設上傳金鑰；遺失本機備份又沒有密碼管理器的副本，就只能走
   這個流程。
 

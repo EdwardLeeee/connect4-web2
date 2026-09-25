@@ -39,8 +39,10 @@ fingerprint="$(keytool -list -v -keystore /work/upload-keystore.jks -alias uploa
 base64 -w0 "${DIR}/upload-keystore.jks" | gh secret set ANDROID_UPLOAD_KEYSTORE_BASE64 --repo "${REPO}"
 gh secret set ANDROID_UPLOAD_KEYSTORE_PASSWORD --repo "${REPO}" < "${DIR}/store-password.txt"
 gh secret set ANDROID_UPLOAD_KEY_PASSWORD --repo "${REPO}" < "${DIR}/store-password.txt"
-printf upload | gh secret set ANDROID_UPLOAD_KEY_ALIAS --repo "${REPO}"
-# The fingerprint is public; the release workflow checks the signed bundle against it.
+# The alias and the fingerprint are public. A secret "upload" would mask that word in
+# every log line; the release workflow checks the signed bundle against the fingerprint.
+gh api --method POST "repos/${REPO}/actions/variables" \
+    -f name=ANDROID_UPLOAD_KEY_ALIAS -f value=upload >/dev/null
 gh api --method POST "repos/${REPO}/actions/variables" \
     -f name=ANDROID_UPLOAD_CERT_SHA256 -f value="${fingerprint}" >/dev/null
 
