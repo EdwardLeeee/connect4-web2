@@ -8,6 +8,7 @@ App Store 與 Google Play 後台要填的內容。以下是依目前程式寫的
 | 欄位 | 內容 |
 |---|---|
 | App 名稱 | 繁中「四子棋」、英文「Four In A Row」；其他語言顯示英文 |
+| 主要語言 | English (U.S.)：沒有翻譯的語言會顯示主要語言；再加繁中與簡中的「四子棋」 |
 | Bundle ID／Package | `com.oraclelee.connect4` |
 | 類別 | 遊戲 → 棋盤遊戲（Board） |
 | 隱私權政策網址 | https://github.com/EdwardLeeee/connect4-web2/blob/main/PRIVACY.md （PR 合併到 main 後才存在） |

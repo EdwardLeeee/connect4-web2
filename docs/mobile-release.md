@@ -97,28 +97,21 @@ Google 保管。上傳金鑰由 `mobile/scripts/android-upload-key.sh` 產生（
 
 ## iOS 簽章（買了 Apple Developer 會員後再做）
 
+使用者在蘋果網站上要做的事，逐頁逐按鈕寫在 `docs/ios-apple-setup.md`（白話，給帳號持有人看）。
 秘密檔案都放在 `~/.config/connect4-mobile/ios/`（權限 700），經 stdin 存進 GitHub secrets，不需要 Mac。
+mobile 這邊的指令：
 
-1. 使用者加入 Apple Developer Program（個人，每年 99 美元）。
-2. 產生憑證請求：`mobile/scripts/ios-signing.sh csr`，得到 `distribution.csr`。
-3. 使用者在 [Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources)：
-   1. Identifiers → ＋ → App IDs → App：Bundle ID 選 Explicit，填 `com.oraclelee.connect4`，
-      描述填 Four In A Row，不勾任何 capability。
-   2. Certificates → ＋ → **Apple Distribution** → 上傳 `distribution.csr` → 下載 `.cer`。
-   3. Profiles → ＋ → Distribution **App Store Connect** → 選上面的 App ID 與憑證 → 名稱**必須**是
-      `Four In A Row App Store` → 下載 `.mobileprovision`。
-4. 把 `.cer` 轉成 `.p12`：`mobile/scripts/ios-signing.sh p12 <下載的.cer>`。
-5. 使用者在 [App Store Connect](https://appstoreconnect.apple.com)：
-   1. Users and Access → Integrations → App Store Connect API → Team Keys → ＋，角色 **App Manager**。
-      **`.p8` 只能下載一次，下載後立刻備份到密碼管理器。** 記下 Key ID 與頁面上的 Issuer ID。
-   2. Apps → ＋ → New App：平台 iOS、名稱、主要語言、Bundle ID 選 `com.oraclelee.connect4`、SKU。
-      名稱全站不能重複，這一步才會知道「四子棋」或「Four In A Row」有沒有被占用；被占用就回報 ceo。
-6. 在 [Apple Developer 帳號頁](https://developer.apple.com/account) 的 Membership details 卡片抄 Team ID。
-7. 存成 secrets：
-   `mobile/scripts/ios-signing.sh secrets <.mobileprovision> <AuthKey_XXXX.p8> <Key ID> <Issuer ID> <Team ID>`，
-   會設定 `IOS_DIST_CERT_P12_BASE64`、`IOS_DIST_CERT_P12_PASSWORD`、`IOS_PROFILE_BASE64`、
-   `APPLE_TEAM_ID`、`ASC_API_KEY_ID`、`ASC_API_ISSUER_ID`、`ASC_API_KEY_P8_BASE64`。
-8. 對已上線的 `v*` tag 執行 Mobile release，iOS job 不再跳過。
+1. 開始前：`mobile/scripts/ios-signing.sh csr`。產生私鑰和 `FourInARow.certSigningRequest`
+   （蘋果的上傳視窗預期這個副檔名），並複製一份請求檔到「下載」資料夾。
+2. 使用者完成指南的第 1～6 步後：`mobile/scripts/ios-signing.sh p12 ~/Downloads/distribution.cer`。
+3. `mobile/scripts/ios-signing.sh secrets <.mobileprovision> <AuthKey_XXXX.p8> <Key ID> <Issuer ID> <Team ID>`：
+   把描述檔與 `.p8` 從「下載」搬進私有目錄，並設定 `IOS_DIST_CERT_P12_BASE64`、
+   `IOS_DIST_CERT_P12_PASSWORD`、`IOS_PROFILE_BASE64`、`APPLE_TEAM_ID`、`ASC_API_KEY_ID`、
+   `ASC_API_ISSUER_ID`、`ASC_API_KEY_P8_BASE64`。
+4. 對已上線的 `v*` tag 執行 Mobile release，iOS job 不再跳過。
+
+App Store Connect 建立 app 時主要語言選 English (U.S.)：沒有翻譯的語言會顯示主要語言，這樣才符合
+「中文顯示四子棋、其他語言顯示 Four In A Row」。
 
 Release 設定寫在 Xcode 專案 App target 裡（`CODE_SIGN_STYLE = Manual`、Apple Distribution、描述檔
 `Four In A Row App Store`、`DEVELOPMENT_TEAM = $(C4_APPLE_TEAM_ID)`）。不要改成在 xcodebuild 命令列
