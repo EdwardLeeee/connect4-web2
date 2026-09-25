@@ -648,6 +648,205 @@ test("the app shows the privacy policy and its version in the profile sheet", as
   ]);
 });
 
+// Narrow screens 320–389px (design/spec.md): Android's common 360 and the
+// smallest 320, in Chromium phone emulation (the Galaxy project).
+const NARROW = [
+  { width: 360, height: 780 },
+  { width: 320, height: 640 },
+] as const;
+
+function narrowOnly(testInfo: TestInfo) {
+  test.skip(
+    testInfo.project.name !== "galaxy-s26-ultra",
+    "Narrow widths are checked once, in Chromium phone emulation.",
+  );
+}
+
+async function topBar(page: Page) {
+  return page.evaluate(() => {
+    const pill = document.querySelector(".connection-pill")!;
+    const brandText = document.querySelector<HTMLElement>(".brand-text")!;
+    return {
+      pillHeight: pill.getBoundingClientRect().height,
+      pillText: pill.textContent?.trim(),
+      brandTextShown: brandText.offsetParent !== null,
+      markShown:
+        document.querySelector<HTMLElement>(".brand-mark")!.offsetParent !==
+        null,
+      avatarRight: document.querySelector(".profile")!.getBoundingClientRect()
+        .right,
+      width: window.innerWidth,
+    };
+  });
+}
+
+test("narrow phones keep the connection pill on one line beside the mark", async ({
+  page,
+}, testInfo) => {
+  narrowOnly(testInfo);
+  for (const size of NARROW) {
+    for (const locale of ["en", "zh-TW"] as const) {
+      const tab = await page.context().newPage();
+      await tab.setViewportSize(size);
+      const app = await mockApp(tab, snapshotFor("L01", locale), {
+        refuseReconnects: true,
+      });
+      await tab.goto("/");
+      await expect(tab.locator(".lobby")).toBeVisible();
+      await expect(tab.locator(".brand-text")).toBeVisible();
+      await app.sockets[0].close({ code: 1011 });
+      await expect(tab.locator(".connection-pill")).toBeVisible();
+
+      const bar = await topBar(tab);
+      const label = `${locale} ${size.width}`;
+      // One line (34px), the two-token mark only, the avatar on screen.
+      expect(bar.pillHeight, label).toBeLessThanOrEqual(36);
+      expect(bar.pillText, label).toBe(
+        locale === "en" ? "Reconnecting…" : "連線中斷，正在重試…",
+      );
+      expect(bar.brandTextShown, label).toBe(false);
+      expect(bar.markShown, label).toBe(true);
+      expect(bar.avatarRight, label).toBeLessThanOrEqual(bar.width);
+      expect(await horizontalOverflow(tab), label).toBeLessThanOrEqual(1);
+      await tab.close();
+    }
+  }
+
+  // Connecting: the pill shows until the first snapshot, then the brand text
+  // comes back.
+  await page.setViewportSize(NARROW[1]);
+  const lobby = snapshotFor("L01", "en");
+  const sockets: SocketRoute[] = [];
+  await page.route("**/api/session", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(lobby.session),
+    }),
+  );
+  await page.routeWebSocket(/\/ws$/, (socket) => {
+    sockets.push(socket);
+  });
+  await page.goto("/");
+  await expect(page.locator(".connection-pill")).toHaveText("Connecting…");
+  const connecting = await topBar(page);
+  expect(connecting.pillHeight).toBeLessThanOrEqual(36);
+  expect(connecting.brandTextShown).toBe(false);
+  expect(connecting.avatarRight).toBeLessThanOrEqual(connecting.width);
+  await expect.poll(() => sockets.length).toBe(1);
+  sockets[0].send(JSON.stringify({ type: "state.snapshot", payload: lobby }));
+  await expect(page.locator(".connection-pill")).toHaveCount(0);
+  await expect(page.locator(".brand-text")).toBeVisible();
+});
+
+test("narrow phones stack result buttons only when they do not fit", async ({
+  page,
+}, testInfo) => {
+  narrowOnly(testInfo);
+  // Widths where each case stacks (spec 02): "Challenge again" is cut at
+  // 320 only, "Waiting for response…" overflows at 360 and 320, and the
+  // Chinese labels always fit side by side.
+  const cases: Array<[PageId, "en" | "zh-TW", number[]]> = [
+    ["P08", "en", [320]],
+    ["P13", "en", [360, 320]],
+    ["P08", "zh-TW", []],
+    ["P13", "zh-TW", []],
+  ];
+  for (const size of NARROW) {
+    for (const [id, locale, stackWidths] of cases) {
+      const stacks = stackWidths.includes(size.width);
+      const tab = await page.context().newPage();
+      await tab.setViewportSize(size);
+      await mockApp(tab, snapshotFor(id, locale));
+      await tab.goto("/play");
+      const actions = tab.locator(".result-card .result-actions");
+      await expect(actions).toBeVisible();
+      const label = `${id} ${locale} ${size.width}`;
+      const layout = await actions.evaluate((row) => {
+        const card = row.closest(".result-card")!.getBoundingClientRect();
+        const buttons = [...row.querySelectorAll<HTMLElement>(".btn")];
+        const primary = row.querySelector<HTMLElement>(".btn.primary")!;
+        const other = buttons.find((button) => button !== primary)!;
+        return {
+          stacked: row.classList.contains("is-stacked"),
+          inside: buttons.every(
+            (button) =>
+              button.getBoundingClientRect().right <= card.right + 0.5 &&
+              button.scrollWidth <= button.clientWidth + 1,
+          ),
+          primaryAbove:
+            primary.getBoundingClientRect().bottom <=
+            other.getBoundingClientRect().top + 0.5,
+          primaryRight:
+            primary.getBoundingClientRect().left >=
+            other.getBoundingClientRect().right - 0.5,
+        };
+      });
+      expect(layout.inside, label).toBe(true);
+      expect(layout.stacked, label).toBe(stacks);
+      // Stacked: the main action on top; side by side: Leave on the left.
+      if (stacks) expect(layout.primaryAbove, label).toBe(true);
+      else expect(layout.primaryRight, label).toBe(true);
+      await tab.close();
+    }
+  }
+});
+
+test("narrow phones keep the lobby demo board inside the AI card", async ({
+  page,
+}, testInfo) => {
+  narrowOnly(testInfo);
+  for (const size of NARROW) {
+    await page.setViewportSize(size);
+    await mockApp(page, snapshotFor("L01"));
+    await page.goto("/");
+    const fit = await page.locator(".ai-card").evaluate((card) => {
+      const frame = card.getBoundingClientRect();
+      const board = card.querySelector(".mini-board")!.getBoundingClientRect();
+      return {
+        left: board.left - frame.left,
+        right: frame.right - board.right,
+      };
+    });
+    expect(fit.left, `${size.width}`).toBeGreaterThan(0);
+    expect(fit.right, `${size.width}`).toBeGreaterThan(0);
+    expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
+  }
+});
+
+test("at 320px the match card shows whole names", async ({
+  page,
+}, testInfo) => {
+  narrowOnly(testInfo);
+  await page.setViewportSize(NARROW[1]);
+  for (const id of ["P03", "P04"] as const) {
+    await mockApp(page, snapshotFor(id));
+    await page.goto("/play");
+    await expect(page.locator(".match-card")).toBeVisible();
+    const names = await page
+      .locator(".match-card .player-copy strong")
+      .evaluateAll((items) =>
+        items.map((item) => ({
+          text: item.textContent?.trim(),
+          cut: item.scrollWidth > item.clientWidth + 1,
+        })),
+      );
+    expect(
+      names.map((name) => name.text),
+      id,
+    ).toEqual(id === "P03" ? ["曜宇", "Super AI"] : ["玩家 4821", "曜宇"]);
+    expect(
+      names.every((name) => !name.cut),
+      id,
+    ).toBe(true);
+    const token = await page
+      .locator(".match-card .token.player-token")
+      .first()
+      .evaluate((element) => element.getBoundingClientRect().width);
+    expect(token).toBe(28);
+  }
+});
+
 test("brand icons and install metadata contain the green-pink mark", async ({
   page,
 }, testInfo) => {

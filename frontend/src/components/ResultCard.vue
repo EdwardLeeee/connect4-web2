@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import type { Color } from "../types";
 import type {
@@ -20,7 +21,54 @@ const props = defineProps<{
   held: boolean;
 }>();
 const emit = defineEmits<{ action: [action: ResultAction] }>();
-const { t } = useI18n();
+const { t, locale } = useI18n();
+
+// Narrow screens (spec 02): the two buttons sit side by side while both
+// labels fit and stack, main action first, once either would be cut or push
+// out of the panel. Measured on the real text, so any language or font works.
+const actionsEl = ref<HTMLElement | null>(null);
+const stacked = ref(false);
+let observer: ResizeObserver | null = null;
+let lastWidth = -1;
+
+function fit() {
+  const el = actionsEl.value;
+  if (!el || el.children.length < 2) {
+    stacked.value = false;
+    return;
+  }
+  // Measure the side-by-side layout and settle in one synchronous pass, so
+  // nothing is painted in between.
+  el.classList.remove("is-stacked");
+  const overflows =
+    el.scrollWidth > el.clientWidth + 1 ||
+    [...el.children].some(
+      (button) => button.scrollWidth > button.clientWidth + 1,
+    );
+  el.classList.toggle("is-stacked", overflows);
+  stacked.value = overflows;
+}
+
+onMounted(() => {
+  fit();
+  void document.fonts?.ready.then(fit);
+  if (typeof ResizeObserver === "undefined" || !actionsEl.value) return;
+  observer = new ResizeObserver(([entry]) => {
+    // Stacking changes only the height; refitting on that would loop.
+    const width = entry.contentRect.width;
+    if (Math.abs(width - lastWidth) < 0.5) return;
+    lastWidth = width;
+    fit();
+  });
+  observer.observe(actionsEl.value);
+});
+
+onUnmounted(() => observer?.disconnect());
+
+watch(
+  () => [props.result.actions, props.result.tone, props.mode, locale.value],
+  () => void nextTick(fit),
+);
 
 function label(action: ResultAction) {
   switch (action) {
@@ -87,7 +135,11 @@ function icon(action: ResultAction) {
         }}</small>
       </div>
     </div>
-    <div class="result-actions">
+    <div
+      ref="actionsEl"
+      class="result-actions"
+      :class="{ 'is-stacked': stacked }"
+    >
       <button
         v-for="action in result.actions"
         :key="action"
