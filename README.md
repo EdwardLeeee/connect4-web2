@@ -139,7 +139,12 @@ systemctl --user enable --now connect4.service
 ```bash
 CONNECT4_COOKIE_SECURE=1
 CONNECT4_ALLOWED_ORIGINS=https://connect4.oraclelee.com
+CONNECT4_APP_ORIGINS=capacitor://localhost,https://localhost
 ```
+
+`CONNECT4_APP_ORIGINS` 是手機 app 頁面的來源（iOS `capacitor://localhost`、Android
+`https://localhost`）。只有這些來源能跨網域讀取 `/api/session`，並用 session token 連線，詳見
+`docs/protocol.md` 的「App 連線」。沒設定時預設就是這兩個；設成空字串就關閉 app 模式。
 
 服務只發布到 `127.0.0.1:55555`，由 Nginx 對外提供 HTTPS 與 WebSocket。
 反向代理範例位於 `connect4.conf`；確認憑證路徑後安裝並重新載入：
