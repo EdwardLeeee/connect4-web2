@@ -30,6 +30,8 @@ keytool -genkeypair -keystore /work/upload-keystore.jks -storetype PKCS12 -alias
     -keyalg RSA -keysize 4096 -validity 10000 \
     -dname "CN=Four In A Row Upload, O=connect4.oraclelee.com" \
     -storepass:file /work/store-password.txt -keypass:file /work/store-password.txt
+# keytool writes with the container's umask (0644); the key must be private like the password.
+chmod 600 "${DIR}/upload-keystore.jks"
 fingerprint="$(keytool -list -v -keystore /work/upload-keystore.jks -alias upload \
     -storepass:file /work/store-password.txt | sed -n 's/^[[:space:]]*SHA256: //p')"
 [ -n "${fingerprint}" ] || { echo "could not read the certificate fingerprint" >&2; exit 1; }
