@@ -1,0 +1,183 @@
+name: Mobile
+
+# Builds the iOS and Android apps whenever something bundled into them changes.
+# Not a required check: the path filter would leave unrelated pull requests waiting.
+on:
+  pull_request:
+    paths:
+      - "mobile/**"
+      - "design/app-icon/**"
+      - ".github/workflows/mobile*.yml"
+      - "frontend/**"
+      - "!frontend/e2e/**"
+      - "!frontend/tests/**"
+  workflow_dispatch:
+    inputs:
+      smoke:
+        description: Play one AI game in the Android app on an emulator (uses the production server)
+        type: boolean
+        default: false
+
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VITE_API_ORIGIN: https://connect4.oraclelee.com
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            mobile/package-lock.json
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+      - run: npm ci
+        working-directory: mobile
+      - run: npm run check:capacitor
+        working-directory: mobile
+      - run: npm audit --audit-level=high
+        working-directory: mobile
+      - run: npx cap sync android
+        working-directory: mobile
+      # The unsigned release bundle proves the release build type still compiles.
+      - run: ./gradlew assembleDebug bundleRelease
+        working-directory: mobile/android
+      - uses: actions/upload-artifact@v7
+        with:
+          name: connect4-debug-apk
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+          if-no-files-found: error
+
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            mobile/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+      - run: npm ci
+        working-directory: mobile
+      - run: npx cap sync ios
+        working-directory: mobile
+      - name: Build for the simulator
+        working-directory: mobile/ios/App
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          xcodebuild -list -project App.xcodeproj
+          version="$(node -p "require('../../../frontend/package.json').version")"
+          xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath "${RUNNER_TEMP}/dd" \
+            MARKETING_VERSION="${version}" CODE_SIGNING_ALLOWED=NO build
+      - name: Check the built app
+        run: |
+          set -euo pipefail
+          app="${RUNNER_TEMP}/dd/Build/Products/Debug-iphonesimulator/App.app"
+          version="$(node -p "require('./frontend/package.json').version")"
+          value() { plutil -extract "$1" raw -o - "$2"; }
+          fail() { echo "::error::$1"; exit 1; }
+          [ "$(value CFBundleIdentifier "${app}/Info.plist")" = com.oraclelee.connect4 ] || fail "bundle id"
+          [ "$(value CFBundleShortVersionString "${app}/Info.plist")" = "${version}" ] || fail "version"
+          [ "$(value ITSAppUsesNonExemptEncryption "${app}/Info.plist")" = false ] || fail "export compliance key"
+          [ "$(plutil -extract UIDeviceFamily json -o - "${app}/Info.plist")" = "[1]" ] || fail "iPhone only"
+          [ "$(value CFBundleDisplayName "${app}/en.lproj/InfoPlist.strings")" = "Four In A Row" ] || fail "en name"
+          [ "$(value CFBundleDisplayName "${app}/zh-Hant.lproj/InfoPlist.strings")" = "四子棋" ] || fail "zh-Hant name"
+          [ "$(value CFBundleDisplayName "${app}/zh-Hans.lproj/InfoPlist.strings")" = "四子棋" ] || fail "zh-Hans name"
+          plutil -lint "${app}/PrivacyInfo.xcprivacy"
+          [ -f "${app}/public/index.html" ] || fail "web bundle missing"
+          echo "app bundle checks passed"
+      - name: Build Release for devices without signing
+        working-directory: mobile/ios/App
+        run: |
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release \
+            -destination "generic/platform=iOS" -derivedDataPath "${RUNNER_TEMP}/dd-release" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+      # Best effort: shows how the name and the app look on a simulator.
+      - name: Simulator screenshots
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          mkdir -p screenshots
+          udid="$(xcrun simctl list devices available -j | node -e '
+            const d = JSON.parse(require("fs").readFileSync(0, "utf8")).devices;
+            const phones = Object.entries(d).filter(([rt]) => rt.includes("iOS")).flatMap(([, list]) => list)
+              .filter((x) => x.name.startsWith("iPhone"));
+            console.log(phones.at(-1).udid);')"
+          xcrun simctl boot "${udid}"
+          xcrun simctl bootstatus "${udid}" -b
+          xcrun simctl install "${udid}" "${RUNNER_TEMP}/dd/Build/Products/Debug-iphonesimulator/App.app"
+          xcrun simctl launch "${udid}" com.oraclelee.connect4
+          sleep 10
+          xcrun simctl io "${udid}" screenshot screenshots/app.png
+          xcrun simctl terminate "${udid}" com.oraclelee.connect4
+          sleep 3
+          xcrun simctl io "${udid}" screenshot screenshots/home.png
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-simulator-screenshots
+          path: screenshots/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  android-smoke:
+    if: github.event_name == 'workflow_dispatch' && inputs.smoke
+    needs: android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - uses: actions/download-artifact@v8
+        with:
+          name: connect4-debug-apk
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          script: |
+            adb install -r app-debug.apk
+            node mobile/scripts/android-smoke.mjs smoke-screenshots
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-smoke-screenshots
+          path: smoke-screenshots/
+          retention-days: 14
+          if-no-files-found: ignore

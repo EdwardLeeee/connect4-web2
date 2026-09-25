@@ -62,6 +62,23 @@ npm run test:e2e
 
 測試會檢查水平溢位、44px 觸控目標、鍵盤高度與視覺基準。
 
+## 行動版 app
+
+iOS／Android app「四子棋」（英文 Four In A Row，bundle ID `com.oraclelee.connect4`）放在
+`mobile/`：Capacitor 把 `frontend/` 的建置結果打包進 app，app 再以 session token 跨網域連
+`https://connect4.oraclelee.com`（協定見 `docs/protocol.md` 的「App 連線」）。改網頁後要發新版
+app 才會帶上，網站本身的發版流程不變。
+
+- 改到 app 會打包的檔案時，pull request 會跑 `Mobile` workflow：建置 Android debug APK
+  （artifact `connect4-debug-apk`，可直接側載）與 iOS 模擬器版。它不是必要檢查。
+- 發布：網頁版本上線後，在 Actions 的 `Mobile release` 選該版本的 `v*` tag 手動執行，產生簽章的
+  Android AAB 並把 iOS 版上傳到 TestFlight；缺哪個平台的簽章 secrets 就跳過哪個，並寫出原因。
+- Android 上傳金鑰只存在 GitHub secrets 與 `~/.config/connect4-mobile/`，務必另外備份到密碼管理器。
+  iOS 簽章要等有 Apple Developer 會員後才啟用。
+- 隱私權政策：[PRIVACY.md](PRIVACY.md)。
+
+建置、簽章、iOS 啟用步驟與上架準備見 `docs/mobile-release.md` 和 `docs/mobile-store-checklist.md`。
+
 ## 設定與部署
 
 正式網址為 `https://connect4.oraclelee.com`。正式主機需要 Podman 3.4+、

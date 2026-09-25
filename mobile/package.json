@@ -1,0 +1,22 @@
+{
+  "name": "connect4-mobile",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sync": "cap sync",
+    "icons": "node scripts/generate-icons.mjs",
+    "check:capacitor": "node scripts/check-capacitor-versions.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.2",
+    "@capacitor/core": "8.5.2",
+    "@capacitor/ios": "8.5.2",
+    "@capacitor/preferences": "8.0.1",
+    "@capacitor/share": "8.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.2",
+    "sharp": "0.35.4",
+    "typescript": "~5.8.3"
+  }
+}
