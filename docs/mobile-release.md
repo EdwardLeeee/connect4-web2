@@ -62,9 +62,13 @@ pull request 動到 `mobile/**`、`design/app-icon/**`、`frontend/**`（測試�
   換版前要先解除安裝舊的）。
 - `ios`：建置模擬器版，檢查 Bundle ID、版本、`ITSAppUsesNonExemptEncryption`、只支援 iPhone、
   三個語系的名稱與隱私清單，再建置一次不簽章的 Release 裝置版；另附模擬器截圖。
-- `android-smoke`：只在手動執行（Run workflow，勾選 smoke）時跑。在 API 36 模擬器安裝 debug APK，
-  對正式站完整下完一局 AI，並確認 `window.open` 不會讓 app 離開遊戲頁；截圖在 artifact。
-  需要正式站已經支援 app 連線（3.1.0 以後，且正式環境設好 `CONNECT4_APP_ORIGINS`）。
+- `ios-smoke`：只在手動執行（Run workflow，勾選 smoke）時跑，會連正式站，不要排成定時執行。
+  在 macOS runner 的 iPhone 模擬器用 XCUITest（`mobile/ios/UITests/AppUITests.swift`）下完一局 AI，
+  再打開個人設定的隱私權連結，確認 Safari 被帶到前景、app 仍停在原頁。測試 target 不在 commit 的
+  Xcode 專案裡，由 `mobile/scripts/add-ui-test-target.rb`（固定 Ruby 3.3、xcodeproj 1.28.1）在 runner
+  上臨時加入。截圖在 artifact `ios-smoke-screenshots`。
+  Android 沒有對應的自動對局：Cloudflare 擋 GitHub 的 Ubuntu runner，模擬器連不到正式站；需要時用
+  `connect4-debug-apk` 側載到 Android 手機測。
 
 ### `Mobile release`（`.github/workflows/mobile-release.yml`）
 
