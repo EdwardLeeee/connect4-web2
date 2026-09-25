@@ -2845,3 +2845,24 @@ input.has-error:focus-visible {
     --slot: min(48px, calc((100vw - 16px - 24px - 12px - 4px) / 7));
   }
 }
+
+/* round 17 proposal: app-only privacy policy line (profile sheet footer) */
+.privacy-line {
+  margin: 10px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: var(--fs-13);
+}
+
+.privacy-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--muted);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}

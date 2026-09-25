@@ -493,6 +493,16 @@ function toast() {
   return `<div class="toast" role="alert"><span class="toast-icon">!</span><span>${t(S.toast)}</span><button type="button" aria-label="${t("close")}">${ICON.close}</button></div>`;
 }
 
+// round 17 proposal: app-only privacy policy line at the foot of the sheet
+// (pp=a: the link alone; pp=b: link · app version). Not shown on the website.
+function privacyLine() {
+  const pp = params.get("pp");
+  if (!pp) return "";
+  const link = `<a class="privacy-link" href="#">${t("privacyPolicy")}</a>`;
+  if (pp === "b") return `<p class="privacy-line">${link}<span aria-hidden="true">·</span><span>${t("appVersion", { v: "3.1.0" })}</span></p>`;
+  return `<p class="privacy-line">${link}</p>`;
+}
+
 function profileSheet() {
   if (!S.profile) return "";
   const P = S.profile;
@@ -511,6 +521,7 @@ function profileSheet() {
         <span class="select-field"><select><option>${lang === "en" ? t("english") : t("chinese")}</option></select>${ICON.chevron}</span>
       </label>
       <div class="sheet-actions">${btn(t("cancel"), "secondary")}${btn(t("save"), "primary", { disabled: empty })}</div>
+      ${privacyLine()}
     </form>
   </div>`;
 }

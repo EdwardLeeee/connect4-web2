@@ -1,0 +1,42 @@
+[
+ {
+  "url": "mockups/round2/screen.html?state=L09&vp=mobile&lang=zh-TW&pp=a",
+  "name": "R17-02-隱私權小字-A-只有連結-mobile",
+  "tag": "02 隱私權小字｜A 只有連結（中文）",
+  "sub": "個人設定最下面一行灰色小字「隱私權政策」，點了打開 GitHub 上的 PRIVACY.md；只在 app 裡出現，網站不顯示",
+  "still": true,
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L09&vp=mobile&lang=en&pp=a",
+  "name": "R17-02-隱私權小字-A-只有連結-mobile-en",
+  "tag": "02 隱私權小字｜A 只有連結（英文）",
+  "sub": "個人設定最下面一行灰色小字「隱私權政策」，點了打開 GitHub 上的 PRIVACY.md；只在 app 裡出現，網站不顯示",
+  "still": true,
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L09&vp=mobile&lang=zh-TW&pp=b",
+  "name": "R17-02-隱私權小字-B-連結加版本號-mobile",
+  "tag": "02 隱私權小字｜B 連結加版本號（中文）",
+  "sub": "同一行加上 app 版本號「隱私權政策 · 版本 3.1.0」，像一般 app 設定頁的頁尾；只在 app 裡出現，網站不顯示",
+  "still": true,
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ },
+ {
+  "url": "mockups/round2/screen.html?state=L09&vp=mobile&lang=en&pp=b",
+  "name": "R17-02-隱私權小字-B-連結加版本號-mobile-en",
+  "tag": "02 隱私權小字｜B 連結加版本號（英文）",
+  "sub": "同一行加上 app 版本號「隱私權政策 · 版本 3.1.0」，像一般 app 設定頁的頁尾；只在 app 裡出現，網站不顯示",
+  "still": true,
+  "width": 430,
+  "height": 932,
+  "mobile": true
+ }
+]

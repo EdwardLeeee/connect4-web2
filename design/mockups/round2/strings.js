@@ -118,6 +118,8 @@ window.STRINGS = {
     errRoomCodeEmpty: "請先輸入房號", // NEW (join with an empty code)
     errNickname: "暱稱需為 1–18 個字。", // NEW (invalid_nickname)
     errNicknameEmpty: "請先輸入暱稱", // NEW (empty nickname, checked while typing)
+    privacyPolicy: "隱私權政策", // NEW (round 17, app only)
+    appVersion: "版本 {v}", // NEW (round 17, app only)
     close: "關閉",
   },
   en: {
@@ -241,6 +243,8 @@ window.STRINGS = {
     errRoomCodeEmpty: "Enter a room code first",
     errNickname: "Nickname must be 1–18 characters.",
     errNicknameEmpty: "Enter a nickname first",
+    privacyPolicy: "Privacy Policy",
+    appVersion: "Version {v}",
     close: "Close",
   },
 };
