@@ -1,0 +1,14 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>wasm bench</title>
+<script type="module">
+  import init, * as lib from "./package/connect_four_ai_wasm.js";
+  import { runBench } from "./bench-core.mjs";
+  window.runPage = async (file, mode) => {
+    const exports = await init({ module_or_path: "./package/connect_four_ai_wasm_bg.wasm" });
+    const lines = (await (await fetch(file)).text()).split("\n").filter(Boolean);
+    const results = runBench(lib, lines, mode, () => performance.now());
+    return { results, wasmBytes: exports.memory.buffer.byteLength };
+  };
+  window.ready = true;
+</script>
