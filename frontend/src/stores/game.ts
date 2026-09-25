@@ -1,4 +1,5 @@
 import { defineStore } from "pinia";
+import { markRaw } from "vue";
 import { i18n } from "../i18n";
 import { isNative, tokenStore } from "../native";
 import type { Snapshot } from "../types";
@@ -11,6 +12,38 @@ type ConnectionState = "connecting" | "online" | "offline" | "replaced";
 const CLOSE_REPLACED = 4001;
 
 const PROFILE_ERRORS = new Set(["invalid_nickname", "invalid_locale"]);
+
+// After a working connection drops, the screen stays as it was this long
+// before it says so: a quick reconnect, as when a phone comes back from the
+// background, shows nothing.
+const QUIET_MS = 2000;
+// Back after this long, an open socket may have died with the page suspended
+// and no close event: it must answer a state request within PROBE_MS.
+const PROBE_AFTER_MS = 10_000;
+const PROBE_MS = 3000;
+
+// A move is chosen against the board on screen, and a new connection starts
+// with a snapshot: neither waits for a reconnect.
+const NEVER_HELD = new Set(["game.move", "state.request"]);
+const LOBBY_ACTIONS = new Set([
+  "game.ai.start",
+  "room.create",
+  "room.join",
+  "queue.join",
+]);
+
+interface Message {
+  type: string;
+  payload: Record<string, unknown>;
+}
+
+/** Whether a message held while reconnecting fits the state it came back to. */
+function stillApplies(type: string, snapshot: Snapshot): boolean {
+  const searching = snapshot.queue.searching && !snapshot.game;
+  if (type === "queue.leave") return searching;
+  if (LOBBY_ACTIONS.has(type)) return !snapshot.game && !searching;
+  return Boolean(snapshot.game);
+}
 
 export class ProfileError extends Error {
   constructor(readonly code: string) {
@@ -58,7 +91,15 @@ export const useGameStore = defineStore("game", {
     socket: null as WebSocket | null,
     retryTimer: null as number | null,
     retryCount: 0,
+    recovering: false,
     deliberatelyClosed: false,
+    // True from a drop until QUIET_MS pass or the connection is back.
+    quiet: false,
+    quietTimer: null as number | null,
+    probeTimer: null as number | null,
+    hiddenAt: null as number | null,
+    // The last message sent while reconnecting, sent once the connection is back.
+    held: null as Message | null,
     // Increments on every successful connection, so views can tell a live
     // change apart from the state a fresh connection starts with.
     connectionEpoch: 0,
@@ -71,6 +112,9 @@ export const useGameStore = defineStore("game", {
     room: (state) => state.snapshot?.room ?? null,
     searching: (state) => state.snapshot?.queue.searching ?? false,
     session: (state) => state.snapshot?.session ?? null,
+    /** The connection the screen shows: a drop stays quiet for QUIET_MS. */
+    shownConnection: (state): ConnectionState =>
+      state.quiet ? "online" : state.connection,
     hasActivity(): boolean {
       return Boolean(this.game || this.searching);
     },
@@ -94,7 +138,12 @@ export const useGameStore = defineStore("game", {
     },
 
     async initialise() {
-      await this.refreshSession();
+      this.recovering = true;
+      try {
+        await this.refreshSession();
+      } finally {
+        this.recovering = false;
+      }
       this.connect();
     },
 
@@ -107,28 +156,39 @@ export const useGameStore = defineStore("game", {
         return;
       }
       this.deliberatelyClosed = false;
-      this.connection = this.retryCount ? "offline" : "connecting";
+      // A reconnect stays "offline" even when coming back resets the backoff.
+      if (this.connection !== "offline") {
+        this.connection = this.retryCount ? "offline" : "connecting";
+      }
       // The app's token rides in a subprotocol: WebSockets take no headers.
-      const socket = isNative()
-        ? new WebSocket(socketUrl(), [
-            "connect4.v1",
-            ...(token ? [`connect4.token.${token}`] : []),
-          ])
-        : new WebSocket(socketUrl());
+      // Raw, so this.socket stays comparable with the socket each handler holds.
+      const socket = markRaw(
+        isNative()
+          ? new WebSocket(socketUrl(), [
+              "connect4.v1",
+              ...(token ? [`connect4.token.${token}`] : []),
+            ])
+          : new WebSocket(socketUrl()),
+      );
       this.socket = socket;
       let connected = false;
 
       socket.addEventListener("message", (event) => {
+        // A socket given up on (see probe) may still deliver late messages.
+        if (this.socket !== socket) return;
+        this.clearProbe();
         const message = JSON.parse(String(event.data));
         if (message.type === "state.snapshot") {
           // The first snapshot, not "open", means the connection works: the
           // server accepts an app whose token expired and then closes with
           // 4401, which must not reset the backoff or flash "online".
-          if (!connected) {
+          const first = !connected;
+          if (first) {
             connected = true;
             this.connection = "online";
             this.retryCount = 0;
             this.connectionEpoch += 1;
+            this.endQuiet();
           }
           this.snapshot = message.payload as Snapshot;
           if (typeof this.snapshot.server_time === "number") {
@@ -136,20 +196,26 @@ export const useGameStore = defineStore("game", {
           }
           i18n.global.locale.value = this.snapshot.session.locale;
           this.errorCode = null;
+          if (first) this.sendHeld();
         } else if (message.type === "error") {
           this.errorCode = String(message.payload?.code ?? "generic");
         }
       });
       socket.addEventListener("close", (event) => {
-        if (this.socket === socket) this.socket = null;
+        if (this.socket !== socket) return;
+        this.socket = null;
+        this.clearProbe();
         if (this.deliberatelyClosed) return;
         if (event.code === CLOSE_REPLACED) {
           this.deliberatelyClosed = true;
           this.connection = "replaced";
           if (this.retryTimer !== null) window.clearTimeout(this.retryTimer);
           this.retryTimer = null;
+          this.endQuiet();
+          this.held = null;
           return;
         }
+        if (connected) this.beginQuiet();
         this.connection = "offline";
         const delay = Math.min(500 * 2 ** this.retryCount, 5000);
         this.retryCount += 1;
@@ -160,6 +226,88 @@ export const useGameStore = defineStore("game", {
       });
     },
 
+    /** The page went into the background. */
+    suspend() {
+      this.hiddenAt = Date.now();
+    },
+
+    /**
+     * The page is visible again. A phone suspends a background page and drops
+     * its socket, so reconnect now instead of waiting out the backoff.
+     */
+    resume() {
+      const away = this.hiddenAt === null ? 0 : Date.now() - this.hiddenAt;
+      this.hiddenAt = null;
+      if (this.deliberatelyClosed) return;
+      // Nobody saw a drop while hidden: its grace starts from coming back.
+      if (this.quiet) this.beginQuiet();
+      if (this.socket?.readyState === WebSocket.OPEN) {
+        if (away >= PROBE_AFTER_MS) this.probe();
+        return;
+      }
+      this.reconnectNow();
+    },
+
+    /**
+     * Reconnects without waiting out the backoff, for example when the network
+     * is back. A socket still connecting or a reconnect under way is left be.
+     */
+    reconnectNow() {
+      if (this.deliberatelyClosed || this.recovering || this.socket) return;
+      if (this.retryTimer !== null) window.clearTimeout(this.retryTimer);
+      this.retryTimer = null;
+      this.retryCount = 0;
+      void this.recoverConnection();
+    },
+
+    /** Asks an open socket for the state and replaces it if it stays silent. */
+    probe() {
+      const socket = this.socket;
+      if (!socket) return;
+      this.clearProbe();
+      socket.send(JSON.stringify({ type: "state.request", payload: {} }));
+      this.probeTimer = window.setTimeout(() => {
+        this.probeTimer = null;
+        if (this.socket !== socket) return;
+        // Its close event may never come; stop listening and start over.
+        this.socket = null;
+        socket.close();
+        this.connection = "offline";
+        this.beginQuiet();
+        this.retryCount = 0;
+        void this.recoverConnection();
+      }, PROBE_MS);
+    },
+
+    clearProbe() {
+      if (this.probeTimer !== null) window.clearTimeout(this.probeTimer);
+      this.probeTimer = null;
+    },
+
+    beginQuiet() {
+      this.quiet = true;
+      if (this.quietTimer !== null) window.clearTimeout(this.quietTimer);
+      this.quietTimer = window.setTimeout(() => {
+        this.quietTimer = null;
+        // A hidden page shows nothing; coming back starts a fresh grace.
+        if (document.visibilityState !== "hidden") this.quiet = false;
+      }, QUIET_MS);
+    },
+
+    endQuiet() {
+      this.quiet = false;
+      if (this.quietTimer !== null) window.clearTimeout(this.quietTimer);
+      this.quietTimer = null;
+    },
+
+    sendHeld() {
+      const held = this.held;
+      this.held = null;
+      if (held && this.snapshot && stillApplies(held.type, this.snapshot)) {
+        this.send(held.type, held.payload);
+      }
+    },
+
     /** Takes the session back from the tab that replaced this one. */
     reclaim() {
       if (this.connection !== "replaced") return;
@@ -168,22 +316,34 @@ export const useGameStore = defineStore("game", {
     },
 
     async recoverConnection() {
+      // One at a time: in the app, two session requests could each receive a
+      // different token for the same socket.
+      if (this.recovering) return;
+      this.recovering = true;
       try {
         // The server keeps sessions in memory. Refreshing the HTTP session first
         // replaces a stale cookie after a restart before opening a new WebSocket.
         await this.refreshSession();
       } catch {
         // The WebSocket attempt below schedules the next backoff while offline.
+      } finally {
+        this.recovering = false;
       }
       if (!this.deliberatelyClosed) this.connect();
     },
 
     send(type: string, payload: Record<string, unknown> = {}) {
-      if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      if (this.socket?.readyState === WebSocket.OPEN) {
+        this.socket.send(JSON.stringify({ type, payload }));
+        return;
+      }
+      if (this.deliberatelyClosed) {
         this.errorCode = "generic";
         return;
       }
-      this.socket.send(JSON.stringify({ type, payload }));
+      // Reconnecting: the message waits for the connection (the last one wins),
+      // so cancelling a search while the phone reconnects still cancels it.
+      if (!NEVER_HELD.has(type)) this.held = { type, payload };
     },
 
     async saveProfile(nickname: string, locale: "zh-TW" | "en") {

@@ -20,7 +20,7 @@ const REASONS: Record<string, string> = {
 };
 const joining = ref(false);
 const failure = ref<string | null>(null);
-const online = computed(() => store.connection === "online");
+const online = computed(() => store.shownConnection === "online");
 
 // L12 v2 (round 7): prefilled with this device's nickname, focused on entry.
 // iPhone Safari keeps its keyboard down until the field is tapped.

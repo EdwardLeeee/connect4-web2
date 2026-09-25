@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from "vue";
+import { computed, onMounted, onUnmounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import AppIcon from "./components/AppIcon.vue";
@@ -17,12 +17,12 @@ const { t } = useI18n();
 const profileOpen = useProfileSheet();
 
 // Pill in the top bar while connecting or reconnecting; a replaced tab shows
-// its own screen instead (P15).
+// its own screen instead (P15). A quick reconnect shows nothing.
 // Narrow screens (320–389px, spec 01): phones use the short "offline" text.
 const phone = useMedia("(max-width: 620px)");
 const connectionLabel = computed(() => {
-  if (store.connection === "connecting") return t("connection.connecting");
-  if (store.connection === "offline") {
+  if (store.shownConnection === "connecting") return t("connection.connecting");
+  if (store.shownConnection === "offline") {
     return t(phone.value ? "connection.offlineShort" : "connection.offline");
   }
   return "";
@@ -46,12 +46,36 @@ watch(
   },
 );
 
+// A phone suspends a page in the background and drops its socket: coming
+// back reconnects at once rather than after the retry backoff.
+function onVisibilityChange() {
+  if (document.visibilityState === "hidden") store.suspend();
+  else store.resume();
+}
+
+function onPageShow(event: PageTransitionEvent) {
+  if (event.persisted) store.resume();
+}
+
+function onOnline() {
+  store.reconnectNow();
+}
+
 onMounted(async () => {
+  document.addEventListener("visibilitychange", onVisibilityChange);
+  window.addEventListener("pageshow", onPageShow);
+  window.addEventListener("online", onOnline);
   try {
     await store.initialise();
   } catch {
     store.connection = "offline";
   }
+});
+
+onUnmounted(() => {
+  document.removeEventListener("visibilitychange", onVisibilityChange);
+  window.removeEventListener("pageshow", onPageShow);
+  window.removeEventListener("online", onOnline);
 });
 </script>
 
@@ -75,7 +99,7 @@ onMounted(async () => {
         <span
           v-if="connectionLabel"
           class="connection-pill"
-          :class="store.connection"
+          :class="store.shownConnection"
           role="status"
         >
           <span class="status-dot" />

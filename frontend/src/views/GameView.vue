@@ -28,7 +28,7 @@ import {
 const store = useGameStore();
 const { t } = useI18n();
 
-const online = computed(() => store.connection === "online");
+const online = computed(() => store.shownConnection === "online");
 const mode = computed<RoomMode>(() => store.room?.mode ?? "ai");
 const opponent = computed<Color>(() => opponentOf(store.game?.you ?? "green"));
 const opponentName = computed(

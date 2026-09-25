@@ -12,7 +12,7 @@ interface MockOptions {
   /** Called with every message the page sends. */
   onMessage?: (message: { type: string; payload: unknown }) => void;
   /** Close every connection after the first, so the page stays offline. */
-  refuseReconnects?: boolean;
+  refuseReconnects?: boolean | (() => boolean);
 }
 
 async function mockApp(
@@ -30,7 +30,11 @@ async function mockApp(
   });
   await page.routeWebSocket(/\/ws$/, (socket) => {
     sockets.push(socket);
-    if (options.refuseReconnects && sockets.length > 1) {
+    const refuse =
+      typeof options.refuseReconnects === "function"
+        ? options.refuseReconnects()
+        : options.refuseReconnects;
+    if (refuse && sockets.length > 1) {
       void socket.close({ code: 1011 });
       return;
     }
@@ -1293,6 +1297,103 @@ test("a replaced tab stops reconnecting until you continue here", async ({
   await page.getByRole("button", { name: "在這裡繼續" }).click();
   await expect(page.locator(".board")).toBeVisible();
   expect(app.sockets).toHaveLength(2);
+});
+
+/** Puts the page in the background or brings it back, as a phone does. */
+async function setVisibility(page: Page, state: "hidden" | "visible") {
+  await page.evaluate((next) => {
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => next,
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+  }, state);
+}
+
+/** Records, from now on, every connection notice that appears. */
+async function watchNotices(page: Page) {
+  await page.evaluate(() => {
+    const seen: string[] = [];
+    (window as unknown as { noticesSeen: string[] }).noticesSeen = seen;
+    new MutationObserver(() => {
+      for (const selector of [".connection-pill", ".board-overlay"]) {
+        if (document.querySelector(selector) && !seen.includes(selector)) {
+          seen.push(selector);
+        }
+      }
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+  return () =>
+    page.evaluate(
+      () => (window as unknown as { noticesSeen: string[] }).noticesSeen,
+    );
+}
+
+test("coming back from the background carries on without a notice", async ({
+  page,
+}) => {
+  let asleep = true;
+  const app = await mockApp(page, snapshotFor("P03"), {
+    refuseReconnects: () => asleep,
+  });
+  await page.goto("/play");
+  await expect(page.locator(".board")).toHaveClass(/is-interactive/);
+  const notices = await watchNotices(page);
+
+  // The phone sleeps: its socket drops and two retries fail, so the next one
+  // would wait out a two-second backoff.
+  await setVisibility(page, "hidden");
+  await app.sockets[0].close({ code: 1001 });
+  await expect.poll(() => app.sockets.length).toBe(3);
+
+  asleep = false;
+  await setVisibility(page, "visible");
+  await expect.poll(() => app.sockets.length, { timeout: 1000 }).toBe(4);
+  await expect(page.locator(".board")).toHaveClass(/is-interactive/);
+  expect(await notices()).toEqual([]);
+});
+
+test("a search carries on after the phone sleeps", async ({ page }) => {
+  const app = await mockApp(page, snapshotFor("P01"));
+  await page.goto("/play");
+  const heading = page.getByRole("heading", { name: "正在尋找對手" });
+  await expect(heading).toBeVisible();
+  const notices = await watchNotices(page);
+
+  await setVisibility(page, "hidden");
+  await app.sockets[0].close({ code: 1001 });
+  await setVisibility(page, "visible");
+  // The server kept the place (docs/protocol.md 配對中斷線): still searching.
+  await expect.poll(() => app.sockets.length).toBe(2);
+  await expect(page.locator(".connection-pill")).toHaveCount(0);
+  await expect(heading).toBeVisible();
+  await expect(page).toHaveURL(/\/play$/);
+  expect(await notices()).toEqual([]);
+});
+
+test("a search cancelled while reconnecting is cancelled once back", async ({
+  page,
+}) => {
+  let down = true;
+  const sent: string[] = [];
+  const app = await mockApp(page, snapshotFor("P01"), {
+    refuseReconnects: () => down,
+    onMessage: (message) => sent.push(message.type),
+  });
+  await page.goto("/play");
+  await expect(
+    page.getByRole("heading", { name: "正在尋找對手" }),
+  ).toBeVisible();
+  await app.sockets[0].close({ code: 1011 });
+  await expect(page.locator(".connection-pill")).toBeVisible();
+
+  await page.getByRole("button", { name: "取消配對" }).click();
+  await expect(page.locator(".toast")).toHaveCount(0);
+  down = false;
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await expect.poll(() => sent).toEqual(["queue.leave"]);
+  app.send(snapshotFor("L01"));
+  await expect(page.locator(".lobby")).toBeVisible();
 });
 
 test("losing the connection pauses the board with an explanation", async ({
