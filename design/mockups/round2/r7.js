@@ -106,8 +106,10 @@
       const shots = (side) =>
         Array.from({ length: 32 }, (_, i) => {
           const dir = side === "left" ? 1 : -1;
-          const dx = dir * (260 + ((i * 53) % 420));
-          const up = -(420 + ((i * 71) % 380));
+          const kx = Math.min(1, window.innerWidth / 1000);
+          const ky = Math.min(1, window.innerHeight / 900);
+          const dx = dir * (260 + ((i * 53) % 420)) * kx;
+          const up = -(420 + ((i * 71) % 380)) * ky;
           const r = ((i * 97) % 900) - 450;
           const d = 750 + ((i * 29) % 260);
           const dur = 1800 + ((i * 61) % 600);
@@ -121,10 +123,7 @@
         document.body.insertAdjacentHTML("beforeend", '<div class="sticker-rays"></div>');
       }
       // fly the sticker into the result panel
-      const card = document.querySelector(".result-card").getBoundingClientRect();
-      const sticker = document.querySelector(".win-sticker");
-      sticker.style.setProperty("--fly-x", `${card.x + card.width / 2 - window.innerWidth / 2}px`);
-      sticker.style.setProperty("--fly-y", `${card.y + 50 - window.innerHeight / 2}px`);
+      flyTo(document.querySelector(".win-sticker"));
     }
   }
 
@@ -201,16 +200,23 @@
     </svg>`,
   };
 
+  // fly from the sticker's layout centre (ignores its animation transform) to
+  // the result panel: up-right on desktop, down on phones
+  function flyTo(el) {
+    const card = document.querySelector(".result-card").getBoundingClientRect();
+    const cx = el.offsetLeft + el.offsetWidth / 2;
+    const cy = el.offsetTop + el.offsetHeight / 2;
+    el.style.setProperty("--fly-x", `${card.x + card.width / 2 - cx}px`);
+    el.style.setProperty("--fly-y", `${card.y + Math.min(card.height / 2, 60) - cy}px`);
+  }
+
   function sticker(cls, art, title, sub) {
     document.body.insertAdjacentHTML(
       "beforeend",
       `<div class="sticker-scrim soft"></div>
        <div class="win-sticker soft-sticker ${cls}">${art}<strong>${title}</strong><span>${sub}</span><small>點一下畫面可以跳過</small></div>`,
     );
-    const card = document.querySelector(".result-card").getBoundingClientRect();
-    const el = document.querySelector(".soft-sticker");
-    el.style.setProperty("--fly-x", `${card.x + card.width / 2 - window.innerWidth / 2}px`);
-    el.style.setProperty("--fly-y", `${card.y + 50 - window.innerHeight / 2}px`);
+    flyTo(document.querySelector(".soft-sticker"));
   }
 
   if (opt === "lose-f1") sticker("cry-sticker", SVG.cry, "這局輸了", "Super AI 拿下這局");
@@ -234,9 +240,18 @@
       // the second bolt strikes the board
       const b = board.getBoundingClientRect();
       const b2 = document.querySelector(".bolt.b2");
-      b2.style.left = `${b.x + b.width * 0.42}px`;
-      b2.style.top = `${b.y - 150}px`;
+      // phones: strike near the right edge so the bolt does not cover the title
+      b2.style.left = `${b.x + b.width * (window.innerWidth <= 620 ? 0.74 : 0.42)}px`;
+      // phones: the sticker covers the top of the board, so the bolt's tip
+      // lands on the lower half, which stays visible below the sticker
+      b2.style.top = window.innerWidth <= 620 ? `${b.y + b.height * 0.62 - 180}px` : `${b.y - 150}px`;
       b2.classList.add("strike");
+      // phones: the sticker sits over the board, so lift this bolt out of the
+      // storm layer and draw it above the sticker, striking the visible half
+      if (window.innerWidth <= 620) {
+        b2.classList.add("over-sticker");
+        document.body.append(b2);
+      }
     }
   }
   if (opt === "lose-f3") sticker("cheer-sticker", SVG.cheer, "再接再厲！", "Super AI 拿下這局，下一局換你！");

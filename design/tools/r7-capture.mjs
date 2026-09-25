@@ -30,8 +30,8 @@ async function open(job, dpr) {
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(150);
   const small = job.width < 700;
-  // phones: the tag goes in a strip above the screenshot so it covers nothing
-  if (small && job.still) return { context, page };
+  // phones: the tag goes in a strip above the image so it covers nothing
+  if (small) return { context, page };
   await page.evaluate(
     ([tag, sub, small]) => {
       const d = document.createElement("div");
@@ -81,7 +81,7 @@ for (const job of jobs) {
       ]);
       execFileSync("convert", [
         "-background", "#fff4dc", header, "-gravity", "northwest", "-splice", "14x14",
-        out, "-append", out,
+        out, "-append", "+repage", out,
       ]);
       rmSync(dir, { recursive: true });
     }
@@ -132,11 +132,26 @@ for (const job of jobs) {
       await page.screenshot({ path: join(dir, `f${String(n++).padStart(4, "0")}.png`) });
     }
     await context.close();
+    if (job.width < 700) {
+      const header = join(dir, "header.png");
+      execFileSync("convert", [
+        "-size", `${job.width - 20}x`, "-background", "#ffd23f", "-fill", "#1b1b1f",
+        "(", "-font", FONT_BLACK, "-pointsize", "17", `caption:${job.tag}`, ")",
+        "(", "-font", FONT, "-pointsize", "12", `caption:${job.sub}`, ")",
+        "-append", "-bordercolor", "#ffd23f", "-border", "8x6",
+        "-bordercolor", "#1b1b1f", "-border", "2", "+repage", header,
+      ]);
+      for (let i = 0; i < n; i += 1) {
+        const f = join(dir, `f${String(i).padStart(4, "0")}.png`);
+        // +repage: otherwise the GIF keeps the header's small virtual canvas
+        execFileSync("convert", ["-background", "#fff4dc", header, f, "-gravity", "center", "-append", "+repage", f]);
+      }
+    }
     const last = join(dir, `f${String(n - 1).padStart(4, "0")}.png`);
     const out = join(outDir, `${job.name}-動畫.gif`);
     execFileSync("convert", [
       "-delay", String(step / 10), join(dir, "f*.png"), "-delay", "180", last,
-      "-resize", `${scale}%`, "-loop", "0", "-layers", "Optimize", out,
+      "-resize", `${job.width < 700 ? 100 : scale}%`, "-loop", "0", "-layers", "Optimize", out,
     ]);
     rmSync(dir, { recursive: true });
     console.log(`${job.name}-動畫.gif  ${n} frames`);

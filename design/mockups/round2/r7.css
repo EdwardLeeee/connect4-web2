@@ -1721,3 +1721,94 @@
 .tug2 {
   overflow: visible;
 }
+
+/* ================= round 16: phone portrait for the three ending animations =================
+   Stickers shrink to the screen, sit at ~38% height (above the result panel,
+   which is below the board on phones) and fly down into the panel; rays,
+   bolts and confetti cannons scale with the screen. */
+@media (max-width: 620px) {
+  .win-sticker {
+    --sw: min(460px, calc(100vw - 48px));
+    top: 38%;
+    width: var(--sw);
+    margin: -140px 0 0 calc(var(--sw) / -2);
+    padding: 22px 18px 14px;
+    gap: 6px;
+    border-width: 4px;
+    border-radius: 26px;
+    box-shadow: 8px 8px 0 var(--ink);
+  }
+
+  .win-sticker .big-trophy {
+    width: 96px;
+    height: 96px;
+    border-width: 4px;
+  }
+
+  .win-sticker .big-trophy .icon {
+    width: 54px;
+    height: 54px;
+  }
+
+  .win-sticker strong {
+    font-size: clamp(40px, 12vw, 56px);
+  }
+
+  .win-sticker span {
+    font-size: 17px;
+  }
+
+  .win-sticker small {
+    font-size: 13px;
+  }
+
+  .soft-sticker {
+    --sw: min(420px, calc(100vw - 48px));
+    margin-top: -130px;
+  }
+
+  .soft-sticker .face {
+    width: 118px;
+    height: 110px;
+  }
+
+  .soft-sticker strong {
+    font-size: clamp(38px, 11vw, 48px);
+  }
+
+  .r7-tug.r7-draw-t5 .tug-end-sticker {
+    --sw: min(400px, calc(100vw - 48px));
+    width: var(--sw);
+    margin: -80px 0 0 calc(var(--sw) / -2);
+  }
+
+  .sticker-rays {
+    top: 38%;
+    width: 190vw;
+    height: 190vw;
+    margin: -95vw 0 0 -95vw;
+  }
+
+  .bolt {
+    width: 72px;
+    height: 144px;
+  }
+
+  .bolt.b2.strike {
+    width: 90px;
+    height: 180px;
+  }
+
+  /* narrower on phones so the fallen pieces stay on screen */
+  .tug-stage {
+    top: 40%;
+    width: 80vw;
+  }
+}
+
+/* phones: the second bolt is drawn above the sticker (see r7.js) */
+.bolt.over-sticker {
+  position: fixed;
+  z-index: 61;
+  pointer-events: none;
+}
