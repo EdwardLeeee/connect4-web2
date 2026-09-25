@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { i18n } from "../i18n";
+import { isNative, tokenStore } from "../native";
 import type { Snapshot } from "../types";
 import { apiUrl, socketUrl } from "../utils/origin";
 
@@ -15,6 +16,38 @@ export class ProfileError extends Error {
   constructor(readonly code: string) {
     super(code);
   }
+}
+
+// App only (docs/protocol.md "App 連線"): the session token, kept out of the
+// reactive state. The website relies on its same-origin cookie instead.
+let token: string | null = null;
+
+/** GET or PATCH /api/session: the cookie on the website, the token in the app. */
+async function sessionRequest(init: RequestInit): Promise<Response> {
+  if (!isNative()) {
+    return fetch(apiUrl("/api/session"), {
+      ...init,
+      credentials: "same-origin",
+    });
+  }
+  token ??= await tokenStore.get();
+  const headers = new Headers(init.headers);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  return fetch(apiUrl("/api/session"), {
+    ...init,
+    headers,
+    credentials: "omit",
+  });
+}
+
+/** The session in a reply; in the app, its token replaces the stored one. */
+async function sessionFrom(response: Response): Promise<Snapshot["session"]> {
+  const body = await response.json();
+  if (isNative() && typeof body.token === "string") {
+    token = body.token;
+    await tokenStore.set(body.token);
+  }
+  return { nickname: body.nickname, locale: body.locale };
 }
 
 export const useGameStore = defineStore("game", {
@@ -53,12 +86,9 @@ export const useGameStore = defineStore("game", {
 
   actions: {
     async refreshSession() {
-      const response = await fetch(apiUrl("/api/session"), {
-        credentials: "same-origin",
-        cache: "no-store",
-      });
+      const response = await sessionRequest({ cache: "no-store" });
       if (!response.ok) throw new Error("Unable to create session");
-      const session = (await response.json()) as Snapshot["session"];
+      const session = await sessionFrom(response);
       if (this.snapshot) this.snapshot.session = session;
       i18n.global.locale.value = session.locale;
     },
@@ -78,18 +108,28 @@ export const useGameStore = defineStore("game", {
       }
       this.deliberatelyClosed = false;
       this.connection = this.retryCount ? "offline" : "connecting";
-      const socket = new WebSocket(socketUrl());
+      // The app's token rides in a subprotocol: WebSockets take no headers.
+      const socket = isNative()
+        ? new WebSocket(socketUrl(), [
+            "connect4.v1",
+            ...(token ? [`connect4.token.${token}`] : []),
+          ])
+        : new WebSocket(socketUrl());
       this.socket = socket;
+      let connected = false;
 
-      socket.addEventListener("open", () => {
-        this.connection = "online";
-        this.retryCount = 0;
-        this.retryTimer = null;
-        this.connectionEpoch += 1;
-      });
       socket.addEventListener("message", (event) => {
         const message = JSON.parse(String(event.data));
         if (message.type === "state.snapshot") {
+          // The first snapshot, not "open", means the connection works: the
+          // server accepts an app whose token expired and then closes with
+          // 4401, which must not reset the backoff or flash "online".
+          if (!connected) {
+            connected = true;
+            this.connection = "online";
+            this.retryCount = 0;
+            this.connectionEpoch += 1;
+          }
           this.snapshot = message.payload as Snapshot;
           if (typeof this.snapshot.server_time === "number") {
             this.clockOffset = this.snapshot.server_time - Date.now() / 1000;
@@ -149,9 +189,8 @@ export const useGameStore = defineStore("game", {
     async saveProfile(nickname: string, locale: "zh-TW" | "en") {
       let response: Response;
       try {
-        response = await fetch(apiUrl("/api/session"), {
+        response = await sessionRequest({
           method: "PATCH",
-          credentials: "same-origin",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ nickname, locale }),
         });
@@ -170,9 +209,8 @@ export const useGameStore = defineStore("game", {
         );
       }
       if (!response.ok) throw new ProfileError("generic");
-      if (this.snapshot) {
-        this.snapshot.session = await response.json();
-      }
+      const session = await sessionFrom(response);
+      if (this.snapshot) this.snapshot.session = session;
       i18n.global.locale.value = locale;
       this.send("state.request");
     },

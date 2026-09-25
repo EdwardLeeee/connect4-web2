@@ -108,6 +108,41 @@ describe("game connection recovery", () => {
     expect(FakeWebSocket.instances).toHaveLength(2);
   });
 
+  it("keeps the website on its cookie: no token, no subprotocol", async () => {
+    const inits: RequestInit[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: RequestInit) => {
+        inits.push(init);
+        return {
+          ok: true,
+          json: async () => ({ nickname: "Player", locale: "en" }),
+        };
+      }),
+    );
+    const protocols: unknown[] = [];
+    const OriginalSocket = FakeWebSocket;
+    vi.stubGlobal(
+      "WebSocket",
+      class extends OriginalSocket {
+        constructor(url: string, ...rest: unknown[]) {
+          protocols.push(rest.length ? rest[0] : "none");
+          super(url);
+        }
+      },
+    );
+
+    const store = useGameStore();
+    await store.initialise();
+    expect(inits[0].credentials).toBe("same-origin");
+    expect(new Headers(inits[0].headers).has("Authorization")).toBe(false);
+    expect(protocols).toEqual(["none"]);
+
+    // Online once the first snapshot arrives, not when the socket opens.
+    FakeWebSocket.instances[0].emit("open");
+    expect(store.connection).toBe("connecting");
+  });
+
   it("talks to the API origin the app is built with", async () => {
     vi.stubEnv("VITE_API_ORIGIN", "https://connect4.oraclelee.com");
     const fetchMock = vi.fn(async () => ({
