@@ -1,0 +1,263 @@
+name: Mobile release
+
+# Run by hand on a web release tag (Actions > Mobile release > Run workflow > Tags: vX.Y.Z).
+# The app bundles that tag's web build, so production must already run that version.
+# A platform whose signing secrets are missing is skipped and the summary says why.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-release
+  cancel-in-progress: false
+
+env:
+  VITE_API_ORIGIN: https://connect4.oraclelee.com
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      android: ${{ steps.signing.outputs.android }}
+      ios: ${{ steps.signing.outputs.ios }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: version
+        name: Check the tag against the manifest and the live server
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_TYPE}" != tag ] || [[ "${GITHUB_REF_NAME}" != v* ]]; then
+            echo "::error::run this workflow on a web release tag (v*), not ${GITHUB_REF}"
+            exit 1
+          fi
+          version="$(node -p "require('./frontend/package.json').version")"
+          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match frontend/package.json ${version}"
+            exit 1
+          fi
+          live="$(curl --fail --silent --show-error https://connect4.oraclelee.com/api/health | jq -r .version)"
+          if ! node -e '
+            const [a, b] = process.argv.slice(1).map((v) => v.split(".").map(Number));
+            for (let i = 0; i < 3; i++) if (a[i] !== b[i]) process.exit(a[i] > b[i] ? 0 : 1);
+          ' "${live}" "${version}"; then
+            echo "::error::production runs ${live}; deploy ${version} before releasing the app"
+            exit 1
+          fi
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "App version ${version} (build ${GITHUB_RUN_NUMBER}); production runs ${live}." >> "${GITHUB_STEP_SUMMARY}"
+      - id: signing
+        name: Check which platforms can be signed
+        env:
+          ANDROID_UPLOAD_KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          ANDROID_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          ANDROID_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+          ANDROID_UPLOAD_CERT_SHA256: ${{ vars.ANDROID_UPLOAD_CERT_SHA256 }}
+          IOS_DIST_CERT_P12_BASE64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
+          IOS_DIST_CERT_P12_PASSWORD: ${{ secrets.IOS_DIST_CERT_P12_PASSWORD }}
+          IOS_PROFILE_BASE64: ${{ secrets.IOS_PROFILE_BASE64 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+          ASC_API_KEY_P8_BASE64: ${{ secrets.ASC_API_KEY_P8_BASE64 }}
+        run: |
+          set -euo pipefail
+          check() {
+            local platform="$1" label="$2" missing=""
+            shift 2
+            for name in "$@"; do
+              [ -n "${!name:-}" ] || missing="${missing} ${name}"
+            done
+            if [ -z "${missing}" ]; then
+              echo "${platform}=true" >> "${GITHUB_OUTPUT}"
+              echo "- ${label}: signing" >> "${GITHUB_STEP_SUMMARY}"
+            else
+              echo "${platform}=false" >> "${GITHUB_OUTPUT}"
+              echo "::notice title=${label} skipped::missing${missing}"
+              echo "- ${label}: **skipped**, missing${missing}" >> "${GITHUB_STEP_SUMMARY}"
+            fi
+          }
+          check android Android ANDROID_UPLOAD_KEYSTORE_BASE64 ANDROID_UPLOAD_KEYSTORE_PASSWORD \
+            ANDROID_UPLOAD_KEY_ALIAS ANDROID_UPLOAD_KEY_PASSWORD ANDROID_UPLOAD_CERT_SHA256
+          check ios iOS IOS_DIST_CERT_P12_BASE64 IOS_DIST_CERT_P12_PASSWORD IOS_PROFILE_BASE64 \
+            APPLE_TEAM_ID ASC_API_KEY_ID ASC_API_ISSUER_ID ASC_API_KEY_P8_BASE64
+
+  android:
+    needs: preflight
+    if: needs.preflight.outputs.android == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            mobile/package-lock.json
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+      - run: npm ci
+        working-directory: mobile
+      - run: npm run check:capacitor
+        working-directory: mobile
+      - run: npx cap sync android
+        working-directory: mobile
+      - name: Build the bundle signed with the upload key
+        working-directory: mobile/android
+        env:
+          ANDROID_UPLOAD_KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          ANDROID_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          ANDROID_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          export ANDROID_UPLOAD_KEYSTORE_PATH="${RUNNER_TEMP}/upload-keystore.jks"
+          trap 'rm -f "${ANDROID_UPLOAD_KEYSTORE_PATH}"' EXIT
+          printf '%s' "${ANDROID_UPLOAD_KEYSTORE_BASE64}" | base64 --decode > "${ANDROID_UPLOAD_KEYSTORE_PATH}"
+          ./gradlew bundleRelease -Pc4BuildNumber="${GITHUB_RUN_NUMBER}"
+      - name: Check the bundle is signed with the known upload key
+        env:
+          EXPECTED: ${{ vars.ANDROID_UPLOAD_CERT_SHA256 }}
+          VERSION: ${{ needs.preflight.outputs.version }}
+        run: |
+          set -euo pipefail
+          aab=mobile/android/app/build/outputs/bundle/release/app-release.aab
+          jarsigner -verify "${aab}" | grep -q "jar verified."
+          actual="$(keytool -printcert -jarfile "${aab}" | sed -n 's/^[[:space:]]*SHA256: //p' | head -n 1)"
+          if [ "${actual}" != "${EXPECTED}" ]; then
+            echo "::error::bundle signed by ${actual}, expected the upload key ${EXPECTED}"
+            exit 1
+          fi
+          mkdir -p release
+          cp "${aab}" "release/four-in-a-row-${VERSION}-${GITHUB_RUN_NUMBER}.aab"
+          echo "- Android: release/four-in-a-row-${VERSION}-${GITHUB_RUN_NUMBER}.aab, upload key ${actual}" >> "${GITHUB_STEP_SUMMARY}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android-aab
+          path: release/
+          retention-days: 30
+          if-no-files-found: error
+
+  ios:
+    needs: preflight
+    if: needs.preflight.outputs.ios == 'true'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            mobile/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+      - run: npm ci
+        working-directory: mobile
+      - run: npm run check:capacitor
+        working-directory: mobile
+      - run: npx cap sync ios
+        working-directory: mobile
+      - name: Install the distribution certificate and the App Store profile
+        env:
+          IOS_DIST_CERT_P12_BASE64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
+          IOS_DIST_CERT_P12_PASSWORD: ${{ secrets.IOS_DIST_CERT_P12_PASSWORD }}
+          IOS_PROFILE_BASE64: ${{ secrets.IOS_PROFILE_BASE64 }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_KEY_P8_BASE64: ${{ secrets.ASC_API_KEY_P8_BASE64 }}
+        run: |
+          set -euo pipefail
+          keychain="${RUNNER_TEMP}/signing.keychain-db"
+          keychain_password="$(openssl rand -base64 24)"
+          printf '%s' "${IOS_DIST_CERT_P12_BASE64}" | base64 --decode > "${RUNNER_TEMP}/distribution.p12"
+          security create-keychain -p "${keychain_password}" "${keychain}"
+          security set-keychain-settings -lut 21600 "${keychain}"
+          security unlock-keychain -p "${keychain_password}" "${keychain}"
+          security import "${RUNNER_TEMP}/distribution.p12" -P "${IOS_DIST_CERT_P12_PASSWORD}" \
+            -A -t cert -f pkcs12 -k "${keychain}"
+          security set-key-partition-list -S apple-tool:,apple: -k "${keychain_password}" "${keychain}" >/dev/null
+          # macOS runners ship bash 3.2 (no mapfile), so collect the search list line by line.
+          keychains=("${keychain}")
+          while IFS= read -r line; do
+            line="${line#"${line%%[![:space:]]*}"}"
+            keychains+=("${line//\"/}")
+          done < <(security list-keychains -d user)
+          security list-keychains -d user -s "${keychains[@]}"
+          rm "${RUNNER_TEMP}/distribution.p12"
+          echo "KEYCHAIN_PATH=${keychain}" >> "${GITHUB_ENV}"
+
+          profile="${RUNNER_TEMP}/profile.mobileprovision"
+          printf '%s' "${IOS_PROFILE_BASE64}" | base64 --decode > "${profile}"
+          security cms -D -i "${profile}" > "${RUNNER_TEMP}/profile.plist"
+          name="$(plutil -extract Name raw -o - "${RUNNER_TEMP}/profile.plist")"
+          uuid="$(plutil -extract UUID raw -o - "${RUNNER_TEMP}/profile.plist")"
+          if [ "${name}" != "Four In A Row App Store" ]; then
+            echo "::error::the provisioning profile is named '${name}', expected 'Four In A Row App Store'"
+            exit 1
+          fi
+          for dir in "${HOME}/Library/MobileDevice/Provisioning Profiles" \
+            "${HOME}/Library/Developer/Xcode/UserData/Provisioning Profiles"; do
+            mkdir -p "${dir}"
+            cp "${profile}" "${dir}/${uuid}.mobileprovision"
+          done
+
+          printf '%s' "${ASC_API_KEY_P8_BASE64}" | base64 --decode > "${RUNNER_TEMP}/AuthKey_${ASC_API_KEY_ID}.p8"
+      - name: Archive and upload to App Store Connect (TestFlight)
+        working-directory: mobile/ios/App
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          # Signing lives in the App target's Release settings; passing it here would
+          # also apply it to the Swift packages, which cannot take a profile.
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release \
+            -destination "generic/platform=iOS" -archivePath "${RUNNER_TEMP}/App.xcarchive" \
+            MARKETING_VERSION="${VERSION}" CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}" \
+            C4_APPLE_TEAM_ID="${APPLE_TEAM_ID}" archive
+          cat > "${RUNNER_TEMP}/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>signingCertificate</key><string>Apple Distribution</string>
+            <key>teamID</key><string>${APPLE_TEAM_ID}</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.oraclelee.connect4</key><string>Four In A Row App Store</string>
+            </dict>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+            <key>uploadSymbols</key><true/>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild -exportArchive -archivePath "${RUNNER_TEMP}/App.xcarchive" \
+            -exportOptionsPlist "${RUNNER_TEMP}/ExportOptions.plist" -exportPath "${RUNNER_TEMP}/export" \
+            -authenticationKeyPath "${RUNNER_TEMP}/AuthKey_${ASC_API_KEY_ID}.p8" \
+            -authenticationKeyID "${ASC_API_KEY_ID}" -authenticationKeyIssuerID "${ASC_API_ISSUER_ID}"
+          echo "- iOS: build ${VERSION} (${GITHUB_RUN_NUMBER}) uploaded to App Store Connect; it appears in TestFlight after processing" >> "${GITHUB_STEP_SUMMARY}"
+      - name: Remove the signing material
+        if: always()
+        run: |
+          [ -z "${KEYCHAIN_PATH:-}" ] || security delete-keychain "${KEYCHAIN_PATH}" || true
+          rm -f "${RUNNER_TEMP}"/AuthKey_*.p8 "${RUNNER_TEMP}/profile.mobileprovision"

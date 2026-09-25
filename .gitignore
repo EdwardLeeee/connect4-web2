@@ -14,6 +14,7 @@ __pycache__/
 target/
 native_solver/target/
 frontend/node_modules/
+mobile/node_modules/
 frontend/dist/
 *.tsbuildinfo
 frontend/playwright-report/
