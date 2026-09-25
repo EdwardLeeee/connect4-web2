@@ -1,3 +1,4 @@
+import { isNative, nativeShare } from "../native";
 import { copyText } from "./clipboard";
 import { siteOrigin } from "./origin";
 
@@ -16,7 +17,7 @@ export function roomCodeFrom(value: unknown): string {
 }
 
 export function canShare(): boolean {
-  return typeof navigator.share === "function";
+  return isNative() || typeof navigator.share === "function";
 }
 
 /**
@@ -29,7 +30,11 @@ export async function shareInvite(
   text: string,
 ): Promise<"shared" | "copied" | "dismissed" | "failed"> {
   const url = inviteUrl(code);
-  if (canShare()) {
+  // The app uses the system share sheet through Capacitor.
+  if (isNative()) {
+    const result = await nativeShare({ title, text, url });
+    if (result !== "failed") return result;
+  } else if (canShare()) {
     try {
       await navigator.share({ title, text, url });
       return "shared";
