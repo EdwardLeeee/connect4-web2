@@ -108,6 +108,25 @@ describe("game connection recovery", () => {
     expect(FakeWebSocket.instances).toHaveLength(2);
   });
 
+  it("talks to the API origin the app is built with", async () => {
+    vi.stubEnv("VITE_API_ORIGIN", "https://connect4.oraclelee.com");
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ nickname: "Player", locale: "en" }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await useGameStore().initialise();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://connect4.oraclelee.com/api/session",
+      expect.anything(),
+    );
+    expect(FakeWebSocket.instances[0].url).toBe(
+      "wss://connect4.oraclelee.com/ws",
+    );
+    vi.unstubAllEnvs();
+  });
+
   it("stops reconnecting when a newer tab replaces the connection", async () => {
     stubSessionFetch();
     const store = useGameStore();

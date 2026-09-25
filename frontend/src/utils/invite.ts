@@ -1,8 +1,12 @@
 import { copyText } from "./clipboard";
+import { siteOrigin } from "./origin";
 
-/** The deep link a friend opens to land in the lobby with the code filled in. */
+/**
+ * The deep link a friend opens to land on the invite page. It always points
+ * to the public website, also from inside the app.
+ */
 export function inviteUrl(code: string): string {
-  return `${window.location.origin}/?room=${encodeURIComponent(code)}`;
+  return `${siteOrigin()}/?room=${encodeURIComponent(code)}`;
 }
 
 /** Normalises a code from a link or the input; returns "" when it cannot be one. */
