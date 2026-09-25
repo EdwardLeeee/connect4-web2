@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { i18n } from "../i18n";
 import type { Snapshot } from "../types";
+import { apiUrl, socketUrl } from "../utils/origin";
 
 type ConnectionState = "connecting" | "online" | "offline" | "replaced";
 
@@ -52,7 +53,7 @@ export const useGameStore = defineStore("game", {
 
   actions: {
     async refreshSession() {
-      const response = await fetch("/api/session", {
+      const response = await fetch(apiUrl("/api/session"), {
         credentials: "same-origin",
         cache: "no-store",
       });
@@ -77,8 +78,7 @@ export const useGameStore = defineStore("game", {
       }
       this.deliberatelyClosed = false;
       this.connection = this.retryCount ? "offline" : "connecting";
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const socket = new WebSocket(`${protocol}//${window.location.host}/ws`);
+      const socket = new WebSocket(socketUrl());
       this.socket = socket;
 
       socket.addEventListener("open", () => {
@@ -149,7 +149,7 @@ export const useGameStore = defineStore("game", {
     async saveProfile(nickname: string, locale: "zh-TW" | "en") {
       let response: Response;
       try {
-        response = await fetch("/api/session", {
+        response = await fetch(apiUrl("/api/session"), {
           method: "PATCH",
           credentials: "same-origin",
           headers: { "Content-Type": "application/json" },
