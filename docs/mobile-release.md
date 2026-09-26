@@ -123,6 +123,32 @@ Release 設定寫在 Xcode 專案 App target 裡（`CODE_SIGN_STYLE = Manual`、
 傳簽章參數：那會套到 Swift 套件的 target 上而建置失敗。上傳用 `xcodebuild -exportArchive`
 （`destination: upload`）搭配 API key，所以 API key 只需要能上傳建置的角色。
 
+## App Store 商店資料
+
+`mobile/store/app-store/` 是商店文字、截圖與審核說明的唯一來源：
+
+| 檔案 | 內容 |
+|---|---|
+| `status.json` | `draft`（草稿，只能 dry-run）或 `approved`（使用者核准過，可以上傳） |
+| `<語系>/name.txt`、`subtitle.txt`、`privacy_policy_url.txt` | App 資訊（`en-US`、`zh-Hant`） |
+| `<語系>/description.txt`、`keywords.txt`、`promotional_text.txt`、`support_url.txt` | 版本頁文字 |
+| `screenshots/<語系>/*.png` | 6.9 吋 iPhone 截圖，依檔名排序上傳 |
+| `review_notes.txt` | 給審核員的說明 |
+
+上傳腳本 `mobile/scripts/app_store_metadata.py`（在開發機執行，需要 PyJWT 與 cryptography）：
+
+```bash
+mobile/scripts/app_store_metadata.py --version 3.2.0             # dry-run：只讀取、印出會改的內容
+mobile/scripts/app_store_metadata.py --version 3.2.0 --apply     # 真的上傳
+```
+
+- 憑證讀 `~/.config/connect4-mobile/ios/asc.json`（`key_id`、`issuer_id`，不是秘密）與同目錄的
+  `AuthKey_<key_id>.p8`。
+- `--apply` 只在 `status.json` 是 `approved`、必填欄位都有內容、截圖尺寸正確時才執行；執行時才詢問審核
+  聯絡人的姓名、電話、email（也可用 `C4_REVIEW_*` 環境變數），輸入 `UPLOAD` 確認後才寫入。
+- 截圖會整組替換同一個 display type（`APP_IPHONE_67`，蘋果把 6.9 吋截圖歸在這一類；第一次實際上傳時確認）。
+- 腳本永遠不會送審；送審由使用者在 App Store Connect 網頁上按。
+
 ## 第一次上架
 
 - Google Play：使用者建立開發者帳號後，在 Play Console 建立 app，第一次的 AAB 要在 Play Console 手動

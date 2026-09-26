@@ -1,0 +1,7 @@
+No sign-in is needed. The app gives you a default nickname the first time it opens.
+
+Games against the AI run entirely on the phone and work without a network. To check, turn on Airplane Mode, open the app, tap "Challenge AI" → "Play now" and play a full game.
+
+Online play needs a second player and a network: tap "Play with friends" → "Create private room" on this device and enter the room code with "Join room" on a second device — or open https://connect4.oraclelee.com in any browser as the second player. Random matching works the same way with two players. Without a network these two options are marked as needing one.
+
+不需要登入，app 第一次打開就會有預設名字。跟 AI 對戰完全在手機上計算，沒有網路也能玩：可以開飛航模式，打開 app，點「挑戰 AI」→「立即對戰」下完一局。線上對戰需要第二位玩家和網路：在這台點「和朋友一起玩」→「建立私人房」，第二台裝置用「加入房間」輸入房間代碼；第二位玩家也可以用任何瀏覽器開 https://connect4.oraclelee.com 。隨機配對同樣需要兩位玩家。沒有網路時，這兩項會標示需要網路。
