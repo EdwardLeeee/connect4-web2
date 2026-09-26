@@ -116,19 +116,25 @@ def resolve_session(request: Request) -> tuple[Session, bool, bool]:
     return session, created, False
 
 
-def session_body(session: Session, app_client: bool) -> dict[str, str]:
-    body = {"nickname": session.nickname, "locale": session.locale}
+def session_body(session: Session, created: bool, app_client: bool) -> dict[str, str | bool]:
+    # `created` tells a client that its previous session is gone (a server restart, or an
+    # expired cookie or token), so it can restore the profile it remembers.
+    body: dict[str, str | bool] = {
+        "nickname": session.nickname,
+        "locale": session.locale,
+        "created": created,
+    }
     if app_client:
         body["token"] = session.id
     return body
 
 
 @app.get("/api/session")
-async def get_session(request: Request, response: Response) -> dict[str, str]:
+async def get_session(request: Request, response: Response) -> dict[str, str | bool]:
     session, created, app_client = resolve_session(request)
     if created and not app_client:
         set_session_cookie(response, session.id)
-    return session_body(session, app_client)
+    return session_body(session, created, app_client)
 
 
 @app.patch("/api/session")
@@ -141,7 +147,7 @@ async def update_session(
         manager.sessions.update(session, update.nickname, update.locale)
     except ValueError as error:
         return JSONResponse({"detail": str(error)}, status_code=422)
-    response = JSONResponse(session_body(session, app_client))
+    response = JSONResponse(session_body(session, created, app_client))
     if created and not app_client:
         set_session_cookie(response, session.id)
     return response

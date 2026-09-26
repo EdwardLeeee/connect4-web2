@@ -11,6 +11,27 @@
 
 手機 app 不用 cookie，改用 token，見下方「App 連線」。app 的 AI 局不經過伺服器，見「App 本機 AI 局」。
 
+`GET /api/session` 與 `PATCH /api/session` 回應同樣的形狀（app 另外多一個 `token`）。PATCH 的 body 是
+`{nickname, locale}`，兩個欄位要一起送：`nickname` 必填，`locale` 沒送時會被當成 `zh-TW`。
+
+```ts
+{ nickname: string; locale: "zh-TW" | "en"; created: boolean }
+```
+
+### 新 session 與補回暱稱
+
+session 只存在伺服器記憶體裡。`created` 為 true，代表這次請求新建了 session：第一次來、cookie 或
+token 失效，或伺服器重啟過。GET 與 PATCH 一律帶這個欄位。
+
+- **補回**：GET 回 `created: true`，而且裝置上記得上次的暱稱與語言時，用戶端在連 `/ws` 之前送一次
+  PATCH，暱稱與語言一起送。
+- `created: false` 時不自動補回，免得蓋掉同一個 session 在別的分頁或別處改過的設定；使用者自己改的
+  設定照常送。
+- PATCH 自己回 `created: true` 時，送出的內容已經套用在新 session 上，不必再補。
+- 補回回 422（例如之後暱稱規則變嚴）時，保留伺服器給的預設暱稱，並用它覆蓋裝置上記住的值。
+- 補回因網路錯誤或 5xx 沒有送到時，可以在下次連 `/ws` 前重送；補的仍是同一個新建的 session。
+- 舊版用戶端看不到這個欄位，照常運作。
+
 ### Close code（不得改號）
 
 | code | 意義 | 建議的前端處理 |
@@ -34,7 +55,7 @@ iOS／Android app 把網頁打包在 app 裡（Capacitor），頁面來源是 `c
 - **取得 token**：`GET /api/session` 或 `PATCH /api/session`，app 模式的回應會多一個欄位：
 
   ```ts
-  { nickname: string; locale: "zh-TW" | "en"; token: string }
+  { nickname: string; locale: "zh-TW" | "en"; created: boolean; token: string }
   ```
 
   app 每次都用回應裡的 `token` 覆蓋本機儲存的值；不會發 cookie。
