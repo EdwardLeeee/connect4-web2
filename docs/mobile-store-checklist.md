@@ -87,33 +87,24 @@ iOS 的 Preferences 是 UserDefaults，可能跟著使用者自己的 iCloud／�
 
 ## 給審核員的說明（App Review Notes）
 
-> No sign-in is needed. The app gives you a default nickname the first time it opens.
-> Games against the AI run entirely on the phone and work without a network. To check, turn on
-> Airplane Mode, open the app, tap "Challenge AI" → "Play now" and play a full game.
-> Online play needs a second player and a network: tap "Play with friends" → "Create private room"
-> on this device and enter the room code with "Join room" on a second device — or open
-> https://connect4.oraclelee.com in any browser as the second player. Random matching works the same
-> way with two players. Without a network these two options are marked as needing one.
->
-> 不需要登入，app 第一次打開就會有預設名字。跟 AI 對戰完全在手機上計算，沒有網路也能玩：可以開飛航模式，
-> 打開 app，點「挑戰 AI」→「立即對戰」下完一局。線上對戰需要第二位玩家和網路：在這台點「和朋友一起玩」→
-> 「建立私人房」，第二台裝置用「加入房間」輸入房間代碼；第二位玩家也可以用任何瀏覽器開
-> https://connect4.oraclelee.com 。隨機配對同樣需要兩位玩家。沒有網路時，這兩項會標示需要網路。
+內容在 `mobile/store/app-store/review_notes.txt`（唯一來源，中英並列）：不需要登入、第一次打開就有預設名字、
+AI 對局在手機上算（可以開飛航模式測）、線上對戰要第二位玩家和網路。改內容請改那個檔案。
 
-聯絡資訊（姓名、電話、email）審核必填，由使用者提供，不寫進 repo。
+聯絡資訊（姓名、電話、email）審核必填，由使用者提供；上傳腳本執行時才輸入，不寫進 repo。
 
-## App Store Connect 怎麼填（提案）
+## App Store Connect 怎麼填
 
 分成兩部分，送審按鈕一律由使用者自己按：
 
-1. **用 API 上傳的**（mobile 寫成腳本，內容存成 repo 裡的文字檔，先開 PR 讓 ceo 和使用者看過再上傳，
-   之後改版可以重跑）：
+1. **用 API 上傳**：`mobile/scripts/app_store_metadata.py` 讀 `mobile/store/app-store/`，這個資料夾是
+   商店文字、截圖與審核說明的唯一來源（用法見 `docs/mobile-release.md`）：
    - 版本號改成 3.2.0，選好要送審的建置。
    - 英文與繁中的商店文字：名稱、副標題、簡介、關鍵字、宣傳文字、支援網址、隱私權政策網址。
-   - 截圖（ui 的草稿經使用者核准後）。
-   - 給審核員的說明與聯絡資訊（聯絡資訊執行時才輸入，不存進 repo）。
-2. **使用者照指南在網頁上填的**（API 沒有或不適合）：App Privacy、年齡分級問卷、價格與上架地區，
-   以及最後的「新增以供審查／提交審查」。mobile 會寫逐步指南並在對話裡一步步帶。
+   - 截圖（`screenshots/<語系>/`，ui 的草稿經使用者核准後放進來）。
+   - 給審核員的說明與聯絡資訊。
+   - 預設只做 dry-run，印出會送出的內容；`status.json` 是 `approved` 且必填欄位都有內容才能真的上傳。
+2. **使用者照指南在網頁上填**（API 沒有或不適合）：App Privacy、年齡分級問卷、價格與上架地區，
+   以及最後的「新增以供審查／提交審查」。mobile 在對話裡一步步帶。
 
 ## Google Play 特有
 
@@ -123,8 +114,12 @@ iOS 的 Preferences 是 UserDefaults，可能跟著使用者自己的 iCloud／�
 
 ## 商店素材（ui 準備草稿，使用者核准後上傳）
 
-- App Store：6.9 吋 iPhone 截圖（1320×2868 或 1290×2796），至少 1 張、最多 10 張。只支援 iPhone，
-  不需要 iPad 截圖。
-- Google Play：手機截圖 2～8 張，以及 1024×500 的主題圖片（feature graphic）。
-- 英文與繁中的副標題（30 字元）、簡介、關鍵字（100 字元）、宣傳文字（170 字元）；Google Play 的簡短說明
-  （80 字元）與完整說明。
+App Store 的文字與截圖都放在 `mobile/store/app-store/`，目前是草稿（`status.json` 為 `draft`，待使用者核准）；
+使用者核准定稿後，由 ui 把最後的內容寫進去並把狀態改成 `approved`。
+
+- App Store：6.9 吋 iPhone 截圖（1320×2868、1290×2796 或 1260×2736），至少 1 張、最多 10 張。只支援
+  iPhone，不需要 iPad 截圖。
+- 英文與繁中的副標題（30 字元）、簡介（4000 字元）、關鍵字（100 字元，用逗號分隔）、宣傳文字（170 字元）。
+  名稱、副標題、關鍵字不能出現 Connect 4（Hasbro 商標、Apple 2.3.7）。
+- Google Play（之後另外準備）：手機截圖 2～8 張、1024×500 的主題圖片（feature graphic）、簡短說明（80 字元）
+  與完整說明。

@@ -1,0 +1,4 @@
+{
+  "status": "draft",
+  "note": "待使用者核准。商店文字由 ui 準備草稿；使用者核准定稿後，由 ui 把最後的文字寫進這個資料夾，並把 status 改成 approved。status 不是 approved 時，上傳腳本只能 dry-run。"
+}
