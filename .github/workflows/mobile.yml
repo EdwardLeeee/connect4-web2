@@ -208,7 +208,15 @@ jobs:
         working-directory: mobile/ios/App
         run: |
           set -o pipefail
-          xcrun simctl uninstall "${SIM_UDID}" com.oraclelee.connect4 || true
+          # xcodebuild shuts the simulator down after the online run; uninstalling needs it booted,
+          # and a fresh install is the point of this run, so a failed uninstall stops here.
+          xcrun simctl boot "${SIM_UDID}" 2>/dev/null || true
+          xcrun simctl bootstatus "${SIM_UDID}" -b
+          xcrun simctl uninstall "${SIM_UDID}" com.oraclelee.connect4
+          if xcrun simctl get_app_container "${SIM_UDID}" com.oraclelee.connect4 data >/dev/null 2>&1; then
+            echo "::error::the app is still installed after uninstalling it"
+            exit 1
+          fi
           xcodebuild test -project App.xcodeproj -scheme App -destination "platform=iOS Simulator,id=${SIM_UDID}" \
             -only-testing:AppUITests/AppUITests/testOfflineLobbyGameAndRestore \
             -resultBundlePath "${RUNNER_TEMP}/offline.xcresult" CODE_SIGNING_ALLOWED=NO 2>&1 \
