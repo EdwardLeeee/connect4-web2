@@ -32,7 +32,7 @@ class CentreSolver:
 
 def add_session(store: SessionStore, nickname: str) -> str:
     session, _ = store.resolve(None)
-    session.nickname = nickname
+    store.update(session, nickname, "zh-TW", None)
     return session.id
 
 
@@ -636,3 +636,31 @@ async def test_ai_waits_the_minimum_even_when_the_reply_table_answers() -> None:
     # The ninth-move reply comes from the table and matches the live engine's choice.
     assert game.history == "7444145445"
     assert game.status == "playing"
+
+
+async def test_snapshot_session_carries_the_default_number() -> None:
+    sessions = SessionStore()
+    session, _ = sessions.resolve(None)
+    manager = GameManager(sessions, CentreSolver())  # type: ignore[arg-type]
+    socket = FakeSocket()
+    await manager.connect(session.id, socket)  # type: ignore[arg-type]
+    assert socket.messages[-1]["payload"]["session"] == {
+        "nickname": f"玩家 {session.default_number}",
+        "locale": "zh-TW",
+        "default_number": session.default_number,
+    }
+
+
+async def test_opponent_sees_a_default_nickname_in_the_new_language_on_the_next_snapshot() -> None:
+    manager, game, seats, sockets = await matched_pair()
+    session = manager.sessions.sessions[seats["green"]]
+    manager.sessions.update(session, None, "zh-TW", 4821)
+    sockets[seats["pink"]].messages.clear()
+
+    # A profile change pushes nothing by itself, as for any nickname change.
+    manager.sessions.update(session, None, "en", 4821)
+    assert sockets[seats["pink"]].messages == []
+
+    await play(manager, game, [3])
+    latest = sockets[seats["pink"]].messages[-1]["payload"]
+    assert latest["game"]["players"]["green"]["nickname"] == "Player 4821"

@@ -157,9 +157,14 @@ const messages = {
       game_not_playable: "現在無法落子。",
       invalid_column: "這一欄無效。",
       invalid_nickname: "暱稱需為 1–18 個字。",
+      invalid_default_number: "暱稱資料不正確，請重新整理頁面。",
       invalid_locale: "不支援這個語言。",
       copy_failed: "無法複製，請再試一次。",
       generic: "操作失敗，請再試一次。",
+    },
+    session: {
+      // Same format as the server (docs/protocol.md 預設暱稱); {n} is 1000–9999.
+      defaultNickname: "玩家 {n}",
     },
   },
   en: {
@@ -324,9 +329,15 @@ const messages = {
       game_not_playable: "Moves are not allowed right now.",
       invalid_column: "That column is not valid.",
       invalid_nickname: "Nickname must be 1–18 characters.",
+      invalid_default_number:
+        "The nickname data is not valid. Please refresh the page.",
       invalid_locale: "That language is not supported.",
       copy_failed: "Could not copy. Please try again.",
       generic: "Something went wrong. Please try again.",
+    },
+    session: {
+      // Same format as the server (docs/protocol.md 預設暱稱); {n} is 1000–9999.
+      defaultNickname: "Player {n}",
     },
   },
 } as const;

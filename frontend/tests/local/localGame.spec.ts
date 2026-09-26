@@ -20,7 +20,11 @@ type Recording = {
 };
 
 const recordings = fixture<Recording[]>("protocol-parity.json");
-const session = { nickname: "Ada", locale: "zh-TW" as const };
+const session = {
+  nickname: "Ada",
+  locale: "zh-TW" as const,
+  default_number: null,
+};
 
 function exactEngine(): AiEngine {
   const engine = sharedEngine();

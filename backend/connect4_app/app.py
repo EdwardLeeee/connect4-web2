@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from . import __version__
 from .manager import GameManager
-from .sessions import SESSION_COOKIE, Session
+from .sessions import SESSION_COOKIE, UNSET, Session
 
 ROOT = Path(__file__).resolve().parents[2]
 # WebSocket close codes are part of the client contract; do not renumber them.
@@ -60,8 +60,10 @@ manager = GameManager()
 
 
 class SessionUpdate(BaseModel):
-    nickname: str
+    nickname: str | None = None
     locale: str = "zh-TW"
+    # Validated by SessionStore.update, so that a bad value is a 422 invalid_default_number.
+    default_number: object = None
 
 
 def origin_allowed(origin: str | None, host: str) -> bool:
@@ -116,12 +118,15 @@ def resolve_session(request: Request) -> tuple[Session, bool, bool]:
     return session, created, False
 
 
-def session_body(session: Session, created: bool, app_client: bool) -> dict[str, str | bool]:
+def session_body(
+    session: Session, created: bool, app_client: bool
+) -> dict[str, str | bool | int | None]:
     # `created` tells a client that its previous session is gone (a server restart, or an
     # expired cookie or token), so it can restore the profile it remembers.
-    body: dict[str, str | bool] = {
+    body: dict[str, str | bool | int | None] = {
         "nickname": session.nickname,
         "locale": session.locale,
+        "default_number": session.default_number,
         "created": created,
     }
     if app_client:
@@ -130,7 +135,7 @@ def session_body(session: Session, created: bool, app_client: bool) -> dict[str,
 
 
 @app.get("/api/session")
-async def get_session(request: Request, response: Response) -> dict[str, str | bool]:
+async def get_session(request: Request, response: Response) -> dict[str, str | bool | int | None]:
     session, created, app_client = resolve_session(request)
     if created and not app_client:
         set_session_cookie(response, session.id)
@@ -144,7 +149,12 @@ async def update_session(
 ) -> Response:
     session, created, app_client = resolve_session(request)
     try:
-        manager.sessions.update(session, update.nickname, update.locale)
+        manager.sessions.update(
+            session,
+            update.nickname,
+            update.locale,
+            update.default_number if "default_number" in update.model_fields_set else UNSET,
+        )
     except ValueError as error:
         return JSONResponse({"detail": str(error)}, status_code=422)
     response = JSONResponse(session_body(session, created, app_client))
