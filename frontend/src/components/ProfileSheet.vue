@@ -22,7 +22,7 @@ function openPrivacy(event: MouseEvent) {
 }
 const store = useGameStore();
 const { t } = useI18n();
-const nickname = ref(store.session?.nickname ?? "");
+const nickname = ref(store.shownSession?.nickname ?? "");
 const locale = ref<"zh-TW" | "en">(store.shownLocale);
 const errorCode = ref<string | null>(null);
 // 3.2.0 app 離線 03: offline the nickname is locked and only the language

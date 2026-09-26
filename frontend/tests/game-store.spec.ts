@@ -208,6 +208,15 @@ describe("profile errors", () => {
     });
   });
 
+  it("reports a default number the server refuses", async () => {
+    stubProfileResponse(422, { detail: "invalid_default_number" });
+    const store = useGameStore();
+
+    await expect(store.saveProfile("Ada", "en")).rejects.toMatchObject({
+      code: "invalid_default_number",
+    });
+  });
+
   it("treats request validation issues as an invalid payload", async () => {
     stubProfileResponse(422, {
       detail: [{ loc: ["body", "nickname"], type: "string_type" }],

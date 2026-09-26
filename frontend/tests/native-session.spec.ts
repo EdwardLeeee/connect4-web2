@@ -27,6 +27,8 @@ vi.mock("../src/native", () => ({
     rememberSession: async () => {},
     pendingLocale: async () => null,
     setPendingLocale: async () => {},
+    restorePending: async () => false,
+    setRestorePending: async () => {},
   },
   nativeShare: native.nativeShare,
 }));
@@ -145,7 +147,11 @@ describe("app session token", () => {
     expect(socket.protocols).toEqual(["connect4.v1", "connect4.token.t1"]);
     expect(socket.url).not.toContain("t1");
     // The app shows the profile at once (3.2.0 app 離線 04b), token left out.
-    expect(store.session).toEqual({ nickname: "Player", locale: "en" });
+    expect(store.session).toEqual({
+      nickname: "Player",
+      locale: "en",
+      default_number: null,
+    });
   });
 
   it("asks without a token the first time", async () => {
@@ -168,7 +174,11 @@ describe("app session token", () => {
       creds: "omit",
     });
     expect(native.state.stored).toBe("t2");
-    expect(store.session).toEqual({ nickname: "Player", locale: "en" });
+    expect(store.session).toEqual({
+      nickname: "Player",
+      locale: "en",
+      default_number: null,
+    });
   });
 
   it("backs off on an accepted-then-4401 socket without flashing online", async () => {

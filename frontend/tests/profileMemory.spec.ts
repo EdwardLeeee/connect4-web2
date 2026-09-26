@@ -10,14 +10,50 @@ afterEach(() => {
 
 describe("profile memory on the website", () => {
   it("keeps the last profile and reads it back", async () => {
-    await profileMemory.rememberSession({ nickname: "曜宇", locale: "zh-TW" });
+    await profileMemory.rememberSession({
+      nickname: "曜宇",
+      locale: "zh-TW",
+      default_number: null,
+    });
     expect(window.localStorage.getItem("connect4.last-session")).toBe(
-      JSON.stringify({ nickname: "曜宇", locale: "zh-TW" }),
+      JSON.stringify({
+        nickname: "曜宇",
+        locale: "zh-TW",
+        default_number: null,
+      }),
     );
     expect(await profileMemory.lastSession()).toEqual({
       nickname: "曜宇",
       locale: "zh-TW",
+      default_number: null,
     });
+  });
+
+  it("keeps a default nickname's number (3.2.0 05)", async () => {
+    await profileMemory.rememberSession({
+      nickname: "玩家 4553",
+      locale: "zh-TW",
+      default_number: 4553,
+    });
+    expect(await profileMemory.lastSession()).toEqual({
+      nickname: "玩家 4553",
+      locale: "zh-TW",
+      default_number: 4553,
+    });
+    // Saved before 3.2.0's number: read as a name of the player's own.
+    window.localStorage.setItem(
+      "connect4.last-session",
+      JSON.stringify({ nickname: "A", locale: "en" }),
+    );
+    expect((await profileMemory.lastSession())?.default_number).toBeNull();
+  });
+
+  it("remembers whether the profile still has to go back", async () => {
+    expect(await profileMemory.restorePending()).toBe(false);
+    await profileMemory.setRestorePending(true);
+    expect(await profileMemory.restorePending()).toBe(true);
+    await profileMemory.setRestorePending(false);
+    expect(window.localStorage.getItem("connect4.restore-pending")).toBeNull();
   });
 
   it("keeps a pending language until it is cleared", async () => {
@@ -48,7 +84,11 @@ describe("profile memory on the website", () => {
       throw new Error("blocked");
     });
     await expect(
-      profileMemory.rememberSession({ nickname: "A", locale: "en" }),
+      profileMemory.rememberSession({
+        nickname: "A",
+        locale: "en",
+        default_number: null,
+      }),
     ).resolves.toBeUndefined();
     await expect(profileMemory.setPendingLocale("en")).resolves.toBeUndefined();
     expect(await profileMemory.lastSession()).toBeNull();

@@ -25,7 +25,7 @@ const online = computed(() => store.shownConnection === "online");
 // L12 v2 (round 7): prefilled with this device's nickname, focused on entry.
 // iPhone Safari keeps its keyboard down until the field is tapped.
 const nicknameEl = ref<HTMLInputElement | null>(null);
-const nickname = ref(store.session?.nickname ?? "");
+const nickname = ref(store.shownSession?.nickname ?? "");
 const edited = ref(false);
 const saveError = ref<string | null>(null);
 const nicknameEmpty = computed(() => nickname.value.trim() === "");
@@ -37,7 +37,7 @@ const fieldError = computed(() =>
 
 // The session can arrive after the page; fill it in unless the guest typed.
 watch(
-  () => store.session?.nickname,
+  () => store.shownSession?.nickname,
   (name) => {
     if (name && !edited.value) nickname.value = name;
   },
@@ -72,9 +72,9 @@ async function join() {
   saveError.value = null;
   // Save a changed nickname first, so the friend sees it from the first
   // snapshot of the game; a failed save keeps the guest on this page.
-  if (nickname.value.trim() !== store.session?.nickname) {
+  if (nickname.value.trim() !== store.shownSession?.nickname) {
     try {
-      await store.saveProfile(nickname.value, store.session?.locale ?? "zh-TW");
+      await store.saveProfile(nickname.value, store.shownLocale);
     } catch (error) {
       joining.value = false;
       saveError.value = error instanceof ProfileError ? error.code : "generic";
