@@ -25,7 +25,11 @@ export type Outgoing =
   | { type: "error"; payload: { code: string } };
 
 export interface LocalGameDeps {
-  /** Starts the AI engine; called when a game starts or is restored. */
+  /**
+   * Starts the AI engine. The engine lives as long as this LocalGame: it starts
+   * with the first game and ends only on dispose(), or is rebuilt when a game
+   * that failed is started again.
+   */
   engine: () => AiEngine;
   /** The player's current profile, shown in every snapshot. */
   session: () => Snapshot["session"];
@@ -111,7 +115,7 @@ export class LocalGame {
    * again; its move is deterministic, so the game continues exactly as before.
    */
   restore(saved: SavedGame): void {
-    this.dispose();
+    this.game = null;
     let game: AiGame;
     try {
       if (saved.version !== 1) return;
@@ -121,7 +125,7 @@ export class LocalGame {
     }
     this.game = game;
     this.roomId = saved.roomId;
-    this.engine = this.deps.engine();
+    this.engine ??= this.deps.engine();
     if (saved.failed) {
       game.status = "error";
       game.resultReason = "solver_unavailable";
@@ -166,7 +170,8 @@ export class LocalGame {
     if (this.game) throw new RuleError("already_in_game");
     this.game = newGame();
     this.roomId = this.newRoomId();
-    this.engine = this.deps.engine();
+    // One engine for every game: its WASM and reply table load once.
+    this.engine ??= this.deps.engine();
     this.emitSnapshot();
   }
 
@@ -189,13 +194,19 @@ export class LocalGame {
     if (game.status !== "finished" && game.status !== "error") {
       throw new RuleError("rematch_unavailable");
     }
+    if (game.status === "error") {
+      // A failed engine (a worker that could not load, say) would fail again.
+      this.engine?.dispose();
+      this.engine = this.deps.engine();
+    }
     reset(game);
     this.emitSnapshot();
   }
 
+  /** The engine stays for the next game; a move it is still thinking about is dropped. */
   private leave(): void {
     this.requireGame();
-    this.dispose();
+    this.game = null;
     this.emitSnapshot();
   }
 

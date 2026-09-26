@@ -99,12 +99,11 @@ watch(
       store.game?.history ?? null,
       store.game?.status ?? null,
       store.room?.id ?? null,
-      store.connectionEpoch,
+      store.liveEpoch,
     ] as const,
   ([history, status], [oldHistory, oldStatus, oldRoom, oldEpoch]) => {
     const game = store.game;
-    const live =
-      store.room?.id === oldRoom && store.connectionEpoch === oldEpoch;
+    const live = store.room?.id === oldRoom && store.liveEpoch === oldEpoch;
     if (!game || !live) {
       drops.reset();
       ending.cancel();

@@ -598,7 +598,9 @@ async function asApp(page: Page) {
       contentType: "text/javascript",
       body: [
         "export const isNative = () => true;",
+        "export const usesLocalAi = () => true;",
         "export const tokenStore = { get: async () => null, set: async () => {} };",
+        "export const localGameStore = { get: async () => null, set: async () => {} };",
         'export const nativeShare = async () => "shared";',
       ].join("\n"),
     }),
@@ -2056,4 +2058,78 @@ test("finished games show the approved outcome for each case", async ({
     }
     await tab.close();
   }
+});
+
+// 3.2.0: the app plays the AI on the device. The dev server's e2e flag stands
+// in for the app (native.ts usesLocalAi); the real worker, WASM engine and
+// reply table run in the browser.
+async function playOnDevice(page: Page, testInfo: TestInfo) {
+  test.skip(
+    !["galaxy-s26-ultra", "iphone-14promax-15plus-15promax-16plus"].includes(
+      testInfo.project.name,
+    ),
+    "Once per browser engine, on a phone.",
+  );
+  test.setTimeout(90_000);
+  await page.addInitScript(() => {
+    (window as { __CONNECT4_LOCAL_AI__?: boolean }).__CONNECT4_LOCAL_AI__ =
+      true;
+  });
+}
+
+test("the app plays the AI on the device, with or without a connection", async ({
+  page,
+}, testInfo) => {
+  await playOnDevice(page, testInfo);
+  let down = false;
+  const sent: string[] = [];
+  const app = await mockApp(page, snapshotFor("L01"), {
+    refuseReconnects: () => down,
+    onMessage: (message) => sent.push(message.type),
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "立即對戰" }).click();
+  const board = page.locator(".board");
+  const tokens = page.locator(".grid .token:not(.ghost)");
+  await expect(board).toHaveClass(/is-interactive/, { timeout: 20_000 });
+  await play(page, testInfo, 3);
+  // The Super AI answered from the device.
+  await expect(tokens).toHaveCount(2, { timeout: 20_000 });
+  await expect(board).toHaveClass(/is-interactive/);
+
+  // The server goes away: no notice, and the game carries on.
+  down = true;
+  await app.sockets[0].close({ code: 1011 });
+  await page.waitForTimeout(2500);
+  await expect(page.locator(".connection-pill")).toHaveCount(0);
+  await expect(page.locator(".board-overlay")).toHaveCount(0);
+  await play(page, testInfo, 2);
+  await expect(tokens).toHaveCount(4, { timeout: 20_000 });
+  expect(sent.filter((type) => type.startsWith("game."))).toEqual([]);
+});
+
+test("an AI game left open resumes after relaunching with no network", async ({
+  page,
+}, testInfo) => {
+  await playOnDevice(page, testInfo);
+  let down = false;
+  await mockApp(page, snapshotFor("L01"), { refuseReconnects: () => down });
+  await page.goto("/");
+  await page.getByRole("button", { name: "立即對戰" }).click();
+  const board = page.locator(".board");
+  const tokens = page.locator(".grid .token:not(.ghost)");
+  await expect(board).toHaveClass(/is-interactive/, { timeout: 20_000 });
+  await play(page, testInfo, 3);
+  await expect(tokens).toHaveCount(2, { timeout: 20_000 });
+
+  // Relaunch with no network: the session request fails, every socket closes.
+  down = true;
+  await page.route("**/api/session", (route) => route.abort());
+  await page.reload();
+  await expect(page).toHaveURL(/\/play$/, { timeout: 20_000 });
+  await expect(tokens).toHaveCount(2);
+  await expect(board).toHaveClass(/is-interactive/);
+  await expect(page.locator(".connection-pill")).toHaveCount(0);
+  await play(page, testInfo, 2);
+  await expect(tokens).toHaveCount(4, { timeout: 20_000 });
 });

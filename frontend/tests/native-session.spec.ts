@@ -18,7 +18,10 @@ const native = vi.hoisted(() => {
 });
 vi.mock("../src/native", () => ({
   isNative: native.isNative,
+  usesLocalAi: native.isNative,
   tokenStore: native.tokenStore,
+  // No on-device game was left open.
+  localGameStore: { get: async () => null, set: async () => {} },
   nativeShare: native.nativeShare,
 }));
 
