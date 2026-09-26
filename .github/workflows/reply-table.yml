@@ -1,0 +1,28 @@
+name: Reply table
+
+# Regenerates native_solver/data/reply-table.bin with the pinned engine and requires the
+# committed file to match byte for byte. Generation solves every entry live, so a match
+# also proves the whole table equals live solving.
+on:
+  push:
+    branches: [main]
+    paths: ["native_solver/**", ".github/workflows/reply-table.yml"]
+  pull_request:
+    paths: ["native_solver/**", ".github/workflows/reply-table.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: reply-table-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+      - run: cargo fmt --manifest-path native_solver/tools/reply-table/Cargo.toml -- --check
+      - run: cargo clippy --locked --release --manifest-path native_solver/tools/reply-table/Cargo.toml -- -D warnings
+      - run: cargo build --locked --release --manifest-path native_solver/tools/reply-table/Cargo.toml
+      - run: native_solver/tools/reply-table/target/release/reply-table "$RUNNER_TEMP/reply-table.bin"
+      - run: cmp native_solver/data/reply-table.bin "$RUNNER_TEMP/reply-table.bin"

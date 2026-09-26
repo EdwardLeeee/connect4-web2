@@ -6,6 +6,7 @@ import pytest
 from connect4_app.domain import Game
 from connect4_app.manager import AI_MIN_THINK_SECONDS, CLOSE_REPLACED, GameManager
 from connect4_app.sessions import SessionStore
+from connect4_app.solver import PerfectSolver
 
 FIRST_MOVER_WINS = [0, 1, 0, 1, 0, 1, 0]
 
@@ -612,3 +613,26 @@ async def test_replacing_the_tab_keeps_the_queue_place() -> None:
     assert ada in manager.queue
     assert ada not in manager.disconnect_tasks
     assert searching(new_socket) is True
+
+
+@pytest.mark.asyncio
+async def test_ai_waits_the_minimum_even_when_the_reply_table_answers() -> None:
+    sessions = SessionStore()
+    player = add_session(sessions, "Ada")
+    manager = GameManager(sessions, PerfectSolver(), ai_min_think_seconds=0.3)
+    await manager.connect(player, FakeSocket())  # type: ignore[arg-type]
+    await manager.handle(player, {"type": "game.ai.start", "payload": {}})
+    game = manager._game_for(player)
+    assert game is not None
+    for column in [6, 3, 0, 4]:
+        await manager.handle(player, {"type": "game.move", "payload": {"column": column}})
+        await next(iter(manager.ai_tasks.values()))
+    assert game.history == "74441454"
+
+    started = time.monotonic()
+    await manager.handle(player, {"type": "game.move", "payload": {"column": 3}})
+    await next(iter(manager.ai_tasks.values()))
+    assert time.monotonic() - started >= 0.3
+    # The ninth-move reply comes from the table and matches the live engine's choice.
+    assert game.history == "7444145445"
+    assert game.status == "playing"

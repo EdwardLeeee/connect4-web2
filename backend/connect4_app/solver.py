@@ -22,6 +22,9 @@ class SolverStatus:
     version: str
     guarantee: str
     error: str | None = None
+    # The precomputed exact scores for the positions the AI meets after 9, 11 and 13 moves.
+    reply_table_loaded: bool = False
+    reply_table_entries: int = 0
 
 
 class PerfectSolver:
@@ -50,6 +53,7 @@ class PerfectSolver:
             )
         try:
             engine, version, ready = native.engine_info()
+            table_loaded, table_entries = native.reply_table_info()
             if self_test:
                 move = self.best_move("4")
                 ready = ready and 0 <= move < 7
@@ -58,6 +62,8 @@ class PerfectSolver:
                 engine=str(engine),
                 version=str(version),
                 guarantee=self.guarantee,
+                reply_table_loaded=bool(table_loaded),
+                reply_table_entries=int(table_entries),
             )
         except Exception as error:  # pragma: no cover - native failures are surfaced verbatim.
             return SolverStatus(

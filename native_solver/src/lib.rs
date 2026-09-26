@@ -1,13 +1,28 @@
+mod choice;
+// Shared with tools/reply-table, which also uses the encoder.
+#[allow(dead_code)]
+mod reply_table;
+
+use choice::select_best;
 use connect_four_ai::{Position, Solver};
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
+use reply_table::ReplyTable;
 use std::sync::{Mutex, OnceLock};
 
-const CENTRE_FIRST: [usize; 7] = [3, 2, 4, 1, 5, 0, 6];
 static SOLVER: OnceLock<Mutex<Solver>> = OnceLock::new();
+static REPLY_TABLE_BYTES: &[u8] = include_bytes!("../data/reply-table.bin");
+static REPLY_TABLE: OnceLock<Option<ReplyTable<'static>>> = OnceLock::new();
 
 fn solver() -> &'static Mutex<Solver> {
     SOLVER.get_or_init(|| Mutex::new(Solver::new()))
+}
+
+/// The embedded table, or `None` when it fails validation and every move is solved live.
+fn reply_table() -> Option<&'static ReplyTable<'static>> {
+    REPLY_TABLE
+        .get_or_init(|| ReplyTable::parse(REPLY_TABLE_BYTES))
+        .as_ref()
 }
 
 fn parse_position(moves: &str) -> PyResult<Position> {
@@ -35,22 +50,14 @@ fn exact_scores(position: &Position) -> PyResult<[Option<i8>; 7]> {
     Ok(guard.get_all_move_scores(position))
 }
 
-fn select_best(scores: &[Option<i8>; 7]) -> Option<usize> {
-    let mut best: Option<(usize, i8)> = None;
-    for column in CENTRE_FIRST {
-        if let Some(score) = scores[column] {
-            if best.is_none_or(|(_, best_score)| score > best_score) {
-                best = Some((column, score));
-            }
-        }
-    }
-    best.map(|(column, _)| column)
-}
-
 #[pyfunction]
 fn best_move(py: Python<'_>, moves: &str) -> PyResult<usize> {
     let position = parse_position(moves)?;
-    let scores = py.detach(|| exact_scores(&position))?;
+    // Table scores are the exact scores solving would return; anything else is solved live.
+    let scores = match reply_table().and_then(|table| table.scores(&position)) {
+        Some(scores) => scores,
+        None => py.detach(|| exact_scores(&position))?,
+    };
     select_best(&scores).ok_or_else(|| PyValueError::new_err("position has no legal moves"))
 }
 
@@ -65,11 +72,28 @@ fn engine_info() -> (&'static str, &'static str, bool) {
     ("connect-four-ai", "1.0.0", true)
 }
 
+/// Whether the embedded reply table passed validation, and how many positions it holds.
+#[pyfunction]
+fn reply_table_info() -> (bool, usize) {
+    reply_table().map_or((false, 0), |table| (true, table.len()))
+}
+
+/// The table's scores for a position, or `None` when it is not in the table.
+#[pyfunction]
+fn reply_table_scores(moves: &str) -> PyResult<Option<Vec<Option<i8>>>> {
+    let position = parse_position(moves)?;
+    Ok(reply_table()
+        .and_then(|table| table.scores(&position))
+        .map(|scores| scores.to_vec()))
+}
+
 #[pymodule]
 fn _solver(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(best_move, module)?)?;
     module.add_function(wrap_pyfunction!(score_moves, module)?)?;
     module.add_function(wrap_pyfunction!(engine_info, module)?)?;
+    module.add_function(wrap_pyfunction!(reply_table_info, module)?)?;
+    module.add_function(wrap_pyfunction!(reply_table_scores, module)?)?;
     Ok(())
 }
 
@@ -78,26 +102,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn centre_wins_ties() {
-        assert_eq!(
-            select_best(&[
-                Some(0),
-                Some(0),
-                Some(0),
-                Some(0),
-                Some(0),
-                Some(0),
-                Some(0)
-            ]),
-            Some(3)
-        );
-    }
-
-    #[test]
-    fn highest_exact_score_wins() {
-        assert_eq!(
-            select_best(&[Some(-2), Some(1), None, Some(0), Some(4), Some(4), Some(-1)]),
-            Some(4)
-        );
+    fn the_embedded_reply_table_is_valid() {
+        let table = reply_table().expect("the committed table must pass validation");
+        assert!(!table.is_empty());
     }
 }
