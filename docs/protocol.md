@@ -168,4 +168,5 @@ iOS／Android app 把網頁打包在 app 裡（Capacitor），頁面來源是 `c
 - 單一 uvicorn worker；房間、配對與 session 都存在記憶體裡，程序重啟就會全部清空。
 - 求解器沒有啟發式或計時備援。故障時 `status` 為 `error`，`result_reason` 為 `solver_unavailable`。
 - AI 局在玩家落子後進入 `thinking`，至少維持 1 秒才落子；求解超過 1 秒時不再額外等待。
+- AI 在已下 9、11、13 手時，改查預先算好的精確分數表（`native_solver/data/reply-table.bin`），其他時候現場求解；兩者給出的分數與選的欄完全相同，下法不變。表無法載入或查不到時一律現場求解。
   這只影響時間，不影響下法；求解器故障會立即回報 `error`，不等待。

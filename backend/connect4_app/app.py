@@ -160,6 +160,10 @@ async def health() -> JSONResponse:
             "version": solver_status.version,
             "guarantee": solver_status.guarantee,
             "error": solver_status.error,
+            "reply_table": {
+                "loaded": solver_status.reply_table_loaded,
+                "entries": solver_status.reply_table_entries,
+            },
         },
     }
     return JSONResponse(payload, status_code=200 if solver_status.ready else 503)

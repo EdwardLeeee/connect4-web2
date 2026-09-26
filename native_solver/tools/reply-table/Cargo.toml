@@ -1,0 +1,14 @@
+[package]
+name = "reply-table"
+version = "1.0.0"
+edition = "2021"
+publish = false
+description = "Generates native_solver/data/reply-table.bin for the Super AI"
+
+[dependencies]
+# Must match native_solver/Cargo.toml: the table holds this engine's exact scores.
+connect-four-ai = "=1.0.0"
+rayon = "1.10"
+
+[profile.release]
+opt-level = 3

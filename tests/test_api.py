@@ -68,6 +68,7 @@ async def test_health_proves_exact_solver_is_ready() -> None:
         "version": "1.0.0",
         "guarantee": "exact-perfect-play",
         "error": None,
+        "reply_table": {"loaded": True, "entries": 52_721},
     }
 
 
