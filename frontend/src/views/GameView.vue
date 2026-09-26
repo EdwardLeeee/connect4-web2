@@ -217,6 +217,7 @@ function onAction(action: ResultAction) {
       {
         'is-finished': store.game.status === 'finished',
         'is-offline': !online,
+        'has-result': result,
       },
     ]"
   >
