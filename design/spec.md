@@ -335,6 +335,81 @@
   .you-pink .player.is-current:not(.is-me) { background: var(--mint-soft); }
   ```
 
+### 3.2.0 app 離線：AI 在手機上算（2026-09-26 使用者核准；設計稿 `design/artboards/round23/`，原始資料 `round23-source/`，只存本機）
+
+**背景**：3.2.0 起，app 的 AI 對局改在手機上算（連網時也一樣），沒有網路也能跟 AI 下。
+- 網站維持用伺服器算，離線時的畫面除了 03 以外都不變。
+- 離線的判斷以「連不連得到伺服器」為準，也就是現有的 `connection`。
+
+**設計稿**：把規則套在前端 f13851e 之前的 main（19b9133）上截圖。
+- 手機稿模擬 app 的上下安全區：430 寬上 59／下 34px，390 寬上 47／下 34px。
+- 左上角的「2:59」和底部黑條是示意用的假狀態列，實際畫面沒有。
+- 原始截圖、出圖腳本和各張的對應寫在 `round23-source/README.md`。
+
+- **01 app 離線時的大廳：「挑戰 AI」照常可按，換成 app 專用文案**（`R23-01-app離線大廳-D-沒網路也沒關係-mobile.png`）
+  - **按鈕**：
+    - app 的「立即對戰」一律可按，不看連線狀態，因為本機就能算。
+    - 「建立私人房」「加入房間」「開始配對」離線時照舊停用。
+  - **橫幅**：app 離線時換成新文案 `lobby.offlineApp`：「沒有網路也沒關係，挑戰 AI 隨時都能玩！」／"No internet? No problem. The AI game works anytime!"
+    - 樣式和現有粉紅橫幅相同。
+    - 中文要換行時只在「，」「；」後面換，每個子句不拆開。
+    - 英文兩行時用 `text-wrap: balance` 平均斷行。
+    - 量測：中文在 430、390 寬都是一行，英文兩行。
+  - **網站**：離線時維持現狀，所有開局按鈕都停用，文案仍是 `lobby.offline`。
+- **02 app 的本機 AI 局：不顯示任何連線提示**（`R23-02-本機AI局-A-不顯示連線提示-mobile.png`）
+  - 本機 AI 局不管有沒有網路，都照常可以下：
+    - 頂列不顯示連線標籤，CONNECT 4 字樣一直顯示。
+    - 棋盤不蓋「連線中斷，正在重新連線…」。
+    - 狀態籤不變灰。
+  - 網站的 AI 局（伺服器算）和所有真人對戰維持現況（P14）。
+- **03 離線時的玩家設定：只鎖暱稱，語言照常可改**（網站和 app 都一樣；`R23-03-離線改暱稱-C-只鎖暱稱語言可改-desktop與mobile.png`）
+  - **暱稱欄位停用**：
+    - 底色 `--disabled`，文字 `--muted`，框線改虛線。
+    - 不顯示「請先輸入暱稱」之類的錯誤，就算欄位是空的（見 04b）也一樣。
+  - **語言可以切換**：
+    - 按「儲存」後，這台裝置**立刻**換成新語言。
+    - 連線恢復後自動同步到伺服器，使用者不用再做任何事。
+    - 暱稱欄位的內容不送出。
+    - 這一段需要 front 和 back 實作：語言先存在本機，連線後再同步。
+  - **說明條**：放在「取消／儲存」上方，樣式和大廳離線橫幅相同，但不加陰影、15px。
+    - 文案 `profile.offlineNote`：「目前離線：暱稱要連線後才能改，語言可以直接切換。」／"You're offline. Your nickname can change once you're back online; the language can change now."
+    - 換行規則同 01。
+  - 桌機 modal 和手機底部面板相同。
+  - 現在的行為是按下「儲存」後才顯示「操作失敗，請再試一次。」，改版後不會再出現。
+- **04a app 離線大廳的頂列：標籤改短字「離線」，CONNECT 4 照常顯示**（`R23-04a-頂列連線標籤-B2-短字離線加品牌字-mobile.png`）
+  - **範圍**：只限 app 的大廳，而且只在離線時。
+    - 連線中（`connecting`）照舊顯示「連線中…」。
+    - 對局畫面、邀請頁都照舊。
+    - 網站不變。
+  - **標籤**：文字改用 `connection.offlineApp`：「離線」／"Offline"。
+  - **品牌字**：寬度 ≥360px 時 CONNECT 4 照常顯示；寬度小於 360px 時，照第十九輪規則在出現標籤時藏起品牌字。
+  - **量測**：
+    - 430、390、360 寬都排得下一行，標籤 67px（中文）／83px（英文）。
+    - 320 寬的英文品牌字會擠成兩行，所以才有 360 的門檻。
+- **04b 沒網路時打開 app：記住上次的暱稱**（`R23-04b-離線開app的暱稱-A-記住上次的暱稱-mobile.png`）
+  - **現況的問題**：暱稱是連上伺服器才拿到的。
+    - 沒網路打開 app 時，右上角頭像是「?」。
+    - 玩家設定的暱稱是空的，還直接顯示「請先輸入暱稱」。
+  - **改成**：app 把上次連線時的暱稱和語言存在手機上，沒網路打開時照樣使用：
+    - 頭像的字。
+    - 玩家設定裡的暱稱；照 03 的規則鎖住，不顯示錯誤。
+    - 本機 AI 局上自己的名字。
+  - **全新安裝、從沒連過線時**：頭像維持「?」，玩家設定不顯示「請先輸入暱稱」。
+    - 本機 AI 局上自己的名字這次沒有出稿，front 做到時請回報 ui 補稿。
+- **04c app 離線大廳的卡片：需要網路的卡片加「需要網路」**（`R23-04c-大廳卡片標示-A-標示需要網路-mobile.png`）
+  - app 離線時，「和朋友一起玩」「隨機配對」這兩張卡片會：
+    - 在標題右邊加小籤 `lobby.needsInternet`：「需要網路」／"Needs internet"。
+    - 小籤樣式：`--disabled` 底、2px 墨框、膠囊形、12px 粗體、不換行。
+    - 卡片圖示轉灰並降到 55% 不透明。
+  - 連線恢復後小籤消失、圖示恢復。
+  - 「挑戰 AI」卡片不加小籤；B 方案「不用網路」沒被選。
+- **沒被選的方案**：
+  - 01：文案 A、B、C。
+  - 03：A 只停用「儲存」；B 整個面板鎖住。
+  - 04a：A 大廳不顯示標籤；B 短字但藏品牌字。
+  - 04c：B 再加「不用網路」。
+- **注意**：03、04b、04c 的設計稿是在 01 定案前畫的，橫幅用的還是舊文案（C）；以 01 的 D 為準。
+
 ## 1. 怎麼看這套圖
 
 `eog design/artboards/round2/` 會依檔名排序，順序如下：
@@ -605,6 +680,10 @@
 | `aiBody` | 挑戰者，你能想出擊敗 AI 的戰術嗎？ | Challenger, can you find a strategy that beats the AI? | 改寫 |
 | `lobbyOffline` | 連線恢復前無法開始對局。 | You can start a game once the connection is back. | 新增 |
 | `connection.offlineShort` | 連線中斷，正在重試… | Reconnecting… | 新增（第 19 輪 01）：只在 ≤620px 的頂列連線標籤使用；中文和 `connection.offline` 相同 |
+| `lobby.offlineApp` | 沒有網路也沒關係，挑戰 AI 隨時都能玩！ | No internet? No problem. The AI game works anytime! | 新增（3.2.0 01）：只在 app 離線大廳使用 |
+| `connection.offlineApp` | 離線 | Offline | 新增（3.2.0 04a）：只在 app 離線大廳的頂列標籤使用 |
+| `profile.offlineNote` | 目前離線：暱稱要連線後才能改，語言可以直接切換。 | You're offline. Your nickname can change once you're back online; the language can change now. | 新增（3.2.0 03）：網站和 app 都用 |
+| `lobby.needsInternet` | 需要網路 | Needs internet | 新增（3.2.0 04c）：只在 app 離線大廳使用 |
 | `inviteEyebrow` | 邀請 | Invite | 新增 |
 | `inviteTitle` | 朋友邀請你一起玩 | A friend invited you to play | 新增 |
 | `inviteBody` | 按下「加入房間」，朋友那邊就會開始對戰。 | Tap "Join room" and the game starts for both of you. | 新增 |
