@@ -69,7 +69,7 @@ final class AppUITests: XCTestCase {
         let finished = matching(web.buttons, "label CONTAINS %@", "再次挑戰", "Challenge again").firstMatch
         let deadline = Date().addingTimeInterval(300)
         var moves = 0
-        var slowest: TimeInterval = 0
+        var replies: [String] = []
         while moves < maxMoves && !finished.exists {
             XCTAssertLessThan(Date(), deadline, "the game did not finish within 5 minutes (\(moves) moves)")
             let count = ready.count
@@ -91,10 +91,12 @@ final class AppUITests: XCTestCase {
                     Date().timeIntervalSince(tapped), 30, "the AI did not answer move \(moves) within 30 s")
                 Thread.sleep(forTimeInterval: 0.2)
             }
-            slowest = max(slowest, Date().timeIntervalSince(tapped))
+            // The last move also waits for the ending animation before "Challenge again" shows.
+            let seconds = String(format: "%.1f", Date().timeIntervalSince(tapped))
+            replies.append(finished.exists ? "\(seconds)(end)" : seconds)
             if moves == 1 { shot("\(tag)-game") }
         }
-        print("SMOKE \(tag): \(moves) of our moves, slowest AI reply \(String(format: "%.1f", slowest)) s")
+        print("SMOKE \(tag): \(moves) of our moves; seconds until our next turn: \(replies.joined(separator: " "))")
         return moves
     }
 
