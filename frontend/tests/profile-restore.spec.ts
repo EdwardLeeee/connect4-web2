@@ -250,22 +250,43 @@ describe("a server that started over (06)", () => {
     await store.initialise();
     expect(native.restore).toBe(true);
     connect();
+    await settle();
     expect(store.shownSession?.nickname).toBe("曜宇");
     expect(native.last).toEqual({
       nickname: "曜宇",
       locale: "zh-TW",
       default_number: null,
     });
+    // Tried once more as the socket connected; still failing.
+    expect(server.patches).toHaveLength(2);
 
     // The next connection sends it again, first.
     server.failPatch = null;
     FakeWebSocket.instances.at(-1)!.emit("close");
     await vi.advanceTimersByTimeAsync(500);
     await settle();
-    expect(server.patches).toHaveLength(2);
+    expect(server.patches).toHaveLength(3);
     expect(native.restore).toBe(false);
     connect();
     expect(store.shownSession?.nickname).toBe("曜宇");
+  });
+
+  it("tries again as soon as the socket connects, and asks for the state", async () => {
+    native.last = { nickname: "曜宇", locale: "zh-TW", default_number: null };
+    server.created = true;
+    server.failPatch = "network";
+    const store = useGameStore();
+    await store.initialise();
+    expect(native.restore).toBe(true);
+
+    // The network is back by the time the socket connects.
+    server.failPatch = null;
+    connect();
+    await settle();
+    expect(server.patches).toHaveLength(2);
+    expect(native.restore).toBe(false);
+    expect(server.session.nickname).toBe("曜宇");
+    expect(FakeWebSocket.instances.at(-1)!.sent).toContain("state.request");
   });
 
   it("takes the server's profile when the server refuses the device's", async () => {

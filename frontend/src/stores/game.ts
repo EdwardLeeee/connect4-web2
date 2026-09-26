@@ -20,7 +20,11 @@ type Locale = Snapshot["session"]["locale"];
 // a newer one (manager.py CLOSE_REPLACED). Reconnecting would evict the newer tab.
 const CLOSE_REPLACED = 4001;
 
-const PROFILE_ERRORS = new Set(["invalid_nickname", "invalid_locale"]);
+const PROFILE_ERRORS = new Set([
+  "invalid_nickname",
+  "invalid_locale",
+  "invalid_default_number",
+]);
 
 // After a working connection drops, the screen stays as it was this long
 // before it says so: a quick reconnect, as when a phone comes back from the
@@ -191,6 +195,7 @@ export const useGameStore = defineStore("game", {
     // The device's profile still has to be put back on a server that started
     // over (06); retried before each connection until it is.
     restorePending: false,
+    restoring: false,
     // A search given up offline for a local game; the server hears on reconnect.
     abandonedSearch: false,
     // server_time minus the local clock, in seconds, from the latest snapshot.
@@ -286,6 +291,8 @@ export const useGameStore = defineStore("game", {
 
     /** Puts the device's profile back on a new session (06, and 04b's first). */
     async restoreProfile(kept: Session, server: Session) {
+      if (this.restoring) return;
+      this.restoring = true;
       const locale = this.pendingLocale ?? kept.locale;
       try {
         const response = await sessionRequest({
@@ -308,10 +315,27 @@ export const useGameStore = defineStore("game", {
         this.keepSession(session);
         this.applyLocale(session.locale);
       } catch {
-        // The device's profile stays on screen; tried again before the next
-        // connection.
+        // The device's profile stays on screen; tried again once the socket
+        // connects, and before each later connection.
         this.setRestorePending(true);
+      } finally {
+        this.restoring = false;
       }
+    },
+
+    /**
+     * After a failed restore the socket still connects, and opponents would
+     * see the server's new default: try again at once.
+     */
+    async retryRestore(server: Snapshot["session"]) {
+      const kept = this.savedSession;
+      if (!this.restorePending || !kept) return;
+      await this.restoreProfile(kept, {
+        ...server,
+        default_number: server.default_number ?? null,
+      });
+      // The server's snapshots carry its default until asked again.
+      if (!this.restorePending) this.send("state.request");
     },
 
     setRestorePending(pending: boolean) {
@@ -365,7 +389,10 @@ export const useGameStore = defineStore("game", {
     async syncPendingLocale() {
       const locale = this.pendingLocale;
       const profile = this.syncProfile();
-      if (!locale || !profile || this.syncingLocale) return;
+      // A profile still to be restored carries this language with it.
+      if (!locale || !profile || this.syncingLocale || this.restorePending) {
+        return;
+      }
       this.syncingLocale = true;
       try {
         // A default nickname is renamed in the new language by the server.
@@ -483,6 +510,7 @@ export const useGameStore = defineStore("game", {
           this.applyServerSnapshot(message.payload as Snapshot);
           if (first) {
             this.sendHeld();
+            void this.retryRestore(message.payload.session);
             void this.syncPendingLocale();
           }
         } else if (message.type === "error") {
