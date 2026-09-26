@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       smoke:
-        description: Play one AI game in the iOS app on a simulator (uses the production server)
+        description: iOS simulator smoke test, online (production server) and offline (unreachable server)
         type: boolean
         default: false
 
@@ -176,25 +176,55 @@ jobs:
       - run: npx cap sync ios
         working-directory: mobile
       - run: ruby mobile/scripts/add-ui-test-target.rb mobile/ios/App/App.xcodeproj
-      - name: Play one game against the AI and open the privacy policy
-        working-directory: mobile/ios/App
+      - name: Pick a simulator
         run: |
-          set -euo pipefail
           udid="$(xcrun simctl list devices available -j | node -e '
             const d = JSON.parse(require("fs").readFileSync(0, "utf8")).devices;
             const phones = Object.entries(d).filter(([rt]) => rt.includes("iOS")).flatMap(([, list]) => list)
               .filter((x) => x.name.startsWith("iPhone"));
             console.log(phones.at(-1).udid);')"
-          xcodebuild test -project App.xcodeproj -scheme App -destination "platform=iOS Simulator,id=${udid}" \
-            -resultBundlePath "${RUNNER_TEMP}/smoke.xcresult" CODE_SIGNING_ALLOWED=NO
+          echo "SIM_UDID=${udid}" >> "${GITHUB_ENV}"
+      - name: "Online: default nickname, one AI game, privacy link"
+        working-directory: mobile/ios/App
+        run: |
+          set -o pipefail
+          xcodebuild test -project App.xcodeproj -scheme App -destination "platform=iOS Simulator,id=${SIM_UDID}" \
+            -only-testing:AppUITests/AppUITests/testOnlineGameAndPrivacyPolicy \
+            -resultBundlePath "${RUNNER_TEMP}/online.xcresult" CODE_SIGNING_ALLOWED=NO 2>&1 \
+            | tee "${RUNNER_TEMP}/online.log"
+      # The same app with an API origin that never resolves (.invalid), on a fresh install:
+      # the offline lobby, the default nickname, an AI game and restoring it after a relaunch.
+      - name: Build the web app for the offline run
+        if: ${{ !cancelled() }}
+        working-directory: frontend
+        env:
+          VITE_API_ORIGIN: https://offline.invalid
+        run: npm run build
+      - if: ${{ !cancelled() }}
+        run: npx cap sync ios
+        working-directory: mobile
+      - name: "Offline: lobby, default nickname, AI game, restore after relaunch"
+        if: ${{ !cancelled() }}
+        working-directory: mobile/ios/App
+        run: |
+          set -o pipefail
+          xcrun simctl uninstall "${SIM_UDID}" com.oraclelee.connect4 || true
+          xcodebuild test -project App.xcodeproj -scheme App -destination "platform=iOS Simulator,id=${SIM_UDID}" \
+            -only-testing:AppUITests/AppUITests/testOfflineLobbyGameAndRestore \
+            -resultBundlePath "${RUNNER_TEMP}/offline.xcresult" CODE_SIGNING_ALLOWED=NO 2>&1 \
+            | tee "${RUNNER_TEMP}/offline.log"
       - name: Export the screenshots
         if: always()
         run: |
-          mkdir -p smoke-screenshots
-          if [ -d "${RUNNER_TEMP}/smoke.xcresult" ]; then
-            xcrun xcresulttool export attachments --path "${RUNNER_TEMP}/smoke.xcresult" \
-              --output-path smoke-screenshots
-          fi
+          for run in online offline; do
+            mkdir -p "smoke-screenshots/${run}"
+            if [ -d "${RUNNER_TEMP}/${run}.xcresult" ]; then
+              xcrun xcresulttool export attachments --path "${RUNNER_TEMP}/${run}.xcresult" \
+                --output-path "smoke-screenshots/${run}"
+            fi
+            { echo "### ${run}"; grep -hE "^SMOKE |error: |\*\* TEST" "${RUNNER_TEMP}/${run}.log" 2>/dev/null \
+                | sed 's/^/- /'; } >> "${GITHUB_STEP_SUMMARY}" || true
+          done
       - if: always()
         uses: actions/upload-artifact@v7
         with:
