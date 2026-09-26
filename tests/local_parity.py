@@ -179,7 +179,7 @@ async def record(script: list[dict[str, Any]], solver: Any) -> list[list[dict[st
     logging.getLogger("connect4_app.manager").setLevel(logging.CRITICAL)
     sessions = SessionStore()
     session, _ = sessions.resolve(None)
-    session.nickname = "Ada"
+    sessions.update(session, "Ada", "zh-TW", None)
     manager = GameManager(sessions, solver, ai_min_think_seconds=0)
     socket = RecordingSocket()
     await manager.connect(session.id, socket)  # type: ignore[arg-type]

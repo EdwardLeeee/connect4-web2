@@ -11,12 +11,36 @@
 
 手機 app 不用 cookie，改用 token，見下方「App 連線」。app 的 AI 局不經過伺服器，見「App 本機 AI 局」。
 
-`GET /api/session` 與 `PATCH /api/session` 回應同樣的形狀（app 另外多一個 `token`）。PATCH 的 body 是
-`{nickname, locale}`，兩個欄位要一起送：`nickname` 必填，`locale` 沒送時會被當成 `zh-TW`。
+`GET /api/session` 與 `PATCH /api/session` 回應同樣的形狀（app 另外多一個 `token`）：
 
 ```ts
-{ nickname: string; locale: "zh-TW" | "en"; created: boolean }
+{ nickname: string; locale: "zh-TW" | "en"; default_number: number | null; created: boolean }
 ```
+
+PATCH 的 body 是 `{nickname?, locale, default_number?}`，規則見下方「預設暱稱」。`locale` 沒送時會被
+當成 `zh-TW`，所以暱稱和語言要一起送。錯誤時回 422 與 `{"detail": code}`，`code` 為
+`invalid_nickname`、`invalid_locale` 或 `invalid_default_number`。nickname 和 default_number 都沒送時
+也是 `invalid_nickname`；3.2.0 以前，缺 nickname 回的是 FastAPI 格式的 422（`detail` 是陣列）。
+
+### 預設暱稱
+
+還沒自己取過名字的人使用預設暱稱，格式依語言：`zh-TW`「玩家 {n}」，`en`「Player {n}」，`{n}` 是
+1000–9999。這兩個格式和前端文案 `session.defaultNickname` 相同，`tests/test_local_parity.py` 會檢查。
+
+- `default_number` 是預設暱稱的編號；`null` 代表使用者自己取的名字。新 session 一律是預設暱稱，
+  編號隨機，語言是 `zh-TW`。
+- 預設暱稱的人換語言時，伺服器依新語言重新產生名字，編號不變（「玩家 4821」↔「Player 4821」）。
+  自己取的名字換語言時不動。
+- PATCH 的 `default_number`：
+  - 送整數：設成這個編號的預設暱稱，名字由伺服器依語言產生；`nickname` 可以不送，送了也會被忽略。
+    用在 app 第一次上傳手機產生的名字、補回仍是預設的名字，以及預設暱稱的人換語言（包括離線時換、
+    連線後同步）。不是 1000–9999 的整數時回 `invalid_default_number`。
+  - 送 `null`：`nickname` 是使用者自己取的名字，就算長得像「玩家 1234」也一樣。
+  - 不送（3.2.0 以前的用戶端）：只有在 session 目前是預設暱稱、而且送來的 `nickname` 等於同一個編號
+    任一種語言的預設暱稱時，才當成沒改名，只換語言；其他情況都算自己取的名字。3.2.0 起的用戶端
+    一律明確送這個欄位。
+- 改暱稱或語言不會主動推送 snapshot。snapshot 每次都即時讀取暱稱，所以對手會在下一次收到 snapshot
+  時（例如下一手、再來一局、重連）看到新名字，預設暱稱換語言也一樣。
 
 ### 新 session 與補回暱稱
 
@@ -24,13 +48,14 @@ session 只存在伺服器記憶體裡。`created` 為 true，代表這次請求
 token 失效，或伺服器重啟過。GET 與 PATCH 一律帶這個欄位。
 
 - **補回**：GET 回 `created: true`，而且裝置上記得上次的暱稱與語言時，用戶端在連 `/ws` 之前送一次
-  PATCH，暱稱與語言一起送。
+  PATCH：仍是預設暱稱就送 `{locale, default_number}`，保留原本的編號；自己取的名字送
+  `{nickname, locale, default_number: null}`。app 第一次連線也走這個流程，上傳手機先產生的預設暱稱。
 - `created: false` 時不自動補回，免得蓋掉同一個 session 在別的分頁或別處改過的設定；使用者自己改的
   設定照常送。
 - PATCH 自己回 `created: true` 時，送出的內容已經套用在新 session 上，不必再補。
 - 補回回 422（例如之後暱稱規則變嚴）時，保留伺服器給的預設暱稱，並用它覆蓋裝置上記住的值。
 - 補回因網路錯誤或 5xx 沒有送到時，可以在下次連 `/ws` 前重送；補的仍是同一個新建的 session。
-- 舊版用戶端看不到這個欄位，照常運作。
+- 舊版用戶端不認得 `created` 與 `default_number`，照常運作。
 
 ### Close code（不得改號）
 
@@ -55,7 +80,13 @@ iOS／Android app 把網頁打包在 app 裡（Capacitor），頁面來源是 `c
 - **取得 token**：`GET /api/session` 或 `PATCH /api/session`，app 模式的回應會多一個欄位：
 
   ```ts
-  { nickname: string; locale: "zh-TW" | "en"; created: boolean; token: string }
+  {
+    nickname: string;
+    locale: "zh-TW" | "en";
+    default_number: number | null;
+    created: boolean;
+    token: string;
+  }
   ```
 
   app 每次都用回應裡的 `token` 覆蓋本機儲存的值；不會發 cookie。
@@ -108,7 +139,7 @@ iOS／Android app 把網頁打包在 app 裡（Capacitor），頁面來源是 `c
 ```ts
 {
   server_time: number;            // 產生當下的伺服器 Unix 秒（有小數）；game 為 null 時也會送
-  session: { nickname: string; locale: "zh-TW" | "en" };
+  session: { nickname: string; locale: "zh-TW" | "en"; default_number: number | null };
   queue: { searching: boolean };
   room: { id: string; code: string | null; mode: "ai" | "private" | "matchmaking" } | null;
   game: {

@@ -51,7 +51,12 @@ async def test_session_cookie_and_profile_update() -> None:
             json={"nickname": "測試玩家", "locale": "zh-TW"},
         )
         assert updated.status_code == 200
-        assert updated.json() == {"nickname": "測試玩家", "locale": "zh-TW", "created": False}
+        assert updated.json() == {
+            "nickname": "測試玩家",
+            "locale": "zh-TW",
+            "default_number": None,
+            "created": False,
+        }
 
 
 @pytest.mark.asyncio
@@ -192,6 +197,7 @@ def test_app_gets_a_token_instead_of_a_cookie(fresh_manager: GameManager, origin
     assert renamed.json() == {
         "nickname": "App 玩家",
         "locale": "en",
+        "default_number": None,
         "token": token,
         "created": False,
     }
@@ -309,7 +315,7 @@ def test_app_origin_without_the_app_protocol_is_rejected(fresh_manager: GameMana
 def test_site_cookie_flow_is_unchanged(fresh_manager: GameManager) -> None:
     client = TestClient(app)
     first = client.get("/api/session", headers={"Origin": SITE_ORIGIN})
-    assert first.json().keys() == {"nickname", "locale", "created"}
+    assert first.json().keys() == {"nickname", "locale", "default_number", "created"}
     assert "access-control-allow-origin" not in first.headers
     cookie = client.cookies[SESSION_COOKIE]
 
@@ -318,7 +324,12 @@ def test_site_cookie_flow_is_unchanged(fresh_manager: GameManager) -> None:
         headers={"Origin": SITE_ORIGIN, "Authorization": "Bearer ignored"},
         json={"nickname": "網站玩家", "locale": "zh-TW"},
     )
-    assert patched.json() == {"nickname": "網站玩家", "locale": "zh-TW", "created": False}
+    assert patched.json() == {
+        "nickname": "網站玩家",
+        "locale": "zh-TW",
+        "default_number": None,
+        "created": False,
+    }
     session = fresh_manager.sessions.get(cookie)
     assert session is not None
     assert session.nickname == "網站玩家"
@@ -383,7 +394,12 @@ def test_site_profile_update_on_a_lost_session_applies_to_the_new_one(
         headers={"Origin": SITE_ORIGIN},
         json={"nickname": "老玩家", "locale": "en"},
     )
-    assert kept.json() == {"nickname": "老玩家", "locale": "en", "created": False}
+    assert kept.json() == {
+        "nickname": "老玩家",
+        "locale": "en",
+        "default_number": None,
+        "created": False,
+    }
     cookie = client.cookies[SESSION_COOKIE]
 
     restarted = restart_server(monkeypatch)
@@ -392,7 +408,12 @@ def test_site_profile_update_on_a_lost_session_applies_to_the_new_one(
         headers={"Origin": SITE_ORIGIN},
         json={"nickname": "老玩家", "locale": "en"},
     )
-    assert restored.json() == {"nickname": "老玩家", "locale": "en", "created": True}
+    assert restored.json() == {
+        "nickname": "老玩家",
+        "locale": "en",
+        "default_number": None,
+        "created": True,
+    }
     new_cookie = client.cookies[SESSION_COOKIE]
     assert new_cookie != cookie
     assert restarted.sessions.get(new_cookie).nickname == "老玩家"  # type: ignore[union-attr]
@@ -430,3 +451,90 @@ def test_restoring_an_invalid_nickname_keeps_the_default(fresh_manager: GameMana
     assert session is not None
     assert session.nickname.startswith("玩家 ")
     assert session.locale == "zh-TW"
+
+
+def test_session_reports_its_default_number(fresh_manager: GameManager) -> None:
+    client = TestClient(app)
+    body = client.get("/api/session", headers={"Origin": SITE_ORIGIN}).json()
+    assert body["default_number"] in range(1000, 10000)
+    assert body["nickname"] == f"玩家 {body['default_number']}"
+
+
+def test_a_default_nickname_is_set_by_number_without_a_nickname(
+    fresh_manager: GameManager,
+) -> None:
+    client = TestClient(app)
+    token = client.get("/api/session", headers=app_headers(IOS_ORIGIN)).json()["token"]
+    body = client.patch(
+        "/api/session",
+        headers=app_headers(IOS_ORIGIN, token),
+        json={"locale": "en", "default_number": 4821},
+    ).json()
+    assert (body["nickname"], body["locale"], body["default_number"]) == ("Player 4821", "en", 4821)
+
+
+def test_an_older_client_switching_language_renames_a_default_nickname(
+    fresh_manager: GameManager,
+) -> None:
+    client = TestClient(app)
+    first = client.get("/api/session", headers={"Origin": SITE_ORIGIN}).json()
+    switched = client.patch(
+        "/api/session",
+        headers={"Origin": SITE_ORIGIN},
+        json={"nickname": first["nickname"], "locale": "en"},
+    ).json()
+    assert switched["nickname"] == f"Player {first['default_number']}"
+    assert switched["default_number"] == first["default_number"]
+
+
+def test_an_explicit_null_keeps_a_chosen_name_that_looks_like_a_default_one(
+    fresh_manager: GameManager,
+) -> None:
+    client = TestClient(app)
+    first = client.get("/api/session", headers={"Origin": SITE_ORIGIN}).json()
+    chosen = client.patch(
+        "/api/session",
+        headers={"Origin": SITE_ORIGIN},
+        json={"nickname": first["nickname"], "locale": "en", "default_number": None},
+    ).json()
+    assert (chosen["nickname"], chosen["default_number"]) == (first["nickname"], None)
+
+
+@pytest.mark.parametrize("number", [999, 10000, True, "4821", 4821.5])
+def test_an_invalid_default_number_is_a_422(fresh_manager: GameManager, number: object) -> None:
+    client = TestClient(app)
+    client.get("/api/session", headers={"Origin": SITE_ORIGIN})
+    refused = client.patch(
+        "/api/session",
+        headers={"Origin": SITE_ORIGIN},
+        json={"locale": "en", "default_number": number},
+    )
+    assert refused.status_code == 422
+    assert refused.json() == {"detail": "invalid_default_number"}
+
+
+def test_a_patch_without_nickname_or_default_number_is_invalid_nickname(
+    fresh_manager: GameManager,
+) -> None:
+    client = TestClient(app)
+    refused = client.patch("/api/session", headers={"Origin": SITE_ORIGIN}, json={"locale": "en"})
+    assert refused.status_code == 422
+    assert refused.json() == {"detail": "invalid_nickname"}
+
+
+def test_restoring_after_a_restart_keeps_the_default_number(
+    fresh_manager: GameManager, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = TestClient(app)
+    before = client.get("/api/session", headers=app_headers(ANDROID_ORIGIN)).json()
+
+    restart_server(monkeypatch)
+    after = client.get("/api/session", headers=app_headers(ANDROID_ORIGIN, before["token"])).json()
+    assert after["created"] is True
+    restored = client.patch(
+        "/api/session",
+        headers=app_headers(ANDROID_ORIGIN, after["token"]),
+        json={"locale": "en", "default_number": before["default_number"]},
+    ).json()
+    assert restored["nickname"] == f"Player {before['default_number']}"
+    assert restored["default_number"] == before["default_number"]

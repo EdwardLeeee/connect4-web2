@@ -397,6 +397,7 @@ class GameManager:
             "session": {
                 "nickname": session.nickname,
                 "locale": session.locale,
+                "default_number": session.default_number,
             },
             "queue": {"searching": session_id in self.queue},
             "room": None,

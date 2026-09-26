@@ -7,6 +7,7 @@ from pathlib import Path
 import local_parity
 from connect4_app.domain import COLUMNS, ROWS
 from connect4_app.manager import AI_MIN_THINK_SECONDS
+from connect4_app.sessions import DEFAULT_NICKNAMES, default_nickname
 
 ROOT = Path(__file__).resolve().parents[1]
 CONSTANTS = (ROOT / "frontend" / "src" / "local" / "constants.ts").read_text(encoding="utf-8")
@@ -48,3 +49,14 @@ def test_the_wasm_engine_is_the_native_engine_version() -> None:
         cargo = (ROOT / manifest).read_text(encoding="utf-8")
         native = re.search(r'connect-four-ai = "=([\d.]+)"', cargo)
         assert native and native.group(1) == wasm_version, manifest
+
+
+def test_default_nicknames_match_the_frontend_wording() -> None:
+    i18n = (ROOT / "frontend" / "src" / "i18n.ts").read_text(encoding="utf-8")
+    zh_tw, en = i18n.split("\n  en: {\n", 1)
+    for locale, messages in (("zh-TW", zh_tw), ("en", en)):
+        match = re.search(r'session: \{.*?defaultNickname: "([^"]+)"', messages, re.S)
+        assert match, locale
+        assert match.group(1) == DEFAULT_NICKNAMES[locale]
+    assert default_nickname(4821, "zh-TW") == "玩家 4821"
+    assert default_nickname(4821, "en") == "Player 4821"
