@@ -1,11 +1,13 @@
 import { defineStore } from "pinia";
-import { markRaw } from "vue";
+import { markRaw, type Raw } from "vue";
 import { i18n } from "../i18n";
-import { isNative, tokenStore } from "../native";
+import type { LocalGame, Outgoing, SavedGame } from "../local/localGame";
+import { isNative, localGameStore, tokenStore, usesLocalAi } from "../native";
 import type { Snapshot } from "../types";
 import { apiUrl, socketUrl } from "../utils/origin";
 
 type ConnectionState = "connecting" | "online" | "offline" | "replaced";
+type Source = "server" | "local";
 
 // The server closes an older socket with this code when the same session opens
 // a newer one (manager.py CLOSE_REPLACED). Reconnecting would evict the newer tab.
@@ -32,9 +34,31 @@ const LOBBY_ACTIONS = new Set([
   "queue.join",
 ]);
 
+// The messages an on-device AI game answers (3.2.0); the rest go to the server.
+const LOCAL_MESSAGES = new Set([
+  "game.move",
+  "game.ai.retry",
+  "game.rematch",
+  "game.leave",
+  "state.request",
+]);
+
 interface Message {
   type: string;
   payload: Record<string, unknown>;
+}
+
+/** What the app keeps of an on-device game between launches. */
+interface SavedLocal {
+  session: Snapshot["session"];
+  game: SavedGame;
+}
+
+// Saves (or clears) the on-device game, one write after another.
+let saving: Promise<void> = Promise.resolve();
+function persistLocal(saved: SavedLocal | null) {
+  const value = saved && JSON.stringify(saved);
+  saving = saving.then(() => localGameStore.set(value)).catch(() => {});
 }
 
 /** Whether a message held while reconnecting fits the state it came back to. */
@@ -106,6 +130,22 @@ export const useGameStore = defineStore("game", {
     // Increments on every successful connection, so views can tell a live
     // change apart from the state a fresh connection starts with.
     connectionEpoch: 0,
+    // Who runs the game on screen: the server, or the app's on-device AI
+    // (3.2.0). A local game needs no connection.
+    source: "server" as Source,
+    // The on-device game, created on first use; it keeps its engine for the
+    // next game.
+    local: null as Raw<LocalGame> | null,
+    localLoading: null as Raw<Promise<LocalGame>> | null,
+    // Counts local games started or resumed; see liveEpoch.
+    localEpoch: 0,
+    // The server's latest snapshot. While a local game runs, the screen shows
+    // its session with the local room and game.
+    serverSnapshot: null as Snapshot | null,
+    // The last profile seen, for a local game resumed without a network.
+    savedSession: null as Snapshot["session"] | null,
+    // A search given up offline for a local game; the server hears on reconnect.
+    abandonedSearch: false,
     // server_time minus the local clock, in seconds, from the latest snapshot.
     clockOffset: 0,
   }),
@@ -115,9 +155,25 @@ export const useGameStore = defineStore("game", {
     room: (state) => state.snapshot?.room ?? null,
     searching: (state) => state.snapshot?.queue.searching ?? false,
     session: (state) => state.snapshot?.session ?? null,
-    /** The connection the screen shows: a drop stays quiet for QUIET_MS. */
-    shownConnection: (state): ConnectionState =>
+    /** The server connection as shown: a drop stays quiet for QUIET_MS. */
+    serverConnection: (state): ConnectionState =>
       state.quiet ? "online" : state.connection,
+    /** The connection the screen shows; a local game needs none and shows none. */
+    shownConnection(): ConnectionState {
+      if (this.source === "local" && this.connection !== "replaced") {
+        return "online";
+      }
+      return this.serverConnection;
+    },
+    /**
+     * Changes within one epoch animate; a new connection, or a local game
+     * started or resumed, starts from a still state. A server reconnect does
+     * not interrupt a local game.
+     */
+    liveEpoch: (state): string | number =>
+      state.source === "local"
+        ? `local-${state.localEpoch}`
+        : state.connectionEpoch,
     hasActivity(): boolean {
       return Boolean(this.game || this.searching);
     },
@@ -126,7 +182,7 @@ export const useGameStore = defineStore("game", {
         this.game &&
         this.game.status === "playing" &&
         this.game.turn === this.game.you &&
-        this.connection === "online" &&
+        (this.source === "local" || this.connection === "online") &&
         !this.pendingMove,
       );
     },
@@ -137,11 +193,20 @@ export const useGameStore = defineStore("game", {
       const response = await sessionRequest({ cache: "no-store" });
       if (!response.ok) throw new Error("Unable to create session");
       const session = await sessionFrom(response);
-      if (this.snapshot) this.snapshot.session = session;
+      this.keepSession(session);
       i18n.global.locale.value = session.locale;
     },
 
+    /** A new profile from the server, shown whoever runs the game. */
+    keepSession(session: Snapshot["session"]) {
+      if (this.snapshot) this.snapshot.session = session;
+      if (this.serverSnapshot) this.serverSnapshot.session = session;
+      this.savedSession = session;
+    },
+
     async initialise() {
+      // A game on the device resumes first, with or without a network.
+      if (usesLocalAi()) await this.restoreLocal();
       this.recovering = true;
       try {
         await this.refreshSession();
@@ -194,23 +259,17 @@ export const useGameStore = defineStore("game", {
             this.connectionEpoch += 1;
             this.endQuiet();
           }
-          this.snapshot = message.payload as Snapshot;
-          this.settleMove();
-          if (typeof this.snapshot.server_time === "number") {
-            this.clockOffset = this.snapshot.server_time - Date.now() / 1000;
-          }
-          i18n.global.locale.value = this.snapshot.session.locale;
-          this.errorCode = null;
+          this.applyServerSnapshot(message.payload as Snapshot);
           if (first) this.sendHeld();
         } else if (message.type === "error") {
           this.errorCode = String(message.payload?.code ?? "generic");
-          this.pendingMove = null;
+          if (this.source === "server") this.pendingMove = null;
         }
       });
       socket.addEventListener("close", (event) => {
         if (this.socket !== socket) return;
         this.socket = null;
-        this.pendingMove = null;
+        if (this.source === "server") this.pendingMove = null;
         this.clearProbe();
         if (this.deliberatelyClosed) return;
         if (event.code === CLOSE_REPLACED) {
@@ -278,7 +337,7 @@ export const useGameStore = defineStore("game", {
         if (this.socket !== socket) return;
         // Its close event may never come; stop listening and start over.
         this.socket = null;
-        this.pendingMove = null;
+        if (this.source === "server") this.pendingMove = null;
         socket.close();
         this.connection = "offline";
         this.beginQuiet();
@@ -322,13 +381,9 @@ export const useGameStore = defineStore("game", {
      */
     move(column: number): boolean {
       const game = this.game;
-      if (
-        !game ||
-        !this.canMove ||
-        this.socket?.readyState !== WebSocket.OPEN
-      ) {
-        return false;
-      }
+      const reachable =
+        this.source === "local" || this.socket?.readyState === WebSocket.OPEN;
+      if (!game || !this.canMove || !reachable) return false;
       this.pendingMove = { column, index: game.history.length };
       this.send("game.move", { column });
       return true;
@@ -344,6 +399,169 @@ export const useGameStore = defineStore("game", {
         game.turn === game.you &&
         game.history.length === pending.index;
       if (!waiting) this.pendingMove = null;
+    },
+
+    /** The server's state; while a local game runs, only its profile shows. */
+    applyServerSnapshot(snapshot: Snapshot) {
+      this.serverSnapshot = snapshot;
+      this.savedSession = snapshot.session;
+      const giveUp = this.source === "local" || this.abandonedSearch;
+      const conflict = giveUp && this.leaveServerState(snapshot);
+      if (this.source === "local" && this.snapshot) {
+        this.snapshot = { ...this.snapshot, session: snapshot.session };
+      } else if (conflict) {
+        // Left already: the lobby shows, not the search or game being left.
+        this.snapshot = {
+          ...snapshot,
+          queue: { searching: false },
+          room: null,
+          game: null,
+        };
+      } else {
+        this.snapshot = snapshot;
+        this.settleMove();
+      }
+      if (typeof snapshot.server_time === "number") {
+        this.clockOffset = snapshot.server_time - Date.now() / 1000;
+      }
+      i18n.global.locale.value = snapshot.session.locale;
+      this.errorCode = null;
+    },
+
+    /**
+     * The on-device game (3.2.0). Its code, WASM engine and reply table load
+     * on first use, so the website never downloads them.
+     */
+    localGame(): Promise<LocalGame> {
+      if (this.local) return Promise.resolve(this.local);
+      this.localLoading ??= markRaw(
+        Promise.all([
+          import("../local/localGame"),
+          import("../local/aiClient"),
+        ]).then(([{ LocalGame }, { createWorkerEngine }]) => {
+          const local = new LocalGame((message) => this.applyLocal(message), {
+            engine: createWorkerEngine,
+            session: () =>
+              this.serverSnapshot?.session ??
+              this.savedSession ?? {
+                nickname: "",
+                locale: i18n.global.locale
+                  .value as Snapshot["session"]["locale"],
+              },
+          });
+          this.local = markRaw(local);
+          return local;
+        }),
+      );
+      const loading = this.localLoading;
+      loading.catch(() => {
+        // Loading can be tried again.
+        if (this.localLoading === loading) this.localLoading = null;
+      });
+      return loading;
+    },
+
+    /**
+     * A local AI game never coexists with a place in the queue, a room or a
+     * game on the server (docs/protocol.md App 本機 AI 局). Leaves them;
+     * returns whether there was one.
+     */
+    leaveServerState(snapshot: Snapshot): boolean {
+      const type =
+        snapshot.room || snapshot.game
+          ? "game.leave"
+          : snapshot.queue.searching
+            ? "queue.leave"
+            : null;
+      if (!type) {
+        this.abandonedSearch = false;
+        return false;
+      }
+      if (this.socket?.readyState === WebSocket.OPEN) {
+        this.socket.send(JSON.stringify({ type, payload: {} }));
+      }
+      return true;
+    },
+
+    /** Starts an AI game on the device instead of on the server. */
+    async startLocal() {
+      if (this.source === "local") return;
+      const server = this.serverSnapshot;
+      if (server?.room || server?.game) {
+        // As the server answers game.ai.start (manager.py _require_available).
+        this.errorCode = "already_in_game";
+        return;
+      }
+      // Offline, the AI gives the search up; see leaveServerState.
+      const giveUpSearch = Boolean(server?.queue.searching);
+      if (giveUpSearch && this.serverConnection !== "offline") {
+        this.errorCode = "already_searching";
+        return;
+      }
+      let local: LocalGame;
+      try {
+        local = await this.localGame();
+      } catch {
+        this.errorCode = "generic";
+        return;
+      }
+      // A second tap while the engine loaded has started the game already.
+      if ((this.source as Source) === "local") return;
+      if (giveUpSearch) this.abandonedSearch = true;
+      this.source = "local";
+      this.localEpoch += 1;
+      local.handle("game.ai.start");
+    },
+
+    /** Resumes the on-device game the app was closed during. */
+    async restoreLocal() {
+      let saved: SavedLocal | null = null;
+      try {
+        const raw = await localGameStore.get();
+        saved = raw ? (JSON.parse(raw) as SavedLocal) : null;
+      } catch {
+        saved = null;
+      }
+      if (!saved?.game) return;
+      if (saved.session) this.savedSession = saved.session;
+      let local: LocalGame;
+      try {
+        local = await this.localGame();
+      } catch {
+        return;
+      }
+      this.source = "local";
+      this.localEpoch += 1;
+      local.restore(saved.game);
+      // An unreadable save is dropped, as if the game had been left.
+      if (!local.serialize()) {
+        this.source = "server";
+        persistLocal(null);
+      }
+    },
+
+    /** A reply from the on-device game, handled like the server's. */
+    applyLocal(message: Outgoing) {
+      if (this.source !== "local") return;
+      if (message.type === "error") {
+        this.errorCode = message.payload.code;
+        this.pendingMove = null;
+        return;
+      }
+      const snapshot = message.payload;
+      if (!snapshot.game) {
+        // Left the game: back to the server's state, the lobby.
+        this.source = "server";
+        this.pendingMove = null;
+        this.snapshot = this.serverSnapshot ?? snapshot;
+        persistLocal(null);
+        return;
+      }
+      this.snapshot = snapshot;
+      this.settleMove();
+      this.errorCode = null;
+      const game = this.local?.serialize();
+      if (game) persistLocal({ session: snapshot.session, game });
     },
 
     /** Takes the session back from the tab that replaced this one. */
@@ -371,6 +589,14 @@ export const useGameStore = defineStore("game", {
     },
 
     send(type: string, payload: Record<string, unknown> = {}) {
+      if (this.source === "local" && LOCAL_MESSAGES.has(type)) {
+        this.local?.handle(type, payload);
+        return;
+      }
+      if (type === "game.ai.start" && usesLocalAi()) {
+        void this.startLocal();
+        return;
+      }
       if (this.socket?.readyState === WebSocket.OPEN) {
         this.socket.send(JSON.stringify({ type, payload }));
         return;
@@ -408,7 +634,7 @@ export const useGameStore = defineStore("game", {
       }
       if (!response.ok) throw new ProfileError("generic");
       const session = await sessionFrom(response);
-      if (this.snapshot) this.snapshot.session = session;
+      this.keepSession(session);
       i18n.global.locale.value = locale;
       this.send("state.request");
     },

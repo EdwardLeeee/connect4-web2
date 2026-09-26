@@ -135,11 +135,52 @@ describe("LocalGame speaks the server's AI protocol", () => {
     await settle();
     answer(3);
     await settle();
-    expect(dispose).toHaveBeenCalled();
+    // The engine stays for the next game; only its answer is dropped.
+    expect(dispose).not.toHaveBeenCalled();
     expect(messages.at(-1)).toMatchObject({
       payload: { room: null, game: null },
     });
     expect(game.serialize()).toBeNull();
+  });
+
+  it("keeps one engine from game to game until it is disposed", async () => {
+    const dispose = vi.fn();
+    const engine = vi.fn(() => ({ ...exactEngine(), dispose }));
+    const { game } = harness(engine);
+    game.handle("game.ai.start");
+    await settle();
+    game.handle("game.leave");
+    await settle();
+    game.handle("game.ai.start");
+    await settle();
+    expect(engine).toHaveBeenCalledTimes(1);
+    game.dispose();
+    expect(dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts a new engine when a failed game is tried again", async () => {
+    const broken = { ...failingEngine(), dispose: vi.fn() };
+    const engine = vi
+      .fn<() => AiEngine>()
+      .mockReturnValueOnce(broken)
+      .mockImplementation(exactEngine);
+    const { game, messages } = harness(engine);
+    game.handle("game.ai.start");
+    game.handle("game.move", { column: 3 });
+    await settle();
+    expect(messages.at(-1)).toMatchObject({
+      payload: { game: { status: "error" } },
+    });
+
+    game.handle("game.ai.retry");
+    await settle();
+    expect(broken.dispose).toHaveBeenCalled();
+    expect(engine).toHaveBeenCalledTimes(2);
+    game.handle("game.move", { column: 3 });
+    await settle();
+    expect(messages.at(-1)).toMatchObject({
+      payload: { game: { status: "playing", history: "44" } },
+    });
   });
 
   it("restores a saved game and lets the AI finish the move it was thinking about", async () => {
