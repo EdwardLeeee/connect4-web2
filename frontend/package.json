@@ -17,6 +17,7 @@
     "@capacitor/core": "8.5.2",
     "@capacitor/preferences": "8.0.1",
     "@capacitor/share": "8.0.2",
+    "connect-four-ai-wasm": "1.0.0",
     "pinia": "^3.0.3",
     "qrcode-generator": "^2.0.4",
     "vue": "^3.5.43",

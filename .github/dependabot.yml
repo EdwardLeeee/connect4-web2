@@ -8,6 +8,9 @@ updates:
       interval: weekly
     ignore:
       - dependency-name: "@capacitor/*"
+      # The app's on-device AI must be the server's engine version; it moves together with
+      # native_solver's connect-four-ai and a regenerated reply table, by hand.
+      - dependency-name: "connect-four-ai-wasm"
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
@@ -31,6 +34,9 @@ updates:
     directory: /native_solver
     schedule:
       interval: weekly
+    ignore:
+      # Upgraded by hand with connect-four-ai-wasm and a regenerated reply table.
+      - dependency-name: "connect-four-ai"
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]

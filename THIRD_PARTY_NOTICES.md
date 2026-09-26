@@ -1,6 +1,8 @@
 # Third-Party Notices
 
-The native game engine depends on `connect-four-ai` 1.0.0.
+The native game engine depends on `connect-four-ai` 1.0.0, and the app's on-device
+AI on its WebAssembly build `connect-four-ai-wasm` 1.0.0; both are released under
+this license.
 
 MIT License
 
