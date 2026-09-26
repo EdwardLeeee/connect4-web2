@@ -144,6 +144,8 @@ export const useGameStore = defineStore("game", {
     serverSnapshot: null as Snapshot | null,
     // The last profile seen, for a local game resumed without a network.
     savedSession: null as Snapshot["session"] | null,
+    // A search given up offline for a local game; the server hears on reconnect.
+    abandonedSearch: false,
     // server_time minus the local clock, in seconds, from the latest snapshot.
     clockOffset: 0,
   }),
@@ -153,15 +155,15 @@ export const useGameStore = defineStore("game", {
     room: (state) => state.snapshot?.room ?? null,
     searching: (state) => state.snapshot?.queue.searching ?? false,
     session: (state) => state.snapshot?.session ?? null,
-    /**
-     * The connection the screen shows: a drop stays quiet for QUIET_MS, and a
-     * local game, which needs none, shows no connection notice at all.
-     */
-    shownConnection: (state): ConnectionState => {
-      if (state.source === "local" && state.connection !== "replaced") {
+    /** The server connection as shown: a drop stays quiet for QUIET_MS. */
+    serverConnection: (state): ConnectionState =>
+      state.quiet ? "online" : state.connection,
+    /** The connection the screen shows; a local game needs none and shows none. */
+    shownConnection(): ConnectionState {
+      if (this.source === "local" && this.connection !== "replaced") {
         return "online";
       }
-      return state.quiet ? "online" : state.connection;
+      return this.serverConnection;
     },
     /**
      * Changes within one epoch animate; a new connection, or a local game
@@ -403,8 +405,18 @@ export const useGameStore = defineStore("game", {
     applyServerSnapshot(snapshot: Snapshot) {
       this.serverSnapshot = snapshot;
       this.savedSession = snapshot.session;
+      const giveUp = this.source === "local" || this.abandonedSearch;
+      const conflict = giveUp && this.leaveServerState(snapshot);
       if (this.source === "local" && this.snapshot) {
         this.snapshot = { ...this.snapshot, session: snapshot.session };
+      } else if (conflict) {
+        // Left already: the lobby shows, not the search or game being left.
+        this.snapshot = {
+          ...snapshot,
+          queue: { searching: false },
+          room: null,
+          game: null,
+        };
       } else {
         this.snapshot = snapshot;
         this.settleMove();
@@ -449,9 +461,43 @@ export const useGameStore = defineStore("game", {
       return loading;
     },
 
+    /**
+     * A local AI game never coexists with a place in the queue, a room or a
+     * game on the server (docs/protocol.md App 本機 AI 局). Leaves them;
+     * returns whether there was one.
+     */
+    leaveServerState(snapshot: Snapshot): boolean {
+      const type =
+        snapshot.room || snapshot.game
+          ? "game.leave"
+          : snapshot.queue.searching
+            ? "queue.leave"
+            : null;
+      if (!type) {
+        this.abandonedSearch = false;
+        return false;
+      }
+      if (this.socket?.readyState === WebSocket.OPEN) {
+        this.socket.send(JSON.stringify({ type, payload: {} }));
+      }
+      return true;
+    },
+
     /** Starts an AI game on the device instead of on the server. */
     async startLocal() {
       if (this.source === "local") return;
+      const server = this.serverSnapshot;
+      if (server?.room || server?.game) {
+        // As the server answers game.ai.start (manager.py _require_available).
+        this.errorCode = "already_in_game";
+        return;
+      }
+      // Offline, the AI gives the search up; see leaveServerState.
+      const giveUpSearch = Boolean(server?.queue.searching);
+      if (giveUpSearch && this.serverConnection !== "offline") {
+        this.errorCode = "already_searching";
+        return;
+      }
       let local: LocalGame;
       try {
         local = await this.localGame();
@@ -461,6 +507,7 @@ export const useGameStore = defineStore("game", {
       }
       // A second tap while the engine loaded has started the game already.
       if ((this.source as Source) === "local") return;
+      if (giveUpSearch) this.abandonedSearch = true;
       this.source = "local";
       this.localEpoch += 1;
       local.handle("game.ai.start");

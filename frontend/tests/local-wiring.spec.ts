@@ -269,3 +269,94 @@ describe("AI games on the website", () => {
     expect(store.local).toBeNull();
   });
 });
+
+// docs/protocol.md App 本機 AI 局: a local game never coexists with a place
+// in the queue, a room or a game on the server.
+describe("the server's queue, rooms and games", () => {
+  async function connectedTo(id: "P01" | "P02") {
+    const store = useGameStore();
+    await store.initialise();
+    latest().connect(id);
+    return store;
+  }
+
+  it("refuse the AI while searching, as the server does", async () => {
+    const store = await connectedTo("P01");
+    store.send("game.ai.start");
+    await settle();
+    expect(store.errorCode).toBe("already_searching");
+    expect(store.source).toBe("server");
+    expect(latest().sent).toEqual([]);
+  });
+
+  it("refuse the AI while in a room", async () => {
+    const store = await connectedTo("P02");
+    store.send("game.ai.start");
+    await settle();
+    expect(store.errorCode).toBe("already_in_game");
+    expect(store.source).toBe("server");
+  });
+
+  it("refuse the AI during the grace after a drop, as if online", async () => {
+    const store = await connectedTo("P01");
+    latest().emit("close");
+    store.send("game.ai.start");
+    await settle();
+    expect(store.errorCode).toBe("already_searching");
+    expect(store.source).toBe("server");
+  });
+
+  async function searchGivenUpOffline() {
+    const store = await connectedTo("P01");
+    latest().emit("close");
+    // Past the grace, and every retry fails: offline.
+    for (const wait of [2000, 1000, 2000]) {
+      await vi.advanceTimersByTimeAsync(wait);
+      await settle();
+      latest().emit("close");
+    }
+    expect(store.serverConnection).toBe("offline");
+    await start(store);
+    expect(store.source).toBe("local");
+    expect(store.abandonedSearch).toBe(true);
+    return store;
+  }
+
+  async function reconnect(id: "P01" | "P04") {
+    await vi.advanceTimersByTimeAsync(5000);
+    await settle();
+    latest().connect(id);
+  }
+
+  it("give the search up offline, and leave the queue on reconnect", async () => {
+    const store = await searchGivenUpOffline();
+    await reconnect("P01");
+    expect(latest().sent).toEqual(["queue.leave"]);
+    expect(store.room?.id).toMatch(/^local-/);
+    latest().connect("L01");
+    expect(store.abandonedSearch).toBe(false);
+    expect(store.room?.id).toMatch(/^local-/);
+  });
+
+  it("leave a game the server matched on reconnect", async () => {
+    const store = await searchGivenUpOffline();
+    await reconnect("P04");
+    expect(latest().sent).toEqual(["game.leave"]);
+    // The local game stays on screen throughout.
+    expect(store.source).toBe("local");
+    expect(store.room?.id).toMatch(/^local-/);
+    expect(store.game?.you).toBe("green");
+  });
+
+  it("leave the queue even if the local game ended first", async () => {
+    const store = await searchGivenUpOffline();
+    store.send("game.leave");
+    await settle();
+    expect(store.source).toBe("server");
+    await reconnect("P01");
+    expect(latest().sent).toEqual(["queue.leave"]);
+    // The lobby shows, not the search being left.
+    expect(store.searching).toBe(false);
+    expect(store.hasActivity).toBe(false);
+  });
+});
