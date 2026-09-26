@@ -51,7 +51,7 @@ async def test_session_cookie_and_profile_update() -> None:
             json={"nickname": "測試玩家", "locale": "zh-TW"},
         )
         assert updated.status_code == 200
-        assert updated.json() == {"nickname": "測試玩家", "locale": "zh-TW"}
+        assert updated.json() == {"nickname": "測試玩家", "locale": "zh-TW", "created": False}
 
 
 @pytest.mark.asyncio
@@ -179,15 +179,22 @@ def test_app_gets_a_token_instead_of_a_cookie(fresh_manager: GameManager, origin
     assert first.headers["access-control-allow-origin"] == origin
     token = first.json()["token"]
 
+    assert first.json()["created"] is True
+
     again = client.get("/api/session", headers=app_headers(origin, token))
-    assert again.json() == first.json()
+    assert again.json() == {**first.json(), "created": False}
 
     renamed = client.patch(
         "/api/session",
         headers=app_headers(origin, token),
         json={"nickname": "App 玩家", "locale": "en"},
     )
-    assert renamed.json() == {"nickname": "App 玩家", "locale": "en", "token": token}
+    assert renamed.json() == {
+        "nickname": "App 玩家",
+        "locale": "en",
+        "token": token,
+        "created": False,
+    }
     assert "set-cookie" not in renamed.headers
     assert fresh_manager.sessions.get(token).nickname == "App 玩家"  # type: ignore[union-attr]
 
@@ -302,7 +309,7 @@ def test_app_origin_without_the_app_protocol_is_rejected(fresh_manager: GameMana
 def test_site_cookie_flow_is_unchanged(fresh_manager: GameManager) -> None:
     client = TestClient(app)
     first = client.get("/api/session", headers={"Origin": SITE_ORIGIN})
-    assert first.json().keys() == {"nickname", "locale"}
+    assert first.json().keys() == {"nickname", "locale", "created"}
     assert "access-control-allow-origin" not in first.headers
     cookie = client.cookies[SESSION_COOKIE]
 
@@ -311,7 +318,7 @@ def test_site_cookie_flow_is_unchanged(fresh_manager: GameManager) -> None:
         headers={"Origin": SITE_ORIGIN, "Authorization": "Bearer ignored"},
         json={"nickname": "網站玩家", "locale": "zh-TW"},
     )
-    assert patched.json() == {"nickname": "網站玩家", "locale": "zh-TW"}
+    assert patched.json() == {"nickname": "網站玩家", "locale": "zh-TW", "created": False}
     session = fresh_manager.sessions.get(cookie)
     assert session is not None
     assert session.nickname == "網站玩家"
@@ -320,3 +327,106 @@ def test_site_cookie_flow_is_unchanged(fresh_manager: GameManager) -> None:
         assert websocket.accepted_subprotocol is None
         snapshot = websocket.receive_json()
     assert snapshot["payload"]["session"]["nickname"] == "網站玩家"
+
+
+def restart_server(monkeypatch: pytest.MonkeyPatch) -> GameManager:
+    """Sessions live in memory, so a restart is a fresh manager behind the same app."""
+    fresh = GameManager(ai_min_think_seconds=0)
+    monkeypatch.setattr(app_module, "manager", fresh)
+    return fresh
+
+
+def test_site_session_reports_whether_it_was_just_created(
+    fresh_manager: GameManager, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = TestClient(app)
+    first = client.get("/api/session", headers={"Origin": SITE_ORIGIN})
+    assert first.json()["created"] is True
+    cookie = client.cookies[SESSION_COOKIE]
+
+    again = client.get("/api/session", headers={"Origin": SITE_ORIGIN})
+    assert again.json()["created"] is False
+    assert "set-cookie" not in again.headers
+
+    restart_server(monkeypatch)
+    after_restart = client.get("/api/session", headers={"Origin": SITE_ORIGIN})
+    assert after_restart.json()["created"] is True
+    assert client.cookies[SESSION_COOKIE] != cookie
+
+
+def test_app_session_reports_whether_it_was_just_created(
+    fresh_manager: GameManager, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = TestClient(app)
+    first = client.get("/api/session", headers=app_headers(IOS_ORIGIN)).json()
+    assert first["created"] is True
+
+    again = client.get("/api/session", headers=app_headers(IOS_ORIGIN, first["token"])).json()
+    assert again["created"] is False
+    assert again["token"] == first["token"]
+
+    restart_server(monkeypatch)
+    after_restart = client.get(
+        "/api/session", headers=app_headers(IOS_ORIGIN, first["token"])
+    ).json()
+    assert after_restart["created"] is True
+    assert after_restart["token"] != first["token"]
+
+
+def test_site_profile_update_on_a_lost_session_applies_to_the_new_one(
+    fresh_manager: GameManager, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = TestClient(app)
+    client.get("/api/session", headers={"Origin": SITE_ORIGIN})
+    kept = client.patch(
+        "/api/session",
+        headers={"Origin": SITE_ORIGIN},
+        json={"nickname": "老玩家", "locale": "en"},
+    )
+    assert kept.json() == {"nickname": "老玩家", "locale": "en", "created": False}
+    cookie = client.cookies[SESSION_COOKIE]
+
+    restarted = restart_server(monkeypatch)
+    restored = client.patch(
+        "/api/session",
+        headers={"Origin": SITE_ORIGIN},
+        json={"nickname": "老玩家", "locale": "en"},
+    )
+    assert restored.json() == {"nickname": "老玩家", "locale": "en", "created": True}
+    new_cookie = client.cookies[SESSION_COOKIE]
+    assert new_cookie != cookie
+    assert restarted.sessions.get(new_cookie).nickname == "老玩家"  # type: ignore[union-attr]
+
+
+def test_app_profile_update_on_a_lost_session_applies_to_the_new_one(
+    fresh_manager: GameManager, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = TestClient(app)
+    token = client.get("/api/session", headers=app_headers(ANDROID_ORIGIN)).json()["token"]
+
+    restarted = restart_server(monkeypatch)
+    restored = client.patch(
+        "/api/session",
+        headers=app_headers(ANDROID_ORIGIN, token),
+        json={"nickname": "App 玩家", "locale": "en"},
+    ).json()
+    assert restored["created"] is True
+    assert restored["token"] != token
+    session = restarted.sessions.get(restored["token"])
+    assert session is not None
+    assert (session.nickname, session.locale) == ("App 玩家", "en")
+
+
+def test_restoring_an_invalid_nickname_keeps_the_default(fresh_manager: GameManager) -> None:
+    client = TestClient(app)
+    token = client.get("/api/session", headers=app_headers(IOS_ORIGIN)).json()["token"]
+    refused = client.patch(
+        "/api/session",
+        headers=app_headers(IOS_ORIGIN, token),
+        json={"nickname": "x" * 19, "locale": "en"},
+    )
+    assert refused.status_code == 422
+    session = fresh_manager.sessions.get(token)
+    assert session is not None
+    assert session.nickname.startswith("玩家 ")
+    assert session.locale == "zh-TW"
