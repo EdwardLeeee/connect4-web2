@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { isNative } from "../native";
 import { ProfileError, useGameStore } from "../stores/game";
+import { clauses } from "../utils/presentation";
 import AppIcon from "./AppIcon.vue";
 
 const emit = defineEmits<{ close: [] }>();
@@ -22,10 +23,15 @@ function openPrivacy(event: MouseEvent) {
 const store = useGameStore();
 const { t } = useI18n();
 const nickname = ref(store.session?.nickname ?? "");
-const locale = ref<"zh-TW" | "en">(store.session?.locale ?? "zh-TW");
+const locale = ref<"zh-TW" | "en">(store.shownLocale);
 const errorCode = ref<string | null>(null);
+// 3.2.0 app 離線 03: offline the nickname is locked and only the language
+// changes, at once; an empty nickname is then no error either.
+const offline = computed(() => store.serverConnection === "offline");
 // L10: an empty nickname is caught while typing, before anything is sent.
-const nicknameEmpty = computed(() => nickname.value.trim() === "");
+const nicknameEmpty = computed(
+  () => !offline.value && nickname.value.trim() === "",
+);
 const fieldError = computed(() =>
   nicknameEmpty.value
     ? "errNicknameEmpty"
@@ -81,8 +87,10 @@ async function save() {
         <span class="field-label">{{ t("profile.nickname") }}</span>
         <input
           v-model="nickname"
+          :disabled="offline"
           :class="{
             'has-error': nicknameEmpty || errorCode === 'invalid_nickname',
+            'is-locked': offline,
           }"
           maxlength="18"
           autocomplete="nickname"
@@ -108,6 +116,16 @@ async function save() {
           <AppIcon name="chevron" />
         </span>
       </label>
+      <p v-if="offline" class="notice-banner sheet-note" role="status">
+        <AppIcon name="wifiOff" />
+        <span class="clauses">
+          <span
+            v-for="(part, index) in clauses(t('profile.offlineNote'))"
+            :key="index"
+            >{{ part }}</span
+          >
+        </span>
+      </p>
       <div class="sheet-actions">
         <button class="btn secondary" type="button" @click="emit('close')">
           <span>{{ t("common.cancel") }}</span>

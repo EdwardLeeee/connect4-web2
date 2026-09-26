@@ -34,6 +34,9 @@ const messages = {
       matchmakingBody: "立即配對線上玩家，看看誰能先連成四子。",
       matchmakingAction: "開始配對",
       offline: "連線恢復前無法開始對局。",
+      // The app plays the AI on the device (3.2.0 app 離線 01, 04c).
+      offlineApp: "沒有網路也沒關係，挑戰 AI 隨時都能玩！",
+      needsInternet: "需要網路",
       inviteEyebrow: "邀請",
       inviteTitle: "朋友邀請你一起玩",
       inviteRoom: "房間",
@@ -51,6 +54,7 @@ const messages = {
       title: "玩家設定",
       nickname: "暱稱",
       errNicknameEmpty: "請先輸入暱稱",
+      offlineNote: "目前離線：暱稱要連線後才能改，語言可以直接切換。",
       // App only (spec: App（iOS／Android）專用).
       privacyPolicy: "隱私權政策",
       appVersion: "版本 {v}",
@@ -139,6 +143,8 @@ const messages = {
       offline: "連線中斷，正在重試…",
       // Phones (spec: 窄螢幕 01); Chinese fits as it is.
       offlineShort: "連線中斷，正在重試…",
+      // The app's lobby, where the AI still works (3.2.0 app 離線 04a).
+      offlineApp: "離線",
     },
     errors: {
       room_not_found: "找不到這個房間。",
@@ -200,6 +206,8 @@ const messages = {
       matchmakingBody: "Jump into a live match and race to connect four first.",
       matchmakingAction: "Find a match",
       offline: "You can start a game once the connection is back.",
+      offlineApp: "No internet? No problem. The AI game works anytime!",
+      needsInternet: "Needs internet",
       inviteEyebrow: "Invite",
       inviteTitle: "A friend invited you to play",
       inviteRoom: "Room",
@@ -219,6 +227,8 @@ const messages = {
       title: "Player settings",
       nickname: "Nickname",
       errNicknameEmpty: "Enter a nickname first",
+      offlineNote:
+        "You're offline. Your nickname can change once you're back online; the language can change now.",
       // App only (spec: App（iOS／Android）專用).
       privacyPolicy: "Privacy Policy",
       appVersion: "Version {v}",
@@ -311,6 +321,7 @@ const messages = {
       offline: "Connection lost. Retrying…",
       // Phones (spec: 窄螢幕 01): the long text wraps next to the brand.
       offlineShort: "Reconnecting…",
+      offlineApp: "Offline",
     },
     errors: {
       room_not_found: "That room does not exist.",

@@ -7,6 +7,7 @@ import OtherTabScreen from "./components/OtherTabScreen.vue";
 import ProfileSheet from "./components/ProfileSheet.vue";
 import { useMedia } from "./composables/useMedia";
 import { useProfileSheet } from "./composables/useProfileSheet";
+import { usesLocalAi } from "./native";
 import { useGameStore } from "./stores/game";
 import { roomCodeFrom } from "./utils/invite";
 
@@ -20,9 +21,18 @@ const profileOpen = useProfileSheet();
 // its own screen instead (P15). A quick reconnect shows nothing.
 // Narrow screens (320–389px, spec 01): phones use the short "offline" text.
 const phone = useMedia("(max-width: 620px)");
+// 3.2.0 app 離線 04a: offline in the app's lobby, where the AI still works,
+// the pill just says 「離線」 and the brand text stays from 360px up.
+const lobbyOffline = computed(
+  () =>
+    usesLocalAi() &&
+    store.shownConnection === "offline" &&
+    view.value === "lobby",
+);
 const connectionLabel = computed(() => {
   if (store.shownConnection === "connecting") return t("connection.connecting");
   if (store.shownConnection === "offline") {
+    if (lobbyOffline.value) return t("connection.offlineApp");
     return t(phone.value ? "connection.offlineShort" : "connection.offline");
   }
   return "";
@@ -84,7 +94,11 @@ onUnmounted(() => {
     class="app"
     :class="[
       `view-${view}`,
-      { 'has-sheet': profileOpen, 'has-connection': connectionLabel },
+      {
+        'has-sheet': profileOpen,
+        'has-connection': connectionLabel && !lobbyOffline,
+        'has-connection-short': lobbyOffline,
+      },
     ]"
   >
     <header class="topbar">

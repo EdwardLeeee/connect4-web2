@@ -2,12 +2,19 @@ import { defineStore } from "pinia";
 import { markRaw, type Raw } from "vue";
 import { i18n } from "../i18n";
 import type { LocalGame, Outgoing, SavedGame } from "../local/localGame";
-import { isNative, localGameStore, tokenStore, usesLocalAi } from "../native";
+import {
+  isNative,
+  localGameStore,
+  profileMemory,
+  tokenStore,
+  usesLocalAi,
+} from "../native";
 import type { Snapshot } from "../types";
 import { apiUrl, socketUrl } from "../utils/origin";
 
 type ConnectionState = "connecting" | "online" | "offline" | "replaced";
 type Source = "server" | "local";
+type Locale = Snapshot["session"]["locale"];
 
 // The server closes an older socket with this code when the same session opens
 // a newer one (manager.py CLOSE_REPLACED). Reconnecting would evict the newer tab.
@@ -144,6 +151,10 @@ export const useGameStore = defineStore("game", {
     serverSnapshot: null as Snapshot | null,
     // The last profile seen, for a local game resumed without a network.
     savedSession: null as Snapshot["session"] | null,
+    // A language chosen offline (3.2.0 app 離線 03): shown at once, and sent
+    // to the server once connected; kept on the device until then.
+    pendingLocale: null as Locale | null,
+    syncingLocale: false,
     // A search given up offline for a local game; the server hears on reconnect.
     abandonedSearch: false,
     // server_time minus the local clock, in seconds, from the latest snapshot.
@@ -154,7 +165,22 @@ export const useGameStore = defineStore("game", {
     game: (state) => state.snapshot?.game ?? null,
     room: (state) => state.snapshot?.room ?? null,
     searching: (state) => state.snapshot?.queue.searching ?? false,
-    session: (state) => state.snapshot?.session ?? null,
+    /**
+     * The profile shown. Before the server answers, the app shows the last
+     * one it saw (3.2.0 app 離線 04b); the website waits for the server.
+     */
+    session: (state) =>
+      state.snapshot?.session ??
+      (usesLocalAi() ? state.savedSession : null) ??
+      null,
+    /** The language shown: one chosen offline wins over the server's. */
+    shownLocale(): Locale {
+      return (
+        this.pendingLocale ??
+        this.session?.locale ??
+        (i18n.global.locale.value as Locale)
+      );
+    },
     /** The server connection as shown: a drop stays quiet for QUIET_MS. */
     serverConnection: (state): ConnectionState =>
       state.quiet ? "online" : state.connection,
@@ -194,17 +220,92 @@ export const useGameStore = defineStore("game", {
       if (!response.ok) throw new Error("Unable to create session");
       const session = await sessionFrom(response);
       this.keepSession(session);
-      i18n.global.locale.value = session.locale;
+      this.applyLocale(session.locale);
+    },
+
+    /** Shows the server's language, unless one chosen offline waits to sync. */
+    applyLocale(serverLocale: Locale) {
+      i18n.global.locale.value = this.pendingLocale ?? serverLocale;
+    },
+
+    /** The last profile seen; the app keeps it for offline launches (04b). */
+    rememberSession(session: Snapshot["session"]) {
+      const known = this.savedSession;
+      this.savedSession = session;
+      const changed =
+        known?.nickname !== session.nickname ||
+        known?.locale !== session.locale;
+      if (changed && usesLocalAi()) void profileMemory.rememberSession(session);
+    },
+
+    setPendingLocale(locale: Locale | null) {
+      this.pendingLocale = locale;
+      void profileMemory.setPendingLocale(locale);
+    },
+
+    /**
+     * The nickname sent with a language that syncs after being chosen
+     * offline. Decided here only: for now the server's current one.
+     */
+    syncNickname(): string | null {
+      return (
+        this.serverSnapshot?.session.nickname ??
+        this.savedSession?.nickname ??
+        null
+      );
+    },
+
+    /** Sends a language chosen offline, with the nickname, once connected. */
+    async syncPendingLocale() {
+      const locale = this.pendingLocale;
+      const nickname = this.syncNickname();
+      if (!locale || nickname === null || this.syncingLocale) return;
+      this.syncingLocale = true;
+      try {
+        // PATCH needs both fields: without a locale it falls back to zh-TW.
+        const response = await sessionRequest({
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nickname, locale }),
+        });
+        if (response.status === 422) {
+          // The server will not take it; its language stands.
+          this.setPendingLocale(null);
+          if (this.session) this.applyLocale(this.session.locale);
+          return;
+        }
+        if (!response.ok) return;
+        const session = await sessionFrom(response);
+        // A newer choice made meanwhile still waits.
+        if (this.pendingLocale === locale) this.setPendingLocale(null);
+        this.keepSession(session);
+        this.applyLocale(session.locale);
+        this.send("state.request");
+      } catch {
+        // Offline again: tried on the next connection.
+      } finally {
+        this.syncingLocale = false;
+      }
     },
 
     /** A new profile from the server, shown whoever runs the game. */
     keepSession(session: Snapshot["session"]) {
       if (this.snapshot) this.snapshot.session = session;
       if (this.serverSnapshot) this.serverSnapshot.session = session;
-      this.savedSession = session;
+      this.rememberSession(session);
     },
 
     async initialise() {
+      // What the device kept: a language chosen offline, and in the app the
+      // last profile, shown until the server answers.
+      const [pending, last] = await Promise.all([
+        profileMemory.pendingLocale(),
+        usesLocalAi() ? profileMemory.lastSession() : null,
+      ]);
+      this.pendingLocale = pending;
+      if (last) this.savedSession = last;
+      const locale = pending ?? last?.locale;
+      if (locale) i18n.global.locale.value = locale;
       // A game on the device resumes first, with or without a network.
       if (usesLocalAi()) await this.restoreLocal();
       this.recovering = true;
@@ -260,7 +361,10 @@ export const useGameStore = defineStore("game", {
             this.endQuiet();
           }
           this.applyServerSnapshot(message.payload as Snapshot);
-          if (first) this.sendHeld();
+          if (first) {
+            this.sendHeld();
+            void this.syncPendingLocale();
+          }
         } else if (message.type === "error") {
           this.errorCode = String(message.payload?.code ?? "generic");
           if (this.source === "server") this.pendingMove = null;
@@ -404,7 +508,7 @@ export const useGameStore = defineStore("game", {
     /** The server's state; while a local game runs, only its profile shows. */
     applyServerSnapshot(snapshot: Snapshot) {
       this.serverSnapshot = snapshot;
-      this.savedSession = snapshot.session;
+      this.rememberSession(snapshot.session);
       const giveUp = this.source === "local" || this.abandonedSearch;
       const conflict = giveUp && this.leaveServerState(snapshot);
       if (this.source === "local" && this.snapshot) {
@@ -424,7 +528,7 @@ export const useGameStore = defineStore("game", {
       if (typeof snapshot.server_time === "number") {
         this.clockOffset = snapshot.server_time - Date.now() / 1000;
       }
-      i18n.global.locale.value = snapshot.session.locale;
+      this.applyLocale(snapshot.session.locale);
       this.errorCode = null;
     },
 
@@ -523,7 +627,7 @@ export const useGameStore = defineStore("game", {
         saved = null;
       }
       if (!saved?.game) return;
-      if (saved.session) this.savedSession = saved.session;
+      this.savedSession ??= saved.session;
       let local: LocalGame;
       try {
         local = await this.localGame();
@@ -610,7 +714,15 @@ export const useGameStore = defineStore("game", {
       if (!NEVER_HELD.has(type)) this.held = { type, payload };
     },
 
-    async saveProfile(nickname: string, locale: "zh-TW" | "en") {
+    async saveProfile(nickname: string, locale: Locale) {
+      if (this.serverConnection === "offline") {
+        // 03: offline only the language changes, at once; the server hears
+        // it once connected. The nickname is not sent.
+        const serverLocale = this.serverSnapshot?.session.locale;
+        this.setPendingLocale(locale === serverLocale ? null : locale);
+        i18n.global.locale.value = locale;
+        return;
+      }
       let response: Response;
       try {
         response = await sessionRequest({
@@ -634,6 +746,8 @@ export const useGameStore = defineStore("game", {
       }
       if (!response.ok) throw new ProfileError("generic");
       const session = await sessionFrom(response);
+      // The latest choice has reached the server.
+      this.setPendingLocale(null);
       this.keepSession(session);
       i18n.global.locale.value = locale;
       this.send("state.request");

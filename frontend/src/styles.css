@@ -4337,6 +4337,70 @@ input.has-error:focus {
   }
 }
 
+/* ================= 3.2.0 app 離線 (design/spec.md) ================= */
+
+/* 01, 03: Chinese notices break only between clauses; two-line English
+   notices split evenly. */
+.clauses {
+  text-wrap: balance;
+}
+
+.clauses > span {
+  display: inline-block;
+}
+
+/* 03: the note above the profile sheet's buttons. */
+.notice-banner.sheet-note {
+  margin: 2px 0 14px;
+  padding: 10px 12px;
+  gap: 10px;
+  box-shadow: none;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.sheet-note .icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+}
+
+/* 03: offline the nickname is locked, and never shows an error. */
+.profile-sheet input.is-locked {
+  color: var(--muted);
+  border-style: dashed;
+  background: var(--disabled);
+}
+
+/* 04c: modes that need the internet, while the app is offline. */
+.needs-internet {
+  margin-left: 8px;
+  padding: 2px 9px;
+  display: inline-block;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  color: var(--ink);
+  background: var(--disabled);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.4;
+  vertical-align: 3px;
+  white-space: nowrap;
+}
+
+.is-unavailable .card-icon {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+
+/* 04a: the app's short 「離線」 pill keeps CONNECT 4 in view from 360px up;
+   narrower, it hides like any other pill (narrow screens 01). */
+@media (max-width: 359px) {
+  .app.has-connection-short .brand-text {
+    display: none;
+  }
+}
+
 /* ================= narrow screens 320–389px (design/spec.md, 2026-09-26) ================= */
 
 /* 01: while the connection pill shows on a phone, the brand keeps only its

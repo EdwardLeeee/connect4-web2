@@ -5,8 +5,10 @@ import { useRoute } from "vue-router";
 import AppIcon from "../components/AppIcon.vue";
 import InviteScreen from "../components/InviteScreen.vue";
 import MiniBoardDemo from "../components/MiniBoardDemo.vue";
+import { usesLocalAi } from "../native";
 import { useGameStore } from "../stores/game";
 import { roomCodeFrom } from "../utils/invite";
+import { clauses } from "../utils/presentation";
 
 const store = useGameStore();
 const route = useRoute();
@@ -21,6 +23,12 @@ const joinError = ref(false);
 const expandedPanel = ref<"friends" | "matchmaking" | null>(null);
 
 const offline = computed(() => store.shownConnection !== "online");
+// 3.2.0 app 離線: the app plays the AI on the device, so that stays open;
+// offline it says so and marks the modes that need the internet (01, 04c).
+const localAi = usesLocalAi();
+const appOffline = computed(
+  () => localAi && store.shownConnection === "offline",
+);
 
 function togglePanel(panel: "friends" | "matchmaking") {
   expandedPanel.value = expandedPanel.value === panel ? null : panel;
@@ -51,7 +59,14 @@ function onRoomCodeInput() {
       role="status"
     >
       <AppIcon name="wifiOff" />
-      <span>{{ t("lobby.offline") }}</span>
+      <span v-if="appOffline" class="clauses">
+        <span
+          v-for="(part, index) in clauses(t('lobby.offlineApp'))"
+          :key="index"
+          >{{ part }}</span
+        >
+      </span>
+      <span v-else>{{ t("lobby.offline") }}</span>
     </div>
 
     <div class="lobby-grid" :class="{ 'has-expanded': expandedPanel }">
@@ -67,7 +82,7 @@ function onRoomCodeInput() {
         <button
           class="btn primary big with-arrow"
           type="button"
-          :disabled="offline"
+          :disabled="offline && !localAi"
           @click="store.send('game.ai.start')"
         >
           <span>{{ t("lobby.aiAction") }}</span>
@@ -77,12 +92,20 @@ function onRoomCodeInput() {
 
       <article
         class="mode-card friend-card collapsible"
-        :class="{ 'is-expanded': expandedPanel === 'friends' }"
+        :class="{
+          'is-expanded': expandedPanel === 'friends',
+          'is-unavailable': appOffline,
+        }"
       >
         <div class="card-head">
           <span class="card-icon friends"><AppIcon name="friends" /></span>
           <div class="card-copy">
-            <h2 id="friends-title">{{ t("lobby.friendTitle") }}</h2>
+            <h2 id="friends-title">
+              {{ t("lobby.friendTitle")
+              }}<span v-if="appOffline" class="needs-internet">{{
+                t("lobby.needsInternet")
+              }}</span>
+            </h2>
             <p>{{ t("lobby.friendBody") }}</p>
           </div>
           <button
@@ -143,12 +166,20 @@ function onRoomCodeInput() {
 
       <article
         class="mode-card match-card-lobby collapsible"
-        :class="{ 'is-expanded': expandedPanel === 'matchmaking' }"
+        :class="{
+          'is-expanded': expandedPanel === 'matchmaking',
+          'is-unavailable': appOffline,
+        }"
       >
         <div class="card-head">
           <span class="card-icon match"><AppIcon name="match" /></span>
           <div class="card-copy">
-            <h2 id="match-title">{{ t("lobby.matchmakingTitle") }}</h2>
+            <h2 id="match-title">
+              {{ t("lobby.matchmakingTitle")
+              }}<span v-if="appOffline" class="needs-internet">{{
+                t("lobby.needsInternet")
+              }}</span>
+            </h2>
             <p>{{ t("lobby.matchmakingBody") }}</p>
           </div>
           <button

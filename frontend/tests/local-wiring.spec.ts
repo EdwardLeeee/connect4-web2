@@ -21,6 +21,12 @@ vi.mock("../src/native", () => ({
       native.saved = value;
     },
   },
+  profileMemory: {
+    lastSession: async () => null,
+    rememberSession: async () => {},
+    pendingLocale: async () => null,
+    setPendingLocale: async () => {},
+  },
   nativeShare: vi.fn(),
 }));
 
