@@ -192,11 +192,13 @@ iOS／Android app 的 AI 對局一律在手機上計算，有沒有網路都一�
 - **存檔**：進行中的對局（`history`、`series`、`revision`、是否故障）只存在手機上。app 重開後照
   `history` 重建棋盤；如果輪到 AI，AI 會重新計算，下出同一手。離開對局就刪除存檔。
 - **和伺服器上的狀態**：
-  - 連得上伺服器時，本機的 `game.ai.start` 照伺服器的規則擋：玩家在房間或對局中回
-    `already_in_game`，搜尋配對中回 `already_searching`。
-  - 離線時開始本機 AI 局，視為放棄搜尋：app 記下一個 `queue.leave`，重連後再送。
-  - 搜尋中的人在 30 秒內重連時，伺服器會在連線當下就配對（見「配對中斷線」）。所以重連後的第一個
-    snapshot 可能已經是真人局；這時 app 送 `game.leave`，對手會以 `left` 獲勝。
+  - 連得上伺服器時（包括剛斷線的短暫寬限內），本機的 `game.ai.start` 照最後一份伺服器 snapshot
+    擋：在房間或對局中回 `already_in_game`（先檢查），搜尋配對中回 `already_searching`。
+  - 離線時開始本機 AI 局，視為放棄搜尋。之後只要本機局還在進行，或放棄的搜尋還沒確認退出，app 對
+    每一份伺服器 snapshot 都會檢查：還在排隊就送 `queue.leave`，在房間或對局裡就送 `game.leave`，
+    直到伺服器回的是沒有排隊、沒有房間的大廳為止。本機局在重連前就結束了也一樣。
+  - 需要這樣做，是因為搜尋中的人在 30 秒內重連時，伺服器會在連線當下就配對（見「配對中斷線」），
+    重連後的第一份 snapshot 可能已經是真人局；這時送出的 `game.leave` 會讓對手以 `left` 獲勝。
 - **一致性測試**：`tests/local_parity.py` 從 `domain.py`、`manager.py` 與原生求解器錄下
   `frontend/tests/local/fixtures/`，`frontend/tests/local/` 用同一份資料驗證手機版。改了伺服器 AI 局的
   規則、訊息或錯誤代碼時，要執行 `.venv/bin/python tests/local_parity.py` 重新產生，並同步修改
