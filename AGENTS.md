@@ -31,3 +31,5 @@ History favors short, focused English or Chinese summaries. Use an imperative su
 ## Security & AI Guarantees
 
 Never trust client-supplied roles, turns, or results. Do not add heuristic or timed AI fallbacks: solver failure must remain explicit. Do not commit secrets, generated builds, browser binaries, or production certificates. Set secure cookies and allowed origins in production.
+
+Exception: in the iOS/Android app, AI games run entirely on the device with connect-four-ai-wasm, the same reply table and the same tie-break. Their moves and results never reach the server, and the server must never accept an AI game result from a client. Every server-hosted game — private rooms, matchmaking and the website's AI games — stays server-authoritative. The on-device engine follows the same no-heuristic, no-timed-fallback rule.

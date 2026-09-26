@@ -12,14 +12,27 @@ async function bytes(url: string): Promise<ArrayBuffer> {
   return response.arrayBuffer();
 }
 
+/** Without the table every move is still solved exactly, just more slowly. */
+async function loadTable(): Promise<ReplyTable | null> {
+  let problem: string;
+  try {
+    const table = ReplyTable.parse(await bytes(tableUrl));
+    if (table) return table;
+    problem = "malformed file";
+  } catch (error) {
+    problem = String(error);
+  }
+  // Logged so that a slow AI on a real phone can be traced to the missing table.
+  console.warn(
+    `[local-ai] reply table unavailable (${problem}); every move is solved live`,
+  );
+  return null;
+}
+
 const engine = (async () => {
   // Instantiating from bytes avoids depending on the app server's .wasm MIME type.
   await init({ module_or_path: await bytes(wasmUrl) });
-  // Without the table every move is still solved exactly, just more slowly.
-  const table = await bytes(tableUrl)
-    .then((buffer) => ReplyTable.parse(buffer))
-    .catch(() => null);
-  return new Engine(wasm as unknown as WasmLib, table);
+  return new Engine(wasm as unknown as WasmLib, await loadTable());
 })();
 
 const scope = self as unknown as {
