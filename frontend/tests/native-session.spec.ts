@@ -22,6 +22,12 @@ vi.mock("../src/native", () => ({
   tokenStore: native.tokenStore,
   // No on-device game was left open.
   localGameStore: { get: async () => null, set: async () => {} },
+  profileMemory: {
+    lastSession: async () => null,
+    rememberSession: async () => {},
+    pendingLocale: async () => null,
+    setPendingLocale: async () => {},
+  },
   nativeShare: native.nativeShare,
 }));
 
@@ -138,7 +144,8 @@ describe("app session token", () => {
     const socket = FakeWebSocket.instances[0];
     expect(socket.protocols).toEqual(["connect4.v1", "connect4.token.t1"]);
     expect(socket.url).not.toContain("t1");
-    expect(store.session).toBeNull();
+    // The app shows the profile at once (3.2.0 app 離線 04b), token left out.
+    expect(store.session).toEqual({ nickname: "Player", locale: "en" });
   });
 
   it("asks without a token the first time", async () => {

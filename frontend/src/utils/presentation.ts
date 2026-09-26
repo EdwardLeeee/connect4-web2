@@ -289,6 +289,14 @@ export function movesSince(game: GameState, from: number): Move[] {
   });
 }
 
+/**
+ * A notice split into clauses (3.2.0 app 離線): Chinese lines break only
+ * after 「，」「；」「：」, each clause kept whole. English stays one piece.
+ */
+export function clauses(text: string): string[] {
+  return text.split(/(?<=[，；：])/);
+}
+
 /** The row a token dropped in `column` lands on, or -1 when it is full. */
 export function landingRow(board: Cell[][], column: number): number {
   for (let row = board.length - 1; row >= 0; row -= 1) {

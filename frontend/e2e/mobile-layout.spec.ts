@@ -601,6 +601,7 @@ async function asApp(page: Page) {
         "export const usesLocalAi = () => true;",
         "export const tokenStore = { get: async () => null, set: async () => {} };",
         "export const localGameStore = { get: async () => null, set: async () => {} };",
+        "export const profileMemory = { lastSession: async () => null, rememberSession: async () => {}, pendingLocale: async () => null, setPendingLocale: async () => {} };",
         'export const nativeShare = async () => "shared";',
       ].join("\n"),
     }),
@@ -2132,4 +2133,130 @@ test("an AI game left open resumes after relaunching with no network", async ({
   await expect(page.locator(".connection-pill")).toHaveCount(0);
   await play(page, testInfo, 2);
   await expect(tokens).toHaveCount(4, { timeout: 20_000 });
+});
+
+// 3.2.0 app 離線 01, 04a, 04c (design/spec.md): the app offline in the lobby.
+test("the app offline keeps the AI open and marks what needs the internet", async ({
+  page,
+}, testInfo) => {
+  await playOnDevice(page, testInfo);
+  const app = await mockApp(page, snapshotFor("L01"), {
+    refuseReconnects: true,
+  });
+  await page.goto("/");
+  await expect(page.locator(".lobby")).toBeVisible();
+  await app.sockets[0].close({ code: 1011 });
+
+  const pill = page.locator(".connection-pill");
+  await expect(pill).toHaveText("離線");
+  await expect(page.locator(".brand-text")).toBeVisible();
+  await expect(page.locator(".notice-banner")).toHaveText(
+    "沒有網路也沒關係，挑戰 AI 隨時都能玩！",
+  );
+  await expect(page.locator(".ai-card .btn.primary")).toBeEnabled();
+  for (const card of [".friend-card", ".match-card-lobby"]) {
+    await expect(page.locator(`${card} .needs-internet`)).toHaveText(
+      "需要網路",
+    );
+    expect(
+      await page
+        .locator(`${card} .card-icon`)
+        .evaluate((icon) => getComputedStyle(icon).opacity),
+    ).toBe("0.55");
+  }
+  await expect(page.locator(".match-card-lobby .btn.secondary")).toBeDisabled();
+});
+
+test("the website offline lobby stays as it was", async ({ page }) => {
+  const app = await mockApp(page, snapshotFor("L01"), {
+    refuseReconnects: true,
+  });
+  await page.goto("/");
+  await expect(page.locator(".lobby")).toBeVisible();
+  await app.sockets[0].close({ code: 1011 });
+  await expect(page.locator(".notice-banner")).toHaveText(
+    "連線恢復前無法開始對局。",
+  );
+  await expect(page.locator(".ai-card .btn.primary")).toBeDisabled();
+  await expect(page.locator(".needs-internet")).toHaveCount(0);
+  await expect(page.locator(".connection-pill")).not.toHaveText("離線");
+});
+
+// 03: offline the nickname is locked, the language changes at once and
+// reaches the server once connected (website and app alike).
+test("offline, the language changes at once and syncs once connected", async ({
+  page,
+}) => {
+  let down = true;
+  const patches: unknown[] = [];
+  const app = await mockApp(page, snapshotFor("L01"), {
+    refuseReconnects: () => down,
+  });
+  await page.route("**/api/session", async (route) => {
+    if (route.request().method() !== "PATCH") return route.fallback();
+    const body = route.request().postDataJSON();
+    patches.push(body);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(body),
+    });
+  });
+  await page.goto("/");
+  await expect(page.locator(".lobby")).toBeVisible();
+  await app.sockets[0].close({ code: 1011 });
+  await expect(page.locator(".connection-pill")).toBeVisible();
+
+  await page.locator(".profile").click();
+  const sheet = page.locator(".profile-sheet");
+  await expect(sheet.locator("input")).toBeDisabled();
+  await expect(sheet.locator("input")).toHaveValue("曜宇");
+  await expect(sheet.locator(".sheet-note")).toHaveText(
+    "目前離線：暱稱要連線後才能改，語言可以直接切換。",
+  );
+  await expect(sheet.locator(".form-error")).toHaveCount(0);
+  await sheet.locator("select").selectOption("en");
+  await sheet.locator("button[type=submit]").click();
+  await expect(sheet).toHaveCount(0);
+  // At once, before any request.
+  await expect(page.locator(".ai-card h2")).toHaveText("Challenge AI");
+  expect(patches).toEqual([]);
+
+  down = false;
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await expect
+    .poll(() => patches)
+    .toEqual([{ nickname: "曜宇", locale: "en" }]);
+  await expect(page.locator(".ai-card h2")).toHaveText("Challenge AI");
+});
+
+// 04b: launched with no network, the app shows the last profile it saw.
+test("the app launched offline shows the last nickname, or none", async ({
+  page,
+}, testInfo) => {
+  await playOnDevice(page, testInfo);
+  await page.route("**/api/session", (route) => route.abort());
+  await page.routeWebSocket(/\/ws$/, (socket) => {
+    void socket.close({ code: 1011 });
+  });
+  await page.goto("/");
+  await expect(page.locator(".lobby")).toBeVisible();
+  // Never connected: 「?」, and no empty-nickname error.
+  await expect(page.locator(".profile .avatar")).toHaveText("?");
+  await page.locator(".profile").click();
+  await expect(page.locator(".profile-sheet input")).toBeDisabled();
+  await expect(page.locator(".profile-sheet .form-error")).toHaveCount(0);
+
+  await page.evaluate(() =>
+    window.localStorage.setItem(
+      "connect4.last-session",
+      JSON.stringify({ nickname: "曜宇", locale: "zh-TW" }),
+    ),
+  );
+  await page.reload();
+  await expect(page.locator(".profile .avatar")).toHaveText("曜");
+  await page.locator(".profile").click();
+  await expect(page.locator(".profile-sheet input")).toHaveValue("曜宇");
+  await expect(page.locator(".profile-sheet input")).toBeDisabled();
+  await expect(page.locator(".profile-sheet .form-error")).toHaveCount(0);
 });
