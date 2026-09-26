@@ -8,6 +8,8 @@ WORKDIR /build/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
+# The app's on-device AI imports the reply table from native_solver/data by a relative path.
+COPY native_solver/data/reply-table.bin /build/native_solver/data/reply-table.bin
 RUN npm run build
 
 FROM ${RUST_IMAGE} AS rust-toolchain
