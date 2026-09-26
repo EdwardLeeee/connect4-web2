@@ -1759,6 +1759,45 @@ test("with reduced motion only the result panel comes in", async ({ page }) => {
   await expect(page.locator(".board")).not.toHaveClass(/ending-/);
 });
 
+/** The colour tokens as the page paints them. */
+async function tokenColours(page: Page) {
+  return page.evaluate(() => {
+    const probe = document.createElement("i");
+    document.body.append(probe);
+    const resolve = (value: string) => {
+      probe.style.backgroundColor = value;
+      return getComputedStyle(probe).backgroundColor;
+    };
+    const result = {
+      mint: resolve("var(--mint)"),
+      mintSoft: resolve("var(--mint-soft)"),
+      pink: resolve("var(--pink)"),
+      pinkSoft: resolve("var(--pink-soft)"),
+      sun: resolve("var(--sun)"),
+    };
+    probe.remove();
+    return result;
+  });
+}
+
+/** The same game with the colours swapped: you play the other colour. */
+function swapColours(start: Snapshot): Snapshot {
+  const game = start.game!;
+  const swap = <T>(cell: T) =>
+    (cell === "green" ? "pink" : cell === "pink" ? "green" : cell) as T;
+  return {
+    ...start,
+    game: {
+      ...game,
+      you: swap(game.you),
+      turn: swap(game.turn),
+      first: swap(game.first),
+      board: game.board.map((row) => row.map(swap)),
+      players: { green: game.players.pink, pink: game.players.green },
+    },
+  };
+}
+
 test("your turn follows your own colour when you play pink", async ({
   page,
 }, testInfo) => {
@@ -1768,20 +1807,7 @@ test("your turn follows your own colour when you play pink", async ({
   const head = page.locator(".board-head:visible");
   await expect(head).toContainText("輪到你了");
 
-  const colours = await page.evaluate(() => {
-    const probe = document.createElement("i");
-    document.body.append(probe);
-    const resolve = (value: string) => {
-      probe.style.backgroundColor = value;
-      return getComputedStyle(probe).backgroundColor;
-    };
-    const result = {
-      pink: resolve("var(--pink)"),
-      pinkSoft: resolve("var(--pink-soft)"),
-    };
-    probe.remove();
-    return result;
-  });
+  const colours = await tokenColours(page);
   await expect(head.locator(".turn-status")).toHaveCSS(
     "background-color",
     colours.pink,
@@ -1800,6 +1826,165 @@ test("your turn follows your own colour when you play pink", async ({
   );
   await page.locator(".col-target").nth(1).hover();
   await expect(page.locator(".hand .token")).toHaveClass(/pink/);
+});
+
+/** Tops and bottoms on the play screen, in CSS pixels. */
+async function playLayout(page: Page) {
+  return page.evaluate(() => {
+    const box = (selector: string) =>
+      document.querySelector(selector)?.getBoundingClientRect() ?? null;
+    const board = box(".board")!;
+    const leave = box(".actions .btn");
+    const result = box(".result-card");
+    return {
+      boardTop: board.top,
+      boardBottom: board.bottom,
+      leaveTop: leave?.top ?? null,
+      leaveBottom: leave?.bottom ?? null,
+      resultTop: result?.top ?? null,
+      gameBottom: box(".game")!.bottom,
+    };
+  });
+}
+
+test("on phones only the leave button and the result panel move up", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "galaxy-s26-ultra",
+    "The spec's numbers are checked once, in Chromium phone emulation.",
+  );
+  // design/spec.md 對局畫面：離開位置 (round 20, 01), measured with the app's
+  // safe areas; the board keeps the top it had.
+  const cases = [
+    ["P03", 430, 932, 59, 403, 803],
+    ["P03", 390, 844, 47, 364, 737],
+    ["P07", 430, 932, 59, 343, 699],
+    ["P07", 390, 844, 47, 306, 635],
+  ] as const;
+  for (const [id, width, height, top, boardTop, below] of cases) {
+    const tab = await page.context().newPage();
+    await tab.setViewportSize({ width, height });
+    await mockApp(tab, snapshotFor(id));
+    await tab.goto("/play");
+    await expect(tab.locator(".board")).toBeVisible();
+    await tab.addStyleTag({
+      content: `:root { --sat: ${top}px !important; --sab: 34px !important; }`,
+    });
+    const layout = await playLayout(tab);
+    const label = `${id} ${width}x${height}`;
+    expect(Math.abs(layout.boardTop - boardTop), label).toBeLessThanOrEqual(2);
+    const moved = id === "P03" ? layout.leaveTop! : layout.resultTop!;
+    expect(Math.abs(moved - below), label).toBeLessThanOrEqual(2);
+    await tab.close();
+  }
+
+  // Safari with its toolbars (430x739): too little room for 60px, so the
+  // leave button stays at the bottom; the panel keeps its 10px.
+  await page.setViewportSize({ width: 430, height: 739 });
+  const app = await mockApp(page, snapshotFor("P03"));
+  await page.goto("/play");
+  await expect(page.locator(".board")).toBeVisible();
+  let layout = await playLayout(page);
+  expect(layout.leaveTop! - layout.boardBottom).toBeLessThan(60);
+  expect(Math.abs(layout.leaveBottom! - layout.gameBottom)).toBeLessThanOrEqual(
+    1,
+  );
+  app.send(snapshotFor("P07"));
+  await expect(page.locator(".result-card")).toBeVisible();
+  layout = await playLayout(page);
+  expect(Math.round(layout.resultTop! - layout.boardBottom)).toBe(10);
+});
+
+test("the leave button keeps 60px under the board on every phone", async ({
+  page,
+}, testInfo) => {
+  test.skip(kind(testInfo) !== "phone", "Phone portrait only.");
+  await mockApp(page, snapshotFor("P03"));
+  await page.goto("/play");
+  await expect(page.locator(".board")).toBeVisible();
+  const layout = await playLayout(page);
+  const room = layout.gameBottom - layout.boardBottom - 48;
+  if (room >= 60) {
+    expect(Math.round(layout.leaveTop! - layout.boardBottom)).toBe(60);
+  } else {
+    expect(Math.round(layout.leaveBottom!)).toBe(Math.round(layout.gameBottom));
+  }
+});
+
+// Round 20, 02 and 04: "back" takes the opponent's colour; "offline" stays
+// sunflower, like the countdown.
+for (const you of ["green", "pink"] as const) {
+  test(`an opponent who comes back is announced in their colour (you ${you})`, async ({
+    page,
+  }) => {
+    await page.clock.install({ time: SERVER_TIME * 1000 });
+    await page.clock.pauseAt(SERVER_TIME * 1000 + 5_000);
+    const base = snapshotFor("P06");
+    const paused = you === "green" ? base : swapColours(base);
+    const app = await mockApp(page, paused);
+    await page.goto("/play");
+    const chip = page.locator(".board-head:visible .turn-status");
+    const colours = await tokenColours(page);
+    await expect(chip).toContainText("小安 離線了");
+    await expect(chip).toHaveCSS("background-color", colours.sun);
+
+    const game = paused.game!;
+    const opponent = you === "green" ? "pink" : "green";
+    app.send({
+      ...paused,
+      game: {
+        ...game,
+        revision: game.revision + 1,
+        status: "playing",
+        grace_deadline: null,
+        players: {
+          ...game.players,
+          [opponent]: {
+            ...game.players[opponent]!,
+            connected: true,
+            grace_deadline: null,
+          },
+        },
+      },
+    });
+    await expect(chip).toContainText("小安 回來了");
+    await expect(chip).toHaveCSS(
+      "background-color",
+      you === "green" ? colours.pink : colours.mint,
+    );
+  });
+}
+
+// Round 20, 03: the status chip and their row of the match card.
+for (const you of ["pink", "green"] as const) {
+  test(`a person's turn takes their soft colour (you ${you})`, async ({
+    page,
+  }) => {
+    const base = snapshotFor("P04");
+    const theirs = { ...base, game: { ...base.game!, turn: "green" as const } };
+    await mockApp(page, you === "pink" ? theirs : swapColours(theirs));
+    await page.goto("/play");
+    const colours = await tokenColours(page);
+    const soft = you === "pink" ? colours.mintSoft : colours.pinkSoft;
+    const chip = page.locator(".board-head:visible .turn-status");
+    await expect(chip).toContainText("玩家 4821 正在思考");
+    await expect(chip).toHaveCSS("background-color", soft);
+    await expect(page.locator(".player.is-current:not(.is-me)")).toHaveCSS(
+      "background-color",
+      soft,
+    );
+  });
+}
+
+test("the AI's turn keeps its colours", async ({ page }) => {
+  await mockApp(page, snapshotFor("P05"));
+  await page.goto("/play");
+  const colours = await tokenColours(page);
+  const chip = page.locator(".board-head:visible .turn-status");
+  await expect(chip).toContainText("AI 正在思考");
+  await expect(chip).toHaveCSS("background-color", colours.pinkSoft);
+  await expect(page.locator(".player.is-current")).toHaveCount(0);
 });
 
 test("the keyboard plays through one tab stop on the board", async ({

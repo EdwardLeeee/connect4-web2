@@ -2273,6 +2273,55 @@ input.is-focused {
   }
 }
 
+/* phone portrait (round 20, 01): only the leave button and the result panel
+   move up; the match card, status and board stay put. The free space still
+   splits evenly above and below the board, as when the leave button sat at
+   the bottom. Below the board the lone leave button takes up to 60px (its
+   16px margin and 44px), keeps the rest under itself, and so never sits lower
+   than before; the result panel stays right under the board. Landscape
+   phones keep their layout. */
+@media (max-width: 620px) and (min-height: 501px),
+  (max-width: 620px) and (orientation: portrait) {
+  .game::before {
+    content: "";
+    order: 2;
+    flex: 1 1 0;
+  }
+
+  .board-unit {
+    order: 3;
+    margin-block: 0;
+  }
+
+  .result-card {
+    order: 4;
+  }
+
+  .actions {
+    order: 5;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .actions::before {
+    content: "";
+    flex: 1000 1 0;
+    max-height: 44px;
+  }
+
+  .actions::after {
+    content: "";
+    flex: 1 1 0;
+  }
+
+  .game.has-result::after {
+    content: "";
+    order: 6;
+    flex: 1 1 0;
+  }
+}
+
 /* phone lobby: expanding a secondary card folds the AI card's demo board so
    the expanded panel stays on screen */
 @media (max-width: 620px) {
@@ -3317,6 +3366,27 @@ input.has-error:focus {
 
 .you-pink .player.is-current.is-me {
   background: var(--pink-soft);
+}
+
+/* "{name} is back" follows the returning opponent's colour (round 20, 02). */
+.you-green .back .turn-status {
+  background: var(--pink);
+}
+
+.you-pink .back .turn-status {
+  background: var(--mint);
+}
+
+/* A person's turn takes their soft colour on the chip and on their row of the
+   match card (round 20, 03). The AI's turn is "thinking" and stays as it is. */
+.you-green .theirs .turn-status,
+.you-green .player.is-current:not(.is-me) {
+  background: var(--pink-soft);
+}
+
+.you-pink .theirs .turn-status,
+.you-pink .player.is-current:not(.is-me) {
+  background: var(--mint-soft);
 }
 
 /* ================= round 7 endings (design/spec.md §0; A03 C5, A11 F5, A12 T5) =================

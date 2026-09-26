@@ -115,7 +115,7 @@ export function statusHead(input: HeadInput): HeadModel | null {
   if (input.reconnectedName) {
     return {
       ...base,
-      // Keeps the mint "back" chip; only your own turn follows your colour.
+      // The chip takes the returning opponent's colour (round 20, 02).
       tone: "back",
       token: opponentOf(game.you),
       title: { key: "game.reconnected", args: { name: input.reconnectedName } },
