@@ -9,7 +9,7 @@
 1. `GET /api/session` 取得 `c4_session` cookie（HttpOnly）。
 2. 開啟 `/ws`。伺服器接受連線後，立刻送出一則 `state.snapshot`。
 
-手機 app 不用 cookie，改用 token，見下方「App 連線」。
+手機 app 不用 cookie，改用 token，見下方「App 連線」。app 的 AI 局不經過伺服器，見「App 本機 AI 局」。
 
 ### Close code（不得改號）
 
@@ -168,5 +168,30 @@ iOS／Android app 把網頁打包在 app 裡（Capacitor），頁面來源是 `c
 - 單一 uvicorn worker；房間、配對與 session 都存在記憶體裡，程序重啟就會全部清空。
 - 求解器沒有啟發式或計時備援。故障時 `status` 為 `error`，`result_reason` 為 `solver_unavailable`。
 - AI 局在玩家落子後進入 `thinking`，至少維持 1 秒才落子；求解超過 1 秒時不再額外等待。
-- AI 在已下 9、11、13 手時，改查預先算好的精確分數表（`native_solver/data/reply-table.bin`），其他時候現場求解；兩者給出的分數與選的欄完全相同，下法不變。表無法載入或查不到時一律現場求解。
   這只影響時間，不影響下法；求解器故障會立即回報 `error`，不等待。
+- AI 在已下 9、11、13 手時，改查預先算好的精確分數表（`native_solver/data/reply-table.bin`），其他時候現場求解；兩者給出的分數與選的欄完全相同，下法不變。表無法載入或查不到時一律現場求解。
+- 伺服器只負責網站的 AI 局與所有真人局。app 的 AI 局在手機上進行，伺服器不會收到，也不接受
+  用戶端回報的 AI 對局結果；見下方「App 本機 AI 局」。
+
+## App 本機 AI 局
+
+iOS／Android app 的 AI 對局一律在手機上計算，有沒有網路都一樣，所以離線也能玩。網站的 AI 局不變，
+仍由伺服器計算。
+
+- **同一份協定**：`frontend/src/local/localGame.ts` 照 `manager.py` 處理 AI 局的訊息
+  （`game.ai.start`、`game.move`、`game.ai.retry`、`game.rematch`、`game.leave`、`state.request`），
+  送出同樣形狀的 `state.snapshot` 與同樣的錯誤代碼；其他訊息回 `unknown_message`。畫面不必分辨
+  AI 在伺服器還是在手機上。和伺服器不同的只有：房間 id 以 `local-` 開頭，`server_time` 取手機時鐘，
+  兩位玩家的 `connected` 恆為 true。規則在 `frontend/src/local/rules.ts`，照 `domain.py` 移植。
+- **同樣的下法**：Web Worker 裡的 `connect-four-ai-wasm`（與伺服器的 `connect-four-ai` 同為 1.0.0），
+  加上同一份分數表與同樣的中央優先順序 `[3,2,4,1,5,0,6]`，每一手都是精確解，和伺服器選的欄完全相同。
+  AI 同樣至少想 1 秒才落子。
+- **故障**：WASM 載入或求解失敗時，`status` 為 `error`，`result_reason` 為 `solver_unavailable`，不會改用
+  其他下法；玩家用 `game.ai.retry` 重開。分數表載入或解析失敗時，Worker 在 console 留一行
+  `[local-ai] reply table unavailable` 警告，之後每一手都改成現場計算：下法不變，只是比較慢。
+- **存檔**：進行中的對局（`history`、`series`、`revision`、是否故障）只存在手機上。app 重開後照
+  `history` 重建棋盤；如果輪到 AI，AI 會重新計算，下出同一手。離開對局就刪除存檔。
+- **一致性測試**：`tests/local_parity.py` 從 `domain.py`、`manager.py` 與原生求解器錄下
+  `frontend/tests/local/fixtures/`，`frontend/tests/local/` 用同一份資料驗證手機版。改了伺服器 AI 局的
+  規則、訊息或錯誤代碼時，要執行 `.venv/bin/python tests/local_parity.py` 重新產生，並同步修改
+  `frontend/src/local/`；兩邊不一致時 `tests/test_local_parity.py` 會失敗。
