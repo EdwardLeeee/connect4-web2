@@ -47,12 +47,19 @@ export const localGameStore = {
   },
 };
 
-// The last profile the server gave, and a language chosen offline that the
-// server has yet to hear (3.2.0 app 離線 03, 04b). The app keeps them in
-// Preferences, the website in localStorage; storage that fails keeps nothing.
-type Session = { nickname: string; locale: "zh-TW" | "en" };
+// The last profile the server gave, a language chosen offline that the
+// server has yet to hear, and whether that profile still has to be put back
+// on a server that started over (3.2.0 app 離線 03, 04b, 05, 06). The app
+// keeps them in Preferences, the website in localStorage; storage that fails
+// keeps nothing.
+type Session = {
+  nickname: string;
+  locale: "zh-TW" | "en";
+  default_number: number | null;
+};
 const LAST_SESSION_KEY = "last-session";
 const PENDING_LOCALE_KEY = "pending-locale";
+const RESTORE_PENDING_KEY = "restore-pending";
 
 async function read(key: string): Promise<string | null> {
   try {
@@ -86,9 +93,15 @@ export const profileMemory = {
   async lastSession(): Promise<Session | null> {
     try {
       const saved = JSON.parse((await read(LAST_SESSION_KEY)) ?? "null");
-      return typeof saved?.nickname === "string" && isLocale(saved.locale)
-        ? { nickname: saved.nickname, locale: saved.locale }
-        : null;
+      if (typeof saved?.nickname !== "string" || !isLocale(saved.locale)) {
+        return null;
+      }
+      const number = saved.default_number;
+      return {
+        nickname: saved.nickname,
+        locale: saved.locale,
+        default_number: Number.isInteger(number) ? number : null,
+      };
     } catch {
       return null;
     }
@@ -96,7 +109,11 @@ export const profileMemory = {
   async rememberSession(session: Session): Promise<void> {
     await write(
       LAST_SESSION_KEY,
-      JSON.stringify({ nickname: session.nickname, locale: session.locale }),
+      JSON.stringify({
+        nickname: session.nickname,
+        locale: session.locale,
+        default_number: session.default_number,
+      }),
     );
   },
   async pendingLocale(): Promise<Session["locale"] | null> {
@@ -105,6 +122,12 @@ export const profileMemory = {
   },
   async setPendingLocale(locale: Session["locale"] | null): Promise<void> {
     await write(PENDING_LOCALE_KEY, locale);
+  },
+  async restorePending(): Promise<boolean> {
+    return (await read(RESTORE_PENDING_KEY)) === "1";
+  },
+  async setRestorePending(pending: boolean): Promise<void> {
+    await write(RESTORE_PENDING_KEY, pending ? "1" : null);
   },
 };
 

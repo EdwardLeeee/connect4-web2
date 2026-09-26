@@ -601,7 +601,7 @@ async function asApp(page: Page) {
         "export const usesLocalAi = () => true;",
         "export const tokenStore = { get: async () => null, set: async () => {} };",
         "export const localGameStore = { get: async () => null, set: async () => {} };",
-        "export const profileMemory = { lastSession: async () => null, rememberSession: async () => {}, pendingLocale: async () => null, setPendingLocale: async () => {} };",
+        "export const profileMemory = { lastSession: async () => null, rememberSession: async () => {}, pendingLocale: async () => null, setPendingLocale: async () => {}, restorePending: async () => false, setRestorePending: async () => {} };",
         'export const nativeShare = async () => "shared";',
       ].join("\n"),
     }),
@@ -2226,7 +2226,7 @@ test("offline, the language changes at once and syncs once connected", async ({
   await page.evaluate(() => window.dispatchEvent(new Event("online")));
   await expect
     .poll(() => patches)
-    .toEqual([{ nickname: "曜宇", locale: "en" }]);
+    .toEqual([{ nickname: "曜宇", locale: "en", default_number: null }]);
   await expect(page.locator(".ai-card h2")).toHaveText("Challenge AI");
 });
 
@@ -2241,8 +2241,8 @@ test("the app launched offline shows the last nickname, or none", async ({
   });
   await page.goto("/");
   await expect(page.locator(".lobby")).toBeVisible();
-  // Never connected: 「?」, and no empty-nickname error.
-  await expect(page.locator(".profile .avatar")).toHaveText("?");
+  // Never connected: its own default name (04b, round 24), no error.
+  await expect(page.locator(".profile .avatar")).toHaveText("玩");
   await page.locator(".profile").click();
   await expect(page.locator(".profile-sheet input")).toBeDisabled();
   await expect(page.locator(".profile-sheet .form-error")).toHaveCount(0);
@@ -2259,4 +2259,136 @@ test("the app launched offline shows the last nickname, or none", async ({
   await expect(page.locator(".profile-sheet input")).toHaveValue("曜宇");
   await expect(page.locator(".profile-sheet input")).toBeDisabled();
   await expect(page.locator(".profile-sheet .form-error")).toHaveCount(0);
+});
+
+// 3.2.0 04b: a new app install names itself, even with no network.
+test("a new app install names itself at once, offline too", async ({
+  page,
+}, testInfo) => {
+  await playOnDevice(page, testInfo);
+  await page.route("**/api/session", (route) => route.abort());
+  await page.routeWebSocket(/\/ws$/, (socket) => {
+    void socket.close({ code: 1011 });
+  });
+  await page.goto("/");
+  await expect(page.locator(".lobby")).toBeVisible();
+  await expect(page.locator(".profile .avatar")).toHaveText("玩");
+  await page.locator(".profile").click();
+  await expect(page.locator(".profile-sheet input")).toHaveValue(
+    /^玩家 \d{4}$/,
+  );
+  await expect(page.locator(".profile-sheet .form-error")).toHaveCount(0);
+  const name = await page.locator(".profile-sheet input").inputValue();
+  await page.locator(".profile-sheet button[type=button]").click();
+
+  // The on-device game shows that name on the match card (round 24 C).
+  await page.getByRole("button", { name: "立即對戰" }).click();
+  await expect(page.locator(".player.is-me strong")).toHaveText(name, {
+    timeout: 20_000,
+  });
+});
+
+/** A server whose session the test controls, echoing PATCH like manager.py. */
+async function mockSessionServer(
+  page: Page,
+  start: {
+    nickname: string;
+    locale: "zh-TW" | "en";
+    default_number: number | null;
+  },
+  created: boolean,
+) {
+  const state = { session: { ...start }, created, patches: [] as unknown[] };
+  await page.route("**/api/session", async (route) => {
+    if (route.request().method() === "PATCH") {
+      const body = route.request().postDataJSON();
+      state.patches.push(body);
+      state.session =
+        body.default_number === null
+          ? {
+              nickname: body.nickname,
+              locale: body.locale,
+              default_number: null,
+            }
+          : {
+              nickname: `${body.locale === "en" ? "Player" : "玩家"} ${body.default_number}`,
+              locale: body.locale,
+              default_number: body.default_number,
+            };
+    }
+    const reply = { ...state.session, created: state.created };
+    state.created = false;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(reply),
+    });
+  });
+  await page.routeWebSocket(/\/ws$/, (socket) => {
+    socket.onMessage(() => {});
+    socket.send(
+      JSON.stringify({
+        type: "state.snapshot",
+        payload: { ...snapshotFor("L01"), session: state.session },
+      }),
+    );
+  });
+  return state;
+}
+
+// 06: after a server restart, the device's profile goes back unseen.
+test("after a server restart the website gets its name back, unseen", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      "connect4.last-session",
+      JSON.stringify({ nickname: "曜宇", locale: "en", default_number: null }),
+    );
+    const seen: string[] = [];
+    (window as unknown as { seen: string[] }).seen = seen;
+    new MutationObserver(() => {
+      const name = document.querySelector(".profile-name")?.textContent;
+      if (name) seen.push(name.trim());
+      seen.push(document.documentElement.lang || "");
+    }).observe(document, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    });
+  });
+  const server = await mockSessionServer(
+    page,
+    { nickname: "玩家 4553", locale: "zh-TW", default_number: 4553 },
+    true,
+  );
+  await page.goto("/");
+  await expect(page.locator(".profile-name")).toHaveText("曜宇");
+  await expect(page.locator(".ai-card h2")).toHaveText("Challenge AI");
+  expect(server.patches).toEqual([
+    { nickname: "曜宇", locale: "en", default_number: null },
+  ]);
+  const seen = await page.evaluate(
+    () => (window as unknown as { seen: string[] }).seen,
+  );
+  expect(seen).not.toContain("玩家 4553");
+});
+
+// 05: a default nickname follows the language, with the same number.
+test("a default nickname follows the language", async ({ page }) => {
+  const server = await mockSessionServer(
+    page,
+    { nickname: "玩家 4553", locale: "zh-TW", default_number: 4553 },
+    false,
+  );
+  await page.goto("/");
+  await expect(page.locator(".profile .avatar")).toHaveText("玩");
+  await page.locator(".profile").click();
+  const sheet = page.locator(".profile-sheet");
+  await expect(sheet.locator("input")).toHaveValue("玩家 4553");
+  await sheet.locator("select").selectOption("en");
+  await sheet.locator("button[type=submit]").click();
+  await expect(sheet).toHaveCount(0);
+  expect(server.patches).toEqual([{ locale: "en", default_number: 4553 }]);
+  await expect(page.locator(".profile .avatar")).toHaveText("P");
 });

@@ -41,7 +41,12 @@ export interface GameState {
 export interface Snapshot {
   /** Server Unix seconds when the snapshot was built. */
   server_time: number;
-  session: { nickname: string; locale: "zh-TW" | "en" };
+  session: {
+    nickname: string;
+    locale: "zh-TW" | "en";
+    /** The default nickname's number; null for a name the player chose. */
+    default_number?: number | null;
+  };
   queue: { searching: boolean };
   room: {
     id: string;

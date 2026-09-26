@@ -16,6 +16,8 @@ vi.mock("../src/native", () => ({
     rememberSession: async () => {},
     pendingLocale: async () => null,
     setPendingLocale: async () => {},
+    restorePending: async () => false,
+    setRestorePending: async () => {},
   },
 }));
 

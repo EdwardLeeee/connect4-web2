@@ -9,7 +9,11 @@ import { FakeWebSocket } from "./fakeSocket";
 // reaches the server once connected; the app shows the last profile it saw.
 const native = vi.hoisted(() => ({
   app: false,
-  last: null as { nickname: string; locale: "zh-TW" | "en" } | null,
+  last: null as {
+    nickname: string;
+    locale: "zh-TW" | "en";
+    default_number: number | null;
+  } | null,
   pending: null as "zh-TW" | "en" | null,
   remembered: [] as unknown[],
 }));
@@ -27,6 +31,8 @@ vi.mock("../src/native", () => ({
     setPendingLocale: async (locale: "zh-TW" | "en" | null) => {
       native.pending = locale;
     },
+    restorePending: async () => false,
+    setRestorePending: async () => {},
   },
   nativeShare: vi.fn(),
 }));
@@ -122,7 +128,9 @@ describe("the language chosen offline", () => {
     );
     await reconnect();
     // Both fields, and the server's own nickname (see syncNickname).
-    expect(patches).toEqual([{ nickname: "Taylor", locale: "zh-TW" }]);
+    expect(patches).toEqual([
+      { nickname: "Taylor", locale: "zh-TW", default_number: null },
+    ]);
     expect(store.pendingLocale).toBeNull();
     expect(native.pending).toBeNull();
     expect(shown).not.toContain("en");
@@ -172,7 +180,9 @@ describe("the language chosen offline", () => {
     expect(store.shownLocale).toBe("zh-TW");
     latest().connect("L01");
     await settle();
-    expect(patches).toEqual([{ nickname: "Taylor", locale: "zh-TW" }]);
+    expect(patches).toEqual([
+      { nickname: "Taylor", locale: "zh-TW", default_number: null },
+    ]);
   });
 
   it("is cleared by a save made online", async () => {
@@ -193,7 +203,7 @@ describe("the language chosen offline", () => {
 describe("the last profile", () => {
   it("shows in the app before the server answers, with its language", async () => {
     native.app = true;
-    native.last = { nickname: "曜宇", locale: "zh-TW" };
+    native.last = { nickname: "曜宇", locale: "zh-TW", default_number: null };
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => {
@@ -202,26 +212,36 @@ describe("the last profile", () => {
     );
     const store = useGameStore();
     await store.initialise().catch(() => {});
-    expect(store.session).toEqual({ nickname: "曜宇", locale: "zh-TW" });
+    expect(store.session).toEqual({
+      nickname: "曜宇",
+      locale: "zh-TW",
+      default_number: null,
+    });
     expect(i18n.global.locale.value).toBe("zh-TW");
   });
 
   it("is remembered in the app whenever the server gives a new one", async () => {
     native.app = true;
+    native.last = { nickname: "Ann", locale: "en", default_number: null };
     const store = useGameStore();
     await store.initialise();
     latest().connect("L01");
-    expect(native.remembered).toEqual([{ nickname: "Taylor", locale: "en" }]);
+    expect(native.remembered).toEqual([
+      { nickname: "Taylor", locale: "en", default_number: null },
+    ]);
     // The same profile again is not written again.
     latest().connect("L01");
     expect(native.remembered).toHaveLength(1);
   });
 
-  it("stays out of the website until the server's snapshot", async () => {
-    native.last = { nickname: "曜宇", locale: "zh-TW" };
+  it("stays off the website's screen until the snapshot, but is kept", async () => {
+    native.last = { nickname: "曜宇", locale: "zh-TW", default_number: null };
     const store = useGameStore();
     await store.initialise();
     expect(store.session).toBeNull();
-    expect(native.remembered).toEqual([]);
+    // Kept for putting back after a server restart (06).
+    expect(native.remembered).toEqual([
+      { nickname: "Taylor", locale: "en", default_number: null },
+    ]);
   });
 });

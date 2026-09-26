@@ -10,6 +10,7 @@ import { FakeWebSocket } from "./fakeSocket";
 const native = vi.hoisted(() => ({
   app: true,
   saved: null as string | null,
+  last: null as unknown,
 }));
 vi.mock("../src/native", () => ({
   isNative: () => native.app,
@@ -22,10 +23,14 @@ vi.mock("../src/native", () => ({
     },
   },
   profileMemory: {
-    lastSession: async () => null,
-    rememberSession: async () => {},
+    lastSession: async () => native.last,
+    rememberSession: async (session: unknown) => {
+      native.last = session;
+    },
     pendingLocale: async () => null,
     setPendingLocale: async () => {},
+    restorePending: async () => false,
+    setRestorePending: async () => {},
   },
   nativeShare: vi.fn(),
 }));
@@ -97,6 +102,7 @@ beforeEach(() => {
   );
   native.app = true;
   native.saved = null;
+  native.last = null;
 });
 
 afterEach(() => {

@@ -126,9 +126,11 @@ onUnmounted(() => {
           @click="profileOpen = true"
         >
           <span class="avatar">{{
-            store.session?.nickname.slice(0, 1) || "?"
+            store.shownSession?.nickname.slice(0, 1) || "?"
           }}</span>
-          <span class="profile-name">{{ store.session?.nickname || "…" }}</span>
+          <span class="profile-name">{{
+            store.shownSession?.nickname || "…"
+          }}</span>
         </button>
       </div>
     </header>
