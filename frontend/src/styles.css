@@ -11,6 +11,16 @@
   unicode-range: U+0000-00FF, U+2013-2014, U+2018-201D, U+2026, U+2190-2193;
 }
 
+/* 3.3.0 Thai: bundled so every phone and browser draws the same letters,
+   offline too, and only fetched once Thai is on screen. */
+@font-face {
+  font-family: "Noto Sans Thai";
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./assets/fonts/NotoSansThai-thai.woff2") format("woff2");
+  unicode-range: U+0E01-0E5B;
+}
+
 :root {
   /* colour */
   --paper: #fff4dc;
@@ -28,10 +38,11 @@
   --disabled: #d9d2c3;
   --scrim: rgb(27 27 31 / 45%);
 
-  /* type — CJK stays on system fonts; Space Grotesk covers Latin + digits */
+  /* type — CJK stays on system fonts; Space Grotesk covers Latin + digits;
+     Thai is bundled, with the systems' Thai fonts behind it */
   --font-ui:
-    "PingFang TC", "Noto Sans CJK TC", "Microsoft JhengHei", system-ui,
-    sans-serif;
+    "Noto Sans Thai", "PingFang TC", "Noto Sans CJK TC", "Microsoft JhengHei",
+    "Sukhumvit Set", "Thonburi", "Leelawadee UI", system-ui, sans-serif;
   --font-display: "Space Grotesk", var(--font-ui);
   --fs-11: 11px;
   --fs-12: 12px;
@@ -4464,4 +4475,24 @@ input.has-error:focus {
     -webkit-mask: radial-gradient(circle, transparent 16.5px, #000 17px);
     mask: radial-gradient(circle, transparent 16.5px, #000 17px);
   }
+}
+
+/* ================= 3.3.0 Thai ================= */
+
+/* Thai is set without tracking: its vowel and tone marks ride on the
+   letters. */
+:lang(th) :is(.eyebrow, .card-copy h2, .center-card h1) {
+  letter-spacing: 0;
+}
+
+/* Thai lines break between words, found by dictionary; where the browser
+   can, a short word is not left alone on the last line (「ไม่ / ได้」). */
+html:lang(th) {
+  text-wrap-style: pretty;
+}
+
+/* A Thai sentence in the result panel and the ending sticker breaks only
+   between its phrases (ClauseText thai-only), in lines of even length. */
+:is(.result-card, .ending-sticker) :has(> .clauses) {
+  text-wrap: balance;
 }

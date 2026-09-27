@@ -1,5 +1,6 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { dropDuration } from "../src/composables/useDropQueue";
+import type { Locale } from "../src/locales";
 import type { Snapshot } from "../src/types";
 import { pageSnapshot, SERVER_TIME, type PageId } from "./states";
 
@@ -51,7 +52,7 @@ async function mockApp(
   };
 }
 
-function snapshotFor(id: PageId, locale: "zh-TW" | "en" = "zh-TW") {
+function snapshotFor(id: PageId, locale: Locale = "zh-TW") {
   return pageSnapshot(id, locale);
 }
 
@@ -2288,12 +2289,19 @@ test("a new app install names itself at once, offline too", async ({
   });
 });
 
+// sessions.py DEFAULT_NICKNAMES.
+const DEFAULT_NAMES: Record<Locale, string> = {
+  "zh-TW": "玩家",
+  en: "Player",
+  th: "ผู้เล่น",
+};
+
 /** A server whose session the test controls, echoing PATCH like manager.py. */
 async function mockSessionServer(
   page: Page,
   start: {
     nickname: string;
-    locale: "zh-TW" | "en";
+    locale: Locale;
     default_number: number | null;
   },
   created: boolean,
@@ -2311,7 +2319,7 @@ async function mockSessionServer(
               default_number: null,
             }
           : {
-              nickname: `${body.locale === "en" ? "Player" : "玩家"} ${body.default_number}`,
+              nickname: `${DEFAULT_NAMES[body.locale as Locale]} ${body.default_number}`,
               locale: body.locale,
               default_number: body.default_number,
             };
@@ -2391,4 +2399,318 @@ test("a default nickname follows the language", async ({ page }) => {
   await expect(sheet).toHaveCount(0);
   expect(server.patches).toEqual([{ locale: "en", default_number: 4553 }]);
   await expect(page.locator(".profile .avatar")).toHaveText("P");
+});
+
+// ================= 3.3.0 Thai =================
+
+/**
+ * Thai text that leaves the screen, is cut or sticks out of its box. Text
+ * that ends in an ellipsis by design (the match card's small line) is left
+ * out: it does so in every language.
+ */
+async function thaiLayoutProblems(page: Page) {
+  return page.evaluate(() => {
+    const problems: string[] = [];
+    const root = document.documentElement;
+    if (root.scrollWidth > root.clientWidth) {
+      problems.push(`the page scrolls sideways`);
+    }
+    const box = (element: Element | null): Element | null =>
+      element && getComputedStyle(element).display === "contents"
+        ? box(element.parentElement)
+        : element;
+    for (const element of document.querySelectorAll<HTMLElement>("body *")) {
+      const text = [...element.childNodes]
+        .filter((node) => node.nodeType === Node.TEXT_NODE)
+        .map((node) => node.textContent!.trim())
+        .join("");
+      if (!/[\u0E00-\u0E7F]/.test(text)) continue;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      if (style.visibility === "hidden" || !rect.width) continue;
+      if (element.closest(".sr-only") || style.textOverflow === "ellipsis") {
+        continue;
+      }
+      const name = `${element.tagName.toLowerCase()} 「${text}」`;
+      if (rect.left < -0.5 || rect.right > root.clientWidth + 0.5) {
+        problems.push(`${name} leaves the screen`);
+      }
+      if (element.scrollWidth > element.clientWidth + 1) {
+        problems.push(`${name} is cut or overflows sideways`);
+      }
+      if (
+        style.overflowY !== "visible" &&
+        element.scrollHeight > element.clientHeight + 1
+      ) {
+        problems.push(`${name} is cut at the top or bottom`);
+      }
+      const parent = box(element.parentElement)!.getBoundingClientRect();
+      if (rect.right > parent.right + 1 || rect.left < parent.left - 1) {
+        problems.push(`${name} sticks out of its box`);
+      }
+      // A phrase kept whole (ClauseText) sits on one line.
+      if (element.parentElement!.classList.contains("clauses")) {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const lines = new Set(
+          [...range.getClientRects()].map((line) => Math.round(line.bottom)),
+        );
+        if (lines.size > 1) problems.push(`${name} is split across lines`);
+      }
+    }
+    return problems;
+  });
+}
+
+/** Thai is checked on Chromium at every narrow width, WebKit and desktop. */
+function thaiOnly(testInfo: TestInfo) {
+  test.skip(
+    !["galaxy-s26-ultra", "iphone-16e-17e", "desktop-1366x768"].includes(
+      testInfo.project.name,
+    ),
+    "Thai is checked once per engine on phones, and on desktop.",
+  );
+}
+
+/** The screen fits at the project's size, and in Chromium at 320–430px. */
+async function expectThaiFits(page: Page, testInfo: TestInfo, screen: string) {
+  await page.evaluate(() => document.fonts.ready);
+  // Drawn with the bundled font, never as empty boxes.
+  expect(
+    await page.evaluate(() =>
+      [...document.fonts]
+        .filter((face) => face.family.replace(/"/g, "") === "Noto Sans Thai")
+        .map((face) => face.status),
+    ),
+  ).toEqual(["loaded"]);
+  expect(await page.evaluate(() => document.documentElement.lang)).toBe("th");
+  const own = testInfo.project.use.viewport!;
+  const widths =
+    testInfo.project.name === "galaxy-s26-ultra"
+      ? [320, 360, 390, 430]
+      : [own.width];
+  for (const width of widths) {
+    await page.setViewportSize({ width, height: own.height });
+    expect(await thaiLayoutProblems(page), `${screen} at ${width}px`).toEqual(
+      [],
+    );
+  }
+  await page.setViewportSize(own);
+}
+
+test("Thai lobby and profile sheet fit, online and offline", async ({
+  page,
+}, testInfo) => {
+  thaiOnly(testInfo);
+  const app = await mockApp(page, snapshotFor("L01", "th"), {
+    refuseReconnects: true,
+  });
+  await page.goto("/");
+  await expect(page.locator(".ai-card h2")).toHaveText("ท้าดวล AI");
+  await expect(page.locator(".profile .avatar")).toHaveText("ผู้");
+  await expectThaiFits(page, testInfo, "lobby");
+  await expectTouchSafe(page, ".lobby .btn:visible");
+  await expect(page).toHaveScreenshot(`${testInfo.project.name}-th-lobby.png`);
+
+  await page.locator(".profile").click();
+  const sheet = page.locator(".profile-sheet");
+  await expect(sheet.locator("select")).toHaveValue("th");
+  await expectThaiFits(page, testInfo, "profile sheet");
+  await expect(page).toHaveScreenshot(
+    `${testInfo.project.name}-th-profile.png`,
+  );
+  await sheet.locator("button[type=button]").click();
+
+  await app.sockets[0].close({ code: 1011 });
+  await expect(page.locator(".notice-banner")).toHaveText(
+    "เริ่มเกมได้เมื่อการเชื่อมต่อกลับมา",
+  );
+  await expectThaiFits(page, testInfo, "offline lobby");
+  await page.locator(".profile").click();
+  await expect(sheet.locator(".sheet-note")).toBeVisible();
+  await expectThaiFits(page, testInfo, "offline profile sheet");
+});
+
+test("the Thai app offline lobby fits", async ({ page }, testInfo) => {
+  thaiOnly(testInfo);
+  await page.addInitScript(() => {
+    (window as { __CONNECT4_LOCAL_AI__?: boolean }).__CONNECT4_LOCAL_AI__ =
+      true;
+  });
+  const app = await mockApp(page, snapshotFor("L01", "th"), {
+    refuseReconnects: true,
+  });
+  await page.goto("/");
+  await expect(page.locator(".lobby")).toBeVisible();
+  await app.sockets[0].close({ code: 1011 });
+  await expect(page.locator(".connection-pill")).toHaveText("ออฟไลน์");
+  // Phrases stay whole: lines break only at the spaces between them.
+  await expect(page.locator(".notice-banner .clauses > span")).toHaveText([
+    "ไม่มีเน็ตก็ไม่เป็นไร",
+    "เล่นกับ",
+    "AI",
+    "ได้ทุกเมื่อ!",
+  ]);
+  await expect(page.locator(".needs-internet").first()).toHaveText(
+    "ต้องใช้เน็ต",
+  );
+  await expectThaiFits(page, testInfo, "app offline lobby");
+});
+
+test("the Thai invite page fits, joinable or not", async ({
+  page,
+}, testInfo) => {
+  thaiOnly(testInfo);
+  const app = await mockApp(page, snapshotFor("L13", "th"), {
+    onMessage: (message) => {
+      if (message.type === "room.join") {
+        app.sockets
+          .at(-1)!
+          .send(
+            JSON.stringify({ type: "error", payload: { code: "room_full" } }),
+          );
+      }
+    },
+  });
+  await page.goto("/?room=LAN427");
+  await expect(page.locator(".invite-card h1")).toHaveText(
+    "เพื่อนชวนคุณมาเล่น",
+  );
+  await expectThaiFits(page, testInfo, "invite");
+  await page.getByRole("button", { name: "เข้าห้อง" }).click();
+  await expect(page.locator(".invite-card.is-gone h1")).toHaveText(
+    "เข้าห้องนี้ไม่ได้",
+  );
+  await expectThaiFits(page, testInfo, "invite that cannot be joined");
+});
+
+test("Thai play, waiting and result screens fit", async ({
+  page,
+}, testInfo) => {
+  thaiOnly(testInfo);
+  test.setTimeout(90_000);
+  const screens = {
+    P01: "กำลังหาคู่แข่ง",
+    P02: "รอเพื่อนเข้าห้อง",
+    P03: "ตาคุณ",
+    P04: "ผู้เล่น 4821 กำลังคิด",
+    P06: "มะลิ ออฟไลน์",
+    P07: "คุณชนะ!",
+    P08: "Super AI ชนะเกมนี้",
+    P09: "เสมอ!",
+    P10: "คุณชนะ! มะลิ หลุดนานเกินไป",
+    P11: "มะลิ ออกจากห้องแล้ว",
+    P12: "AI ใช้งานไม่ได้ชั่วคราว",
+    P13: "ชวน มะลิ เล่นอีกเกมแล้ว",
+    P16: "หลุดนานเกินไป แพ้เกมนี้",
+    P17: "มะลิ อยากเล่นอีกเกม!",
+  } as const;
+  for (const [id, text] of Object.entries(screens)) {
+    await mockApp(page, snapshotFor(id as PageId, "th"));
+    await page.goto("/play");
+    await expect(page.getByText(text, { exact: true }).first()).toBeVisible();
+    await expectThaiFits(page, testInfo, id);
+    if (id === "P03") {
+      await expect(page).toHaveScreenshot(
+        `${testInfo.project.name}-th-game.png`,
+      );
+    }
+    if (id === "P18") {
+      // Never 「เล่นอีกเกม ／ ไม่ได้」: the break falls between phrases.
+      await expect(page.locator(".rematch-row .clauses > span")).toHaveText([
+        "มะลิ",
+        "ออกจากห้องแล้ว",
+        "เล่นอีกเกมไม่ได้",
+      ]);
+    }
+  }
+});
+
+test.describe("a first visit in the browser's language (3.3.0)", () => {
+  for (const [browserLocale, locale, title] of [
+    ["th-TH", "th", "ท้าดวล AI"],
+    ["en-US", "en", "Challenge AI"],
+  ] as const) {
+    test.describe(browserLocale, () => {
+      test.use({ locale: browserLocale });
+
+      test(`starts in ${locale} and never shows Chinese`, async ({ page }) => {
+        await page.addInitScript(() => {
+          const seen: string[] = [];
+          (window as unknown as { seen: string[] }).seen = seen;
+          new MutationObserver(() => {
+            seen.push(document.body?.innerText ?? "");
+          }).observe(document, {
+            subtree: true,
+            childList: true,
+            characterData: true,
+          });
+        });
+        const server = await mockSessionServer(
+          page,
+          { nickname: "玩家 4553", locale: "zh-TW", default_number: 4553 },
+          true,
+        );
+        await page.goto("/");
+        await expect(page.locator(".ai-card h2")).toHaveText(title);
+        expect(server.patches).toEqual([{ locale, default_number: 4553 }]);
+        await page.locator(".profile").click();
+        await expect(page.locator(".profile-sheet input")).toHaveValue(
+          `${DEFAULT_NAMES[locale]} 4553`,
+        );
+        expect(await page.evaluate(() => document.documentElement.lang)).toBe(
+          locale,
+        );
+        // The sheet lists 「繁體中文」 itself; nothing before it was Chinese.
+        const seen = await page.evaluate(
+          () => (window as unknown as { seen: string[] }).seen,
+        );
+        const beforeSheet = seen.filter((text) => !text.includes("繁體中文"));
+        expect(beforeSheet.join("")).not.toMatch(/[\u4E00-\u9FFF]/);
+      });
+    });
+  }
+
+  test.describe("th-TH app", () => {
+    test.use({ locale: "th-TH" });
+
+    test("a new app install names itself in Thai", async ({ page }) => {
+      await asApp(page);
+      await page.route("**/api/session", (route) => route.abort());
+      await page.routeWebSocket(/\/ws$/, (socket) => {
+        void socket.close({ code: 1011 });
+      });
+      await page.goto("/");
+      await expect(page.locator(".profile .avatar")).toHaveText("ผู้");
+      await page.locator(".profile").click();
+      await expect(page.locator(".profile-sheet input")).toHaveValue(
+        /^ผู้เล่น \d{4}$/,
+      );
+    });
+  });
+});
+
+test("Thai is in the language menu, and a default name follows it", async ({
+  page,
+}) => {
+  const server = await mockSessionServer(
+    page,
+    { nickname: "Player 4553", locale: "en", default_number: 4553 },
+    false,
+  );
+  await page.goto("/");
+  await expect(page.locator(".profile .avatar")).toHaveText("P");
+  await page.locator(".profile").click();
+  const sheet = page.locator(".profile-sheet");
+  await expect(sheet.locator("option")).toHaveText([
+    "繁體中文",
+    "English",
+    "ไทย",
+  ]);
+  await sheet.locator("select").selectOption("th");
+  await sheet.locator("button[type=submit]").click();
+  await expect(sheet).toHaveCount(0);
+  expect(server.patches).toEqual([{ locale: "th", default_number: 4553 }]);
+  await expect(page.locator(".profile .avatar")).toHaveText("ผู้");
+  await expect(page.locator(".ai-card h2")).toHaveText("ท้าดวล AI");
 });

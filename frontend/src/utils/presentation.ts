@@ -291,10 +291,31 @@ export function movesSince(game: GameState, from: number): Move[] {
 
 /**
  * A notice split into clauses (3.2.0 app 離線): Chinese lines break only
- * after 「，」「；」「：」, each clause kept whole. English stays one piece.
+ * after 「，」「；」「：」, each clause kept whole. Thai, which writes its
+ * words together, breaks only at the spaces between phrases (3.3.0); the
+ * spaces come back as parts of their own, to stay outside the clauses.
+ * English stays one piece.
  */
 export function clauses(text: string): string[] {
+  if (/[\u0E00-\u0E7F]/.test(text)) return text.split(/( )/);
   return text.split(/(?<=[，；：])/);
+}
+
+// Thai vowels written before their consonant (เ แ โ ใ ไ).
+const LEADING_VOWEL = /^[\u0E40-\u0E44]$/;
+
+/**
+ * The avatar's letter: the nickname's first letter as a reader sees it,
+ * marks and all (「ผู้」 in 「ผู้เล่น」, not 「ผ」), with a Thai leading vowel's
+ * consonant beside it (「ไอ」 for 「ไอซ์」).
+ */
+export function initial(nickname: string): string {
+  const letters =
+    typeof Intl.Segmenter === "function"
+      ? Array.from(new Intl.Segmenter().segment(nickname), (s) => s.segment)
+      : Array.from(nickname);
+  const [first = "", second = ""] = letters;
+  return LEADING_VOWEL.test(first) ? first + second : first;
 }
 
 /** The row a token dropped in `column` lands on, or -1 when it is full. */

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import type { Locale } from "../locales";
 import { isNative } from "../native";
 import { ProfileError, useGameStore } from "../stores/game";
-import { clauses } from "../utils/presentation";
 import AppIcon from "./AppIcon.vue";
+import ClauseText from "./ClauseText.vue";
 
 const emit = defineEmits<{ close: [] }>();
 // The privacy policy and the version at the foot of the sheet, on the
@@ -23,7 +24,7 @@ function openPrivacy(event: MouseEvent) {
 const store = useGameStore();
 const { t } = useI18n();
 const nickname = ref(store.shownSession?.nickname ?? "");
-const locale = ref<"zh-TW" | "en">(store.shownLocale);
+const locale = ref<Locale>(store.shownLocale);
 const errorCode = ref<string | null>(null);
 // 3.2.0 app 離線 03: offline the nickname is locked and only the language
 // changes, at once; an empty nickname is then no error either.
@@ -110,21 +111,18 @@ async function save() {
         <span class="field-label">{{ t("profile.language") }}</span>
         <span class="select-field">
           <select v-model="locale">
-            <option value="zh-TW">{{ t("profile.chinese") }}</option>
-            <option value="en">{{ t("profile.english") }}</option>
+            <option value="zh-TW" lang="zh-Hant">
+              {{ t("profile.chinese") }}
+            </option>
+            <option value="en" lang="en">{{ t("profile.english") }}</option>
+            <option value="th" lang="th">{{ t("profile.thai") }}</option>
           </select>
           <AppIcon name="chevron" />
         </span>
       </label>
       <p v-if="offline" class="notice-banner sheet-note" role="status">
         <AppIcon name="wifiOff" />
-        <span class="clauses">
-          <span
-            v-for="(part, index) in clauses(t('profile.offlineNote'))"
-            :key="index"
-            >{{ part }}</span
-          >
-        </span>
+        <ClauseText :text="t('profile.offlineNote')" />
       </p>
       <div class="sheet-actions">
         <button class="btn secondary" type="button" @click="emit('close')">

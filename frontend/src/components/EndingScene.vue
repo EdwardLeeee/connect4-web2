@@ -8,6 +8,7 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import type { Ending } from "../utils/ending";
 import AppIcon from "./AppIcon.vue";
+import ClauseText from "./ClauseText.vue";
 
 const props = defineProps<{ ending: Ending }>();
 const emit = defineEmits<{ skip: [] }>();
@@ -353,8 +354,18 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
             stroke-linecap="round"
           />
         </svg>
-        <strong>{{ t(ending.title.key, ending.title.args ?? {}) }}</strong>
-        <span>{{ t(ending.sub.key, ending.sub.args ?? {}) }}</span>
+        <strong>
+          <ClauseText
+            :text="t(ending.title.key, ending.title.args ?? {})"
+            thai-only
+          />
+        </strong>
+        <span>
+          <ClauseText
+            :text="t(ending.sub.key, ending.sub.args ?? {})"
+            thai-only
+          />
+        </span>
         <small v-if="ending.skippable">{{ t("game.stickerSkip") }}</small>
       </div>
 
