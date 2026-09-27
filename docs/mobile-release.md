@@ -61,15 +61,18 @@ pull request 動到 `mobile/**`、`design/app-icon/**`、`frontend/**`（測試�
   `bundleRelease`，上傳 `connect4-debug-apk`（保留 14 天，可直接側載測試；每次建置的 debug 簽章不同，
   換版前要先解除安裝舊的）。
 - `ios`：建置模擬器版，檢查 Bundle ID、版本、`ITSAppUsesNonExemptEncryption`、只支援 iPhone、
-  三個語系的名稱與隱私清單，再建置一次不簽章的 Release 裝置版；另附模擬器截圖。
+  四個語系（英、繁中、簡中、泰）的名稱與隱私清單，再建置一次不簽章的 Release 裝置版；另附模擬器截圖。
 - `ios-smoke`：只在手動執行（Run workflow，勾選 smoke）時跑，會連正式站，不要排成定時執行。在 macOS runner 的
-  iPhone 模擬器用 XCUITest（`mobile/ios/UITests/AppUITests.swift`）跑兩段：
-  - 連線版：全新安裝的預設暱稱（頭像不是「?」、玩家設定是「玩家 NNNN」）、下完一局 AI（每手 30 秒內回應）、
+  iPhone 模擬器用 XCUITest（`mobile/ios/UITests/AppUITests.swift`）跑三段：
+  - 連線版：全新安裝的預設暱稱（頭像不是「?」、玩家設定是「Player NNNN」或「玩家 NNNN」）、下完一局 AI（每手 30 秒內回應）、
     隱私權連結會開 Safari 且 app 停在原頁。
   - 離線版：網頁改用連不到的 `VITE_API_ORIGIN=https://offline.invalid` 重建、先移除 app 再裝：離線大廳文案、
     「立即對戰」可按、預設暱稱、下兩手後結束 app 再開會回到同一手、接著下完一局。
+  - 三種裝置語言：沿用離線版的網頁，把模擬器的語言依序設成英文、繁中、泰文並重開機，每種都先移除 app 再裝，
+    確認第一次打開的畫面語言（「Play now」／「立即對戰」／「เล่นเลย」）、預設暱稱（Player／玩家／ผู้เล่น NNNN）
+    與手機桌面名稱（Four In A Row／四子棋／เรียงสี่）。一種語言失敗其他仍會跑完。
   測試 target 不在 commit 的 Xcode 專案裡，由 `mobile/scripts/add-ui-test-target.rb`（固定 Ruby 3.3、
-  xcodeproj 1.28.1）在 runner 上臨時加入。截圖在 artifact `ios-smoke-screenshots`（`online/`、`offline/`），
+  xcodeproj 1.28.1）在 runner 上臨時加入。截圖在 artifact `ios-smoke-screenshots`（`online/`、`offline/`、`lang-en/`、`lang-zh/`、`lang-th/`），
   每手耗時寫在 run 的 Summary。
   Android 沒有對應的自動對局：Cloudflare 擋 GitHub 的 Ubuntu runner，模擬器連不到正式站；需要時用
   `connect4-debug-apk` 側載到 Android 手機測。
@@ -134,7 +137,7 @@ Release 設定寫在 Xcode 專案 App target 裡（`CODE_SIGN_STYLE = Manual`、
 | 檔案 | 內容 |
 |---|---|
 | `status.json` | `{"status": "draft", …}` 只能 dry-run；使用者核准後由 ui 改成 `"approved"` 才能上傳 |
-| `<語系>/name.txt`、`subtitle.txt`、`privacy_policy_url.txt` | App 資訊（`en-US`、`zh-Hant`） |
+| `<語系>/name.txt`、`subtitle.txt`、`privacy_policy_url.txt` | App 資訊（`en-US`、`zh-Hant`、`th`） |
 | `<語系>/description.txt`、`keywords.txt`、`promotional_text.txt`、`support_url.txt` | 版本頁文字 |
 | `screenshots/<語系>/NN-名稱.png` | 6.9 吋 iPhone 截圖 1320×2868（或 1290×2796、1260×2736），不可有透明度，最多 10 張，依檔名排序上傳 |
 | `previews/<語系>/NN-名稱.mp4`，或共用的 `previews/common/` | App Preview 影片，最多 3 支，依檔名排序；某語系資料夾沒有影片時用 `common/` |
@@ -168,7 +171,7 @@ mobile/scripts/app_store_metadata.py --version 3.3.0 --apply     # 真的上傳
 
 ## Google Play 商店素材（在 Play Console 手動上傳）
 
-放在 `mobile/store/google-play/<語系>/`（語系 `en-US`、`zh-TW`），上傳腳本的 dry-run 會一起檢查：
+放在 `mobile/store/google-play/<語系>/`（語系 `en-US`、`zh-TW`、`th`），上傳腳本的 dry-run 會一起檢查：
 
 | 檔案 | 規格 |
 |---|---|

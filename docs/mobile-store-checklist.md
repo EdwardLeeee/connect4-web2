@@ -1,17 +1,18 @@
-# 送審清單（3.2.0 草稿）
+# 送審清單（3.3.0 草稿）
 
-App Store 與 Google Play 後台要填的內容，依 3.2.0 的程式寫成。填寫前由 ceo 對照程式與 `PRIVACY.md`
+App Store 與 Google Play 後台要填的內容。第一次送審是 3.3.0（中、英、泰三種語言一起），資料申報依 3.2.0 的
+程式寫成，3.3.0 只加泰文與「第一次打開跟隨裝置語言」，沒有新的資料。填寫前由 ceo 對照程式與 `PRIVACY.md`
 再確認一次；標「待決定」的要先問使用者。**按下「送審」一定要等使用者點頭。**
 
 ## 共用資料
 
 | 欄位 | 內容 |
 |---|---|
-| App Store 商店名稱 | 英文「Four In A Row: Super AI」（已建立 app 記錄；「Four In A Row」已被別的 app 使用）。繁中「四子棋」填中文資料時才知道能不能用 |
-| 手機桌面名稱 | 不變：中文（繁、簡）「四子棋」，其他語言「Four In A Row」 |
-| 主要語言 | English (U.S.)：沒有翻譯的語言會顯示主要語言；再加繁體中文 |
+| App Store 商店名稱 | 英文「Four In A Row: Super AI」（已建立 app 記錄；「Four In A Row」已被別的 app 使用）。繁中「四子棋」、泰文「เรียงสี่」上傳時才知道能不能用；泰文被占用就改用「เรียงสี่: Super AI」 |
+| 手機桌面名稱 | 中文（繁、簡）「四子棋」，泰文「เรียงสี่」，其他語言「Four In A Row」 |
+| 主要語言 | English (U.S.)：沒有翻譯的語言會顯示主要語言；再加繁體中文與泰文（App Store `th`，Google Play `th`） |
 | Bundle ID／Package | `com.oraclelee.connect4` |
-| 版本 | 3.2.0。App Store 版本頁預設的「1.0」要改成 3.2.0，才選得到上傳的建置 |
+| 版本 | 3.3.0。App Store 版本頁預設的「1.0」要改成 3.3.0，才選得到上傳的建置 |
 | 類別 | 遊戲 → 棋盤遊戲（Board） |
 | 隱私權政策網址 | https://github.com/EdwardLeeee/connect4-web2/blob/main/PRIVACY.md |
 | 支援網址（App Store 必填） | https://github.com/EdwardLeeee/connect4-web2/issues |
@@ -21,6 +22,7 @@ App Store 與 Google Play 後台要填的內容，依 3.2.0 的程式寫成。�
 | 加密出口規範 | 只用系統的 HTTPS；Info.plist 已設 `ITSAppUsesNonExemptEncryption = false`，上傳時不用再回答 |
 
 **名稱被占用**：App Store 的名稱全站唯一。中文名稱若被占用，停下來回報 ceo，由使用者另取，不要自己改名。
+泰文名稱已有備案：「เรียงสี่」被占用就改成「เรียงสี่: Super AI」，改完回報 ceo。
 
 **商標**：畫面上仍有 CONNECT 4 字樣（Hasbro 的註冊商標）；使用者已接受可能因 Apple 5.2.1 被退件的風險。
 
@@ -98,8 +100,8 @@ AI 對局在手機上算（可以開飛航模式測）、線上對戰要第二�
 
 1. **用 API 上傳**：`mobile/scripts/app_store_metadata.py` 讀 `mobile/store/app-store/`，這個資料夾是
    商店文字、截圖與審核說明的唯一來源（用法見 `docs/mobile-release.md`）：
-   - 版本號改成 3.2.0，選好要送審的建置。
-   - 英文與繁中的商店文字：名稱、副標題、簡介、關鍵字、宣傳文字、支援網址、隱私權政策網址。
+   - 版本號改成 3.3.0，選好要送審的建置。
+   - 英文、繁中與泰文的商店文字：名稱、副標題、簡介、關鍵字、宣傳文字、支援網址、隱私權政策網址。
    - 截圖（`screenshots/<語系>/`，ui 的草稿經使用者核准後放進來）。
    - 給審核員的說明與聯絡資訊。
    - 預設只做 dry-run，印出會送出的內容；`status.json` 是 `approved` 且必填欄位都有內容才能真的上傳。
@@ -119,7 +121,7 @@ App Store 的文字與截圖都放在 `mobile/store/app-store/`，目前是草�
 
 - App Store：6.9 吋 iPhone 截圖（1320×2868、1290×2796 或 1260×2736），至少 1 張、最多 10 張。只支援
   iPhone，不需要 iPad 截圖。
-- 英文與繁中的副標題（30 字元）、簡介（4000 字元）、關鍵字（100 字元，用逗號分隔）、宣傳文字（170 字元）。
+- 英文、繁中與泰文的副標題（30 字元）、簡介（4000 字元）、關鍵字（100 字元，用逗號分隔）、宣傳文字（170 字元）。
   名稱、副標題、簡介、宣傳文字不能出現 Connect 4（Hasbro 商標、Apple 2.3.7）。關鍵字的 connect4 是使用者
   2026-09-27 決定的例外：上傳腳本只警告，被 Apple 以 2.3.7 退件就拿掉重送。
 - App Preview 影片：6.9 吋 886×1920、15–30 秒、只有 AI 對局，規格與放置位置見 `docs/mobile-release.md`。
