@@ -129,29 +129,56 @@ Release 設定寫在 Xcode 專案 App target 裡（`CODE_SIGN_STYLE = Manual`、
 
 ## App Store 商店資料
 
-`mobile/store/app-store/` 是商店文字、截圖與審核說明的唯一來源：
+`mobile/store/app-store/` 是商店文字、截圖、預覽影片與審核說明的唯一來源：
 
 | 檔案 | 內容 |
 |---|---|
-| `status.json` | `draft`（草稿，只能 dry-run）或 `approved`（使用者核准過，可以上傳） |
+| `status.json` | `{"status": "draft", …}` 只能 dry-run；使用者核准後由 ui 改成 `"approved"` 才能上傳 |
 | `<語系>/name.txt`、`subtitle.txt`、`privacy_policy_url.txt` | App 資訊（`en-US`、`zh-Hant`） |
 | `<語系>/description.txt`、`keywords.txt`、`promotional_text.txt`、`support_url.txt` | 版本頁文字 |
-| `screenshots/<語系>/*.png` | 6.9 吋 iPhone 截圖，依檔名排序上傳 |
+| `screenshots/<語系>/NN-名稱.png` | 6.9 吋 iPhone 截圖 1320×2868（或 1290×2796、1260×2736），不可有透明度，最多 10 張，依檔名排序上傳 |
+| `previews/<語系>/NN-名稱.mp4`，或共用的 `previews/common/` | App Preview 影片，最多 3 支，依檔名排序；某語系資料夾沒有影片時用 `common/` |
 | `review_notes.txt` | 給審核員的說明 |
 
-上傳腳本 `mobile/scripts/app_store_metadata.py`（在開發機執行，需要 PyJWT 與 cryptography）：
+App Preview 規格（App Store Connect 說明「App preview specifications」），dry-run 用 ffprobe 逐項檢查：
+
+- 886×1920 直式（或 1920×886 橫式），15–30 秒，最高 30 fps。
+- H.264（High Profile、level 4.0 以下，建議 yuv420p、10–12 Mbps）放在 .mp4／.m4v／.mov，或 ProRes 422 HQ
+  放在 .mov；檔案 500 MB 以下。
+- **一定要有音軌**：立體聲 AAC、44.1 或 48 kHz（沒有聲音就放一條靜音軌）。
+- 例：`ffmpeg -i in.mov -f lavfi -i anullsrc=r=44100:cl=stereo -shortest -c:v libx264 -profile:v high
+  -level 4.0 -pix_fmt yuv420p -b:v 10M -r 30 -c:a aac -b:a 256k -movflags +faststart out.mp4`
+
+上傳腳本 `mobile/scripts/app_store_metadata.py`（在開發機執行，需要 PyJWT、cryptography 與 ffprobe）：
 
 ```bash
-mobile/scripts/app_store_metadata.py --version 3.2.0             # dry-run：只讀取、印出會改的內容
-mobile/scripts/app_store_metadata.py --version 3.2.0 --apply     # 真的上傳
+mobile/scripts/app_store_metadata.py --version 3.3.0             # dry-run：只讀取、印出會改的內容
+mobile/scripts/app_store_metadata.py --version 3.3.0 --apply     # 真的上傳
 ```
 
 - 憑證讀 `~/.config/connect4-mobile/ios/asc.json`（`key_id`、`issuer_id`，不是秘密）與同目錄的
   `AuthKey_<key_id>.p8`。
-- `--apply` 只在 `status.json` 是 `approved`、必填欄位都有內容、截圖尺寸正確時才執行；執行時才詢問審核
-  聯絡人的姓名、電話、email（也可用 `C4_REVIEW_*` 環境變數），輸入 `UPLOAD` 確認後才寫入。
-- 截圖會整組替換同一個 display type（`APP_IPHONE_67`，蘋果把 6.9 吋截圖歸在這一類；第一次實際上傳時確認）。
+- `--apply` 只在 `status.json` 是 `approved`、必填欄位都有內容、截圖與影片都符合規格時才執行；執行時才詢問
+  審核聯絡人的姓名、電話、email（也可用 `C4_REVIEW_*` 環境變數），輸入 `UPLOAD` 確認後才寫入。
+- 商標檢查：名稱、副標題、簡介、宣傳文字出現 Connect 4／connect4 會擋下；**關鍵字的 connect4 只警告**
+  （使用者 2026-09-27 決定保留，被 Apple 以 2.3.7 退件就拿掉）。
+- 截圖與影片會整組替換同一個 display type（截圖 `APP_IPHONE_67`、影片 `IPHONE_67`；蘋果沒寫明 6.9 吋對應
+  哪個名稱，第一次實際上傳時確認）。
 - 腳本永遠不會送審；送審由使用者在 App Store Connect 網頁上按。
+
+## Google Play 商店素材（在 Play Console 手動上傳）
+
+放在 `mobile/store/google-play/<語系>/`（語系 `en-US`、`zh-TW`），上傳腳本的 dry-run 會一起檢查：
+
+| 檔案 | 規格 |
+|---|---|
+| `title.txt` | 30 字元以內 |
+| `short_description.txt` | 80 字元以內 |
+| `full_description.txt` | 4000 字元以內 |
+| `feature-graphic.png` | 1024×500，24 位元 PNG（不可有透明度） |
+| `phone-screenshots/NN-名稱.png` | 2–8 張，每邊 320–3840 px、長邊不超過短邊 2 倍、不可有透明度（建議 1080×1920） |
+
+Play 的文字沒有關鍵字欄位，全部不可出現 Connect 4。商店圖示用 `mobile/store/play-icon-512.png`。
 
 ## 第一次上架
 

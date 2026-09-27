@@ -120,6 +120,7 @@ App Store 的文字與截圖都放在 `mobile/store/app-store/`，目前是草�
 - App Store：6.9 吋 iPhone 截圖（1320×2868、1290×2796 或 1260×2736），至少 1 張、最多 10 張。只支援
   iPhone，不需要 iPad 截圖。
 - 英文與繁中的副標題（30 字元）、簡介（4000 字元）、關鍵字（100 字元，用逗號分隔）、宣傳文字（170 字元）。
-  名稱、副標題、關鍵字不能出現 Connect 4（Hasbro 商標、Apple 2.3.7）。
-- Google Play（之後另外準備）：手機截圖 2～8 張、1024×500 的主題圖片（feature graphic）、簡短說明（80 字元）
-  與完整說明。
+  名稱、副標題、簡介、宣傳文字不能出現 Connect 4（Hasbro 商標、Apple 2.3.7）。關鍵字的 connect4 是使用者
+  2026-09-27 決定的例外：上傳腳本只警告，被 Apple 以 2.3.7 退件就拿掉重送。
+- App Preview 影片：6.9 吋 886×1920、15–30 秒、只有 AI 對局，規格與放置位置見 `docs/mobile-release.md`。
+- Google Play：放在 `mobile/store/google-play/`（位置與規格見 `docs/mobile-release.md`），在 Play Console 手動上傳。

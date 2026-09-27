@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Upload the App Store listing from mobile/store/app-store/ through the App Store Connect API.
 
+It also checks the Google Play assets in mobile/store/google-play/, which are uploaded by hand.
+
 Usage:
   mobile/scripts/app_store_metadata.py --version 3.2.0 [--build 7]          # dry run (default)
   mobile/scripts/app_store_metadata.py --version 3.2.0 [--build 7] --apply  # upload
@@ -11,7 +13,7 @@ in; it asks for the review contact details at run time (they never go into the r
 asks for confirmation before it writes anything. It never submits the version for review.
 
 Credentials: ~/.config/connect4-mobile/ios/asc.json ({"key_id": ..., "issuer_id": ...}) and the
-matching AuthKey_<key_id>.p8 next to it. Needs PyJWT and cryptography.
+matching AuthKey_<key_id>.p8 next to it. Needs PyJWT, cryptography and ffprobe (for previews).
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ import hashlib
 import json
 import os
 import struct
+import subprocess
 import sys
 import time
 import urllib.error
@@ -39,6 +42,16 @@ EDITABLE = {"PREPARE_FOR_SUBMISSION", "DEVELOPER_REJECTED", "REJECTED", "METADAT
 # APP_IPHONE_67; confirm on the first real upload.
 SCREENSHOT_TYPE = "APP_IPHONE_67"
 SCREENSHOT_SIZES = {(1320, 2868), (1290, 2796), (1260, 2736)}
+# 6.9" app previews (App Store Connect Help, "App preview specifications"): 886x1920 portrait or
+# 1920x886 landscape, 15-30 s, up to 30 fps, H.264 (High Profile, up to level 4.0) in .mov, .m4v or
+# .mp4 or ProRes 422 HQ in .mov, 500 MB at most, an audio track (stereo AAC, 44.1 or 48 kHz; a
+# silent one is fine). The API type name for 6.9" is not documented; IPHONE_67 is assumed like
+# the screenshots and is confirmed on the first real upload.
+PREVIEW_TYPE = "IPHONE_67"
+PREVIEW_SIZES = {(886, 1920), (1920, 886)}
+PREVIEW_TYPES = {".mp4": "video/mp4", ".m4v": "video/mp4", ".mov": "video/quicktime"}
+PLAY = STORE.parent / "google-play"
+PLAY_LOCALES = ("en-US", "zh-TW")
 
 # file name -> (API attribute, resource, max characters, required)
 FIELDS = {
@@ -51,6 +64,8 @@ FIELDS = {
     "support_url.txt": ("supportUrl", "version", 255, True),
 }
 FORBIDDEN = ("connect 4", "connect four", "connect4")  # Hasbro trademark; Apple 2.3.7
+TRADEMARK_BLOCKED = ("name.txt", "subtitle.txt", "description.txt", "promotional_text.txt")
+KEYWORD_TRADEMARK_NOTE = "使用者 2026-09-27 決定保留，退件就拿掉"
 
 
 class Api:
@@ -93,9 +108,14 @@ class Api:
         return self.call("GET", path)
 
 
-def read_listing() -> tuple[dict[str, dict[str, str]], str, list[str]]:
-    """Return {locale: {file: text}}, the review notes and a list of problems."""
+def mentions_trademark(text: str) -> bool:
+    return any(word in text.lower() for word in FORBIDDEN)
+
+
+def read_listing() -> tuple[dict[str, dict[str, str]], str, list[str], list[str]]:
+    """Return {locale: {file: text}}, the review notes, problems and warnings."""
     problems: list[str] = []
+    warnings: list[str] = []
     listing: dict[str, dict[str, str]] = {}
     for locale in LOCALES:
         listing[locale] = {}
@@ -108,23 +128,26 @@ def read_listing() -> tuple[dict[str, dict[str, str]], str, list[str]]:
                 problems.append(f"{locale}/{name} has {len(text)} characters (limit {limit})")
             if name.endswith("_url.txt") and text and not text.startswith("https://"):
                 problems.append(f"{locale}/{name} is not an https:// URL")
-            if name in ("name.txt", "subtitle.txt", "keywords.txt") and any(
-                word in text.lower() for word in FORBIDDEN
-            ):
+            if mentions_trademark(text) and name in TRADEMARK_BLOCKED:
                 problems.append(f"{locale}/{name} mentions Connect 4 (Hasbro trademark)")
+            elif mentions_trademark(text) and name == "keywords.txt":
+                note = KEYWORD_TRADEMARK_NOTE
+                warnings.append(f"{locale}/keywords.txt contains connect4 (Apple 2.3.7): {note}")
     notes = (STORE / "review_notes.txt").read_text(encoding="utf-8").strip()
     if not notes:
         problems.append("review_notes.txt is empty")
     if len(notes) > 4000:
         problems.append(f"review_notes.txt has {len(notes)} characters (limit 4000)")
-    return listing, notes, problems
+    return listing, notes, problems, warnings
 
 
-def png_size(path: Path) -> tuple[int, int]:
-    header = path.read_bytes()[:24]
-    if header[:8] != b"\x89PNG\r\n\x1a\n":
-        raise ValueError(f"{path} is not a PNG")
-    return struct.unpack(">II", header[16:24])
+def png_info(path: Path) -> tuple[int, int, bool]:
+    """Width, height and whether the PNG has an alpha channel (colour type 4 or 6, or tRNS)."""
+    data = path.read_bytes()
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        raise ValueError(f"{path.name} is not a PNG")
+    width, height = struct.unpack(">II", data[16:24])
+    return width, height, data[25] in (4, 6) or b"tRNS" in data[:4096]
 
 
 def read_screenshots() -> tuple[dict[str, list[Path]], list[str]]:
@@ -137,13 +160,173 @@ def read_screenshots() -> tuple[dict[str, list[Path]], list[str]]:
             problems.append(f"screenshots/{locale} has {len(files)} files (limit 10)")
         for path in files:
             try:
-                size = png_size(path)
+                width, height, alpha = png_info(path)
             except ValueError as error:
                 problems.append(str(error))
                 continue
-            if size not in SCREENSHOT_SIZES:
-                problems.append(f"{path.name} is {size[0]}x{size[1]}, not a 6.9-inch iPhone size")
+            if (width, height) not in SCREENSHOT_SIZES:
+                problems.append(f"{path.name} is {width}x{height}, not a 6.9-inch iPhone size")
+            if alpha:
+                problems.append(f"{path.name} has an alpha channel (App Store rejects it)")
     return shots, problems
+
+
+def probe(path: Path) -> dict:
+    result = subprocess.run(
+        ["ffprobe", "-v", "error", "-print_format", "json", "-show_format", "-show_streams", path],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise ValueError(f"{path.name}: ffprobe failed: {result.stderr.strip()}")
+    return json.loads(result.stdout)
+
+
+def fps(rate: str) -> float:
+    num, _, den = rate.partition("/")
+    return float(num) / float(den or 1) if float(den or 1) else 0.0
+
+
+def check_preview(path: Path) -> tuple[list[str], list[str]]:
+    """Problems and warnings for one app preview against Apple's specification."""
+    problems: list[str] = []
+    warnings: list[str] = []
+    name = path.name
+    if path.suffix.lower() not in PREVIEW_TYPES:
+        return [f"{name}: use .mp4, .m4v or .mov"], []
+    info = probe(path)
+    fmt = info.get("format", {})
+    size = int(fmt.get("size", path.stat().st_size))
+    duration = float(fmt.get("duration", 0))
+    if size > 500 * 1024 * 1024:
+        problems.append(f"{name}: {size / 1048576:.0f} MB (limit 500 MB)")
+    if not 15 <= duration <= 30:
+        problems.append(f"{name}: {duration:.2f} s long (must be 15-30 s)")
+    videos = [s for s in info["streams"] if s.get("codec_type") == "video"]
+    audios = [s for s in info["streams"] if s.get("codec_type") == "audio"]
+    if len(videos) != 1:
+        problems.append(f"{name}: {len(videos)} video streams (need exactly 1)")
+    else:
+        video = videos[0]
+        dims = (video.get("width"), video.get("height"))
+        if dims not in PREVIEW_SIZES:
+            problems.append(f"{name}: {dims[0]}x{dims[1]} (need 886x1920 or 1920x886)")
+        codec = video.get("codec_name")
+        if codec == "h264":
+            if (video.get("level") or 0) > 40:
+                problems.append(f"{name}: H.264 level {video['level'] / 10} (at most 4.0)")
+            if video.get("profile") != "High":
+                warnings.append(f"{name}: H.264 profile {video.get('profile')} (Apple asks High)")
+            if video.get("pix_fmt") != "yuv420p":
+                warnings.append(f"{name}: pixel format {video.get('pix_fmt')} (yuv420p is safest)")
+        elif codec == "prores":
+            if path.suffix.lower() != ".mov":
+                problems.append(f"{name}: ProRes must be in a .mov")
+        else:
+            problems.append(f"{name}: video codec {codec} (need H.264 or ProRes 422 HQ)")
+        rate = max(fps(video.get("r_frame_rate", "0/1")), fps(video.get("avg_frame_rate", "0/1")))
+        if rate > 30.01:
+            problems.append(f"{name}: {rate:.2f} fps (at most 30)")
+        bitrate = int(video.get("bit_rate") or fmt.get("bit_rate") or 0) / 1e6
+        if codec == "h264" and bitrate > 12:
+            warnings.append(f"{name}: video {bitrate:.1f} Mbps (Apple targets 10-12)")
+    if not audios:
+        problems.append(f"{name}: no audio track (add a silent stereo AAC track)")
+    else:
+        audio = audios[0]
+        if audio.get("codec_name") != "aac":
+            problems.append(f"{name}: audio codec {audio.get('codec_name')} (need AAC)")
+        if audio.get("channels") != 2:
+            problems.append(f"{name}: {audio.get('channels')} audio channels (need stereo)")
+        if audio.get("sample_rate") not in ("44100", "48000"):
+            problems.append(f"{name}: audio at {audio.get('sample_rate')} Hz (need 44.1 or 48 kHz)")
+    return problems, warnings
+
+
+def read_previews() -> tuple[dict[str, list[Path]], list[str], list[str]]:
+    """previews/<locale>/ wins; a locale without its own videos uses previews/common/."""
+    problems: list[str] = []
+    warnings: list[str] = []
+    previews: dict[str, list[Path]] = {}
+    common = sorted(
+        p
+        for p in (STORE / "previews" / "common").glob("*")
+        if p.is_file() and not p.name.startswith(".")
+    )
+    for locale in LOCALES:
+        own = sorted(
+            p
+            for p in (STORE / "previews" / locale).glob("*")
+            if p.is_file() and not p.name.startswith(".")
+        )
+        previews[locale] = own or common
+    for files in {tuple(files) for files in previews.values() if files}:
+        if len(files) > 3:
+            problems.append(f"{len(files)} previews in one set (limit 3)")
+        if any(True for _ in files):
+            try:
+                subprocess.run(["ffprobe", "-version"], capture_output=True, check=True)
+            except (OSError, subprocess.CalledProcessError):
+                return previews, ["ffprobe is needed to check the previews"], warnings
+        for path in files:
+            try:
+                bad, soft = check_preview(path)
+            except ValueError as error:
+                bad, soft = [str(error)], []
+            problems += bad
+            warnings += soft
+    return previews, problems, warnings
+
+
+def check_play() -> list[str]:
+    """Google Play assets are uploaded by hand; report what would not be accepted."""
+    if not PLAY.is_dir():
+        return []
+    problems: list[str] = []
+    limits = {"title.txt": 30, "short_description.txt": 80, "full_description.txt": 4000}
+    for locale in PLAY_LOCALES:
+        folder = PLAY / locale
+        for name, limit in limits.items():
+            file = folder / name
+            if not file.exists():
+                problems.append(f"google-play/{locale}/{name} is missing")
+                continue
+            text = file.read_text(encoding="utf-8").strip()
+            if not text:
+                problems.append(f"google-play/{locale}/{name} is empty")
+            if len(text) > limit:
+                problems.append(
+                    f"google-play/{locale}/{name} has {len(text)} characters (limit {limit})"
+                )
+            if mentions_trademark(text):
+                problems.append(
+                    f"google-play/{locale}/{name} mentions Connect 4 (Hasbro trademark)"
+                )
+        graphic = folder / "feature-graphic.png"
+        if not graphic.exists():
+            problems.append(f"google-play/{locale}/feature-graphic.png is missing")
+        else:
+            width, height, alpha = png_info(graphic)
+            if (width, height) != (1024, 500):
+                problems.append(
+                    f"google-play/{locale}/feature-graphic.png is {width}x{height} (need 1024x500)"
+                )
+            if alpha:
+                problems.append(f"google-play/{locale}/feature-graphic.png has an alpha channel")
+        shots = sorted((folder / "phone-screenshots").glob("*.png"))
+        if not 2 <= len(shots) <= 8:
+            problems.append(
+                f"google-play/{locale}/phone-screenshots has {len(shots)} PNGs (need 2-8)"
+            )
+        for shot in shots:
+            width, height, alpha = png_info(shot)
+            if not (320 <= min(width, height) and max(width, height) <= 3840):
+                problems.append(f"{shot.name}: {width}x{height} (each side 320-3840 px)")
+            if max(width, height) > 2 * min(width, height):
+                problems.append(f"{shot.name}: {width}x{height} is longer than 2:1")
+            if alpha:
+                problems.append(f"{shot.name}: has an alpha channel (Play needs 24-bit PNG)")
+    return problems
 
 
 def short(text: str | None, width: int = 70) -> str:
@@ -167,9 +350,13 @@ def main() -> None:
     args = parser.parse_args()
 
     status = json.loads((STORE / "status.json").read_text(encoding="utf-8"))["status"]
-    listing, notes, problems = read_listing()
+    listing, notes, problems, warnings = read_listing()
     shots, shot_problems = read_screenshots()
     problems += shot_problems
+    previews, preview_problems, preview_warnings = read_previews()
+    problems += preview_problems
+    warnings += preview_warnings
+    play_problems = check_play()
 
     api = Api()
     apps = api.get(f"/apps?filter[bundleId]={BUNDLE_ID}")["data"]
@@ -269,13 +456,28 @@ def main() -> None:
                 )
             )
 
+    for locale in LOCALES:
+        if previews[locale]:
+            names = ", ".join(p.name for p in previews[locale])
+            plan.append(
+                (f"replace {locale} {PREVIEW_TYPE} app previews with: {names}", "previews", {})
+            )
+
     print("\nPlanned changes:")
     for description, _kind, _payload in plan:
         print(f"  - {description}")
+    if warnings:
+        print("\nWarnings (do not block --apply):")
+        for warning in warnings:
+            print(f"  ~ {warning}")
     if problems:
         print("\nProblems (must be fixed before --apply):")
         for problem in problems:
             print(f"  ! {problem}")
+    if PLAY.is_dir():
+        print("\nGoogle Play assets (uploaded by hand in Play Console):")
+        for problem in play_problems or ["all checks passed"]:
+            print(f"  {'!' if play_problems else '-'} {problem}")
 
     if not args.apply:
         print("\nDry run: nothing was sent. Submitting for review is always done by hand.")
@@ -398,6 +600,8 @@ def main() -> None:
     for locale in LOCALES:
         if shots[locale]:
             upload_screenshots(api, version_locs[locale]["id"], shots[locale])
+        if previews[locale]:
+            upload_previews(api, version_locs[locale]["id"], previews[locale])
 
     print("\nUploaded. Review it in App Store Connect; submitting for review is done by hand.")
 
@@ -465,6 +669,71 @@ def upload_screenshots(api: Api, localization_id: str, files: list[Path]) -> Non
             },
         )
         print(f"  uploaded {path.name}")
+
+
+def upload_asset(api: Api, kind: str, set_kind: str, set_id: str, path: Path, extra: dict) -> None:
+    """Reserve, upload in the parts Apple asks for, then commit with the MD5 checksum."""
+    data = path.read_bytes()
+    asset = api.call(
+        "POST",
+        f"/{kind}",
+        {
+            "data": {
+                "type": kind,
+                "attributes": {"fileName": path.name, "fileSize": len(data), **extra},
+                "relationships": {set_kind[:-1]: {"data": {"type": set_kind, "id": set_id}}},
+            }
+        },
+    )["data"]
+    for op in asset["attributes"]["uploadOperations"]:
+        chunk = data[op["offset"] : op["offset"] + op["length"]]
+        headers = {h["name"]: h["value"] for h in op.get("requestHeaders", [])}
+        request = urllib.request.Request(
+            op["url"], data=chunk, method=op["method"], headers=headers
+        )
+        with urllib.request.urlopen(request, timeout=300):
+            pass
+    api.call(
+        "PATCH",
+        f"/{kind}/{asset['id']}",
+        {
+            "data": {
+                "type": kind,
+                "id": asset["id"],
+                "attributes": {
+                    "uploaded": True,
+                    "sourceFileChecksum": hashlib.md5(data).hexdigest(),
+                },
+            }
+        },
+    )
+    print(f"  uploaded {path.name}")
+
+
+def upload_previews(api: Api, localization_id: str, files: list[Path]) -> None:
+    sets = api.get(f"/appStoreVersionLocalizations/{localization_id}/appPreviewSets")["data"]
+    target = next((s for s in sets if s["attributes"]["previewType"] == PREVIEW_TYPE), None)
+    if target is None:
+        target = api.call(
+            "POST",
+            "/appPreviewSets",
+            {
+                "data": {
+                    "type": "appPreviewSets",
+                    "attributes": {"previewType": PREVIEW_TYPE},
+                    "relationships": {
+                        "appStoreVersionLocalization": {
+                            "data": {"type": "appStoreVersionLocalizations", "id": localization_id}
+                        }
+                    },
+                }
+            },
+        )["data"]
+    for old in api.get(f"/appPreviewSets/{target['id']}/appPreviews")["data"]:
+        api.call("DELETE", f"/appPreviews/{old['id']}")
+    for path in files:
+        mime = PREVIEW_TYPES[path.suffix.lower()]
+        upload_asset(api, "appPreviews", "appPreviewSets", target["id"], path, {"mimeType": mime})
 
 
 if __name__ == "__main__":
