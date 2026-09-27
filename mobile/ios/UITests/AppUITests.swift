@@ -170,6 +170,9 @@ final class AppUITests: XCTestCase {
         let web = launchWebView()
         let start = web.buttons.matching(NSPredicate(format: "label CONTAINS %@", play)).firstMatch
         XCTAssertTrue(start.waitForExistence(timeout: 60), "the first screen has no \"\(play)\" button")
+        // The button is in the accessibility tree before the view's 240 ms fade-in has drawn anything.
+        XCTAssertTrue(waitUntil("isEnabled == true", start, timeout: 60), "\"\(play)\" stayed disabled")
+        Thread.sleep(forTimeInterval: 1)
         shot("\(name)-lobby")
 
         // The avatar is the nickname's first letter (with its marks, for Thai) or the whole nickname.
