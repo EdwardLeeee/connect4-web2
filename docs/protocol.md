@@ -14,7 +14,12 @@
 `GET /api/session` 與 `PATCH /api/session` 回應同樣的形狀（app 另外多一個 `token`）：
 
 ```ts
-{ nickname: string; locale: "zh-TW" | "en"; default_number: number | null; created: boolean }
+{
+  nickname: string;
+  locale: "zh-TW" | "en" | "th";
+  default_number: number | null;
+  created: boolean;
+}
 ```
 
 PATCH 的 body 是 `{nickname?, locale, default_number?}`，規則見下方「預設暱稱」。`locale` 沒送時會被
@@ -24,12 +29,14 @@ PATCH 的 body 是 `{nickname?, locale, default_number?}`，規則見下方「�
 
 ### 預設暱稱
 
-還沒自己取過名字的人使用預設暱稱，格式依語言：`zh-TW`「玩家 {n}」，`en`「Player {n}」，`{n}` 是
-1000–9999。這兩個格式和前端文案 `session.defaultNickname` 相同，`tests/test_local_parity.py` 會檢查。
+還沒自己取過名字的人使用預設暱稱，格式依語言：`zh-TW`「玩家 {n}」，`en`「Player {n}」，
+`th`「ผู้เล่น {n}」，`{n}` 是 1000–9999。這些格式和前端文案 `session.defaultNickname` 相同；
+`tests/test_local_parity.py` 會檢查兩邊的語言清單完全一致，而且每種語言的格式都相同。
 
 - `default_number` 是預設暱稱的編號；`null` 代表使用者自己取的名字。新 session 一律是預設暱稱，
-  編號隨機，語言是 `zh-TW`。
-- 預設暱稱的人換語言時，伺服器依新語言重新產生名字，編號不變（「玩家 4821」↔「Player 4821」）。
+  編號隨機，語言是 `zh-TW`；前端第一次打開時會依裝置或瀏覽器的語言，用 PATCH 改成對應的語言。
+- 預設暱稱的人換語言時，伺服器依新語言重新產生名字，編號不變（「玩家 4821」↔「Player 4821」↔
+  「ผู้เล่น 4821」）。
   自己取的名字換語言時不動。
 - PATCH 的 `default_number`：
   - 送整數：設成這個編號的預設暱稱，名字由伺服器依語言產生；`nickname` 可以不送，送了也會被忽略。
@@ -82,7 +89,7 @@ iOS／Android app 把網頁打包在 app 裡（Capacitor），頁面來源是 `c
   ```ts
   {
     nickname: string;
-    locale: "zh-TW" | "en";
+    locale: "zh-TW" | "en" | "th";
     default_number: number | null;
     created: boolean;
     token: string;
@@ -139,7 +146,7 @@ iOS／Android app 把網頁打包在 app 裡（Capacitor），頁面來源是 `c
 ```ts
 {
   server_time: number;            // 產生當下的伺服器 Unix 秒（有小數）；game 為 null 時也會送
-  session: { nickname: string; locale: "zh-TW" | "en"; default_number: number | null };
+  session: { nickname: string; locale: "zh-TW" | "en" | "th"; default_number: number | null };
   queue: { searching: boolean };
   room: { id: string; code: string | null; mode: "ai" | "private" | "matchmaking" } | null;
   game: {
