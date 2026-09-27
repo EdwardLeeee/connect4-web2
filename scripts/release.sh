@@ -81,11 +81,11 @@ node -e "process.exit(require('${WT}/frontend/package.json').version === '${new}
 
 # No stale copies of the old version in anything a build or deploy consumes (the 3.0.0
 # release broke because the Containerfile still pinned the old version). Comment lines
-# are ignored so that examples in scripts do not trip the check.
+# are ignored (#, //, /* and * lines) so that examples and history notes do not trip it.
 stale="$(cd "${WT}" && rg -n --fixed-strings "${current}" \
     Containerfile .github deploy scripts backend tests native_solver/src \
     frontend/src frontend/index.html frontend/public 2>/dev/null \
-    | rg -v '^[^:]*:[0-9]+:[[:space:]]*#' || true)"
+    | rg -v '^[^:]*:[0-9]+:[[:space:]]*(#|//|/\*|\*)' || true)"
 if [ -n "${stale}" ]; then
     echo "${stale}"
     echo "the old version ${current} still appears in the files above; fix them first" >&2
