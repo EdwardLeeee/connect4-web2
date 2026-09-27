@@ -120,10 +120,11 @@ def read_listing() -> tuple[dict[str, dict[str, str]], str, list[str], list[str]
     for locale in LOCALES:
         listing[locale] = {}
         for name, (_attr, _resource, limit, required) in FIELDS.items():
-            text = (STORE / locale / name).read_text(encoding="utf-8").strip()
+            file = STORE / locale / name
+            text = file.read_text(encoding="utf-8").strip() if file.exists() else ""
             listing[locale][name] = text
             if required and not text:
-                problems.append(f"{locale}/{name} is empty")
+                problems.append(f"{locale}/{name} is {'empty' if file.exists() else 'missing'}")
             if len(text) > limit:
                 problems.append(f"{locale}/{name} has {len(text)} characters (limit {limit})")
             if name.endswith("_url.txt") and text and not text.startswith("https://"):
