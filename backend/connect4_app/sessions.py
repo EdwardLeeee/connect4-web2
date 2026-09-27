@@ -8,10 +8,10 @@ from typing import Literal
 
 SESSION_COOKIE = "c4_session"
 NICKNAME_PATTERN = re.compile(r"^[^\x00-\x1f\x7f]{1,18}$")
-LOCALES = ("zh-TW", "en")
+LOCALES = ("zh-TW", "en", "th")
 # docs/protocol.md "預設暱稱". frontend/src/i18n.ts session.defaultNickname must match;
 # tests/test_local_parity.py checks it.
-DEFAULT_NICKNAMES = {"zh-TW": "玩家 {n}", "en": "Player {n}"}
+DEFAULT_NICKNAMES = {"zh-TW": "玩家 {n}", "en": "Player {n}", "th": "ผู้เล่น {n}"}
 DEFAULT_NUMBERS = range(1000, 10000)
 
 

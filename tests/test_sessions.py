@@ -42,7 +42,7 @@ def test_a_default_number_names_the_player_in_their_language() -> None:
     assert (session.nickname, session.default_number) == ("玩家 5555", 5555)
 
 
-@pytest.mark.parametrize("sent", ["玩家 4821", "Player 4821", "  玩家 4821 "])
+@pytest.mark.parametrize("sent", ["玩家 4821", "Player 4821", "ผู้เล่น 4821", "  玩家 4821 "])
 def test_an_older_client_resending_the_default_nickname_only_changes_the_language(
     sent: str,
 ) -> None:
@@ -55,7 +55,7 @@ def test_an_older_client_resending_the_default_nickname_only_changes_the_languag
     )
 
 
-@pytest.mark.parametrize("sent", ["Ada", "玩家 1234", "Player 1234"])
+@pytest.mark.parametrize("sent", ["Ada", "玩家 1234", "Player 1234", "ผู้เล่น 1234", "นักเตะ"])
 def test_an_older_client_sending_any_other_name_chooses_it(sent: str) -> None:
     store, session = default_session()
     store.update(session, sent, "en")
@@ -100,3 +100,31 @@ def test_a_missing_nickname_without_a_default_number_is_invalid() -> None:
     store, session = default_session()
     with pytest.raises(ValueError, match="invalid_nickname"):
         store.update(session, None, "en")
+
+
+@pytest.mark.parametrize(
+    ("locale", "name"),
+    [("zh-TW", "玩家 4821"), ("en", "Player 4821"), ("th", "ผู้เล่น 4821")],
+)
+def test_a_default_nickname_follows_every_language_with_the_same_number(
+    locale: str, name: str
+) -> None:
+    store, session = default_session()
+    for other in ("th", "en", "zh-TW", locale):
+        store.update(session, None, other, 4821)
+    assert (session.nickname, session.locale, session.default_number) == (name, locale, 4821)
+
+
+def test_a_thai_name_the_player_chose_stays_in_every_language() -> None:
+    store, session = default_session()
+    store.update(session, "นักเตะ", "th", None)
+    store.update(session, "นักเตะ", "en")
+    store.update(session, "นักเตะ", "zh-TW")
+    assert (session.nickname, session.default_number) == ("นักเตะ", None)
+
+
+def test_an_unsupported_locale_is_still_rejected() -> None:
+    store, session = default_session()
+    with pytest.raises(ValueError, match="invalid_locale"):
+        store.update(session, None, "ja", 4821)
+    assert (session.nickname, session.locale) == ("玩家 4821", "zh-TW")

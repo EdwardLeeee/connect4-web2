@@ -7,7 +7,7 @@ from pathlib import Path
 import local_parity
 from connect4_app.domain import COLUMNS, ROWS
 from connect4_app.manager import AI_MIN_THINK_SECONDS
-from connect4_app.sessions import DEFAULT_NICKNAMES, default_nickname
+from connect4_app.sessions import DEFAULT_NICKNAMES, LOCALES, default_nickname
 
 ROOT = Path(__file__).resolve().parents[1]
 CONSTANTS = (ROOT / "frontend" / "src" / "local" / "constants.ts").read_text(encoding="utf-8")
@@ -51,12 +51,28 @@ def test_the_wasm_engine_is_the_native_engine_version() -> None:
         assert native and native.group(1) == wasm_version, manifest
 
 
-def test_default_nicknames_match_the_frontend_wording() -> None:
+def i18n_locale_blocks() -> dict[str, str]:
+    """The messages of each language in frontend/src/i18n.ts, keyed by locale."""
     i18n = (ROOT / "frontend" / "src" / "i18n.ts").read_text(encoding="utf-8")
-    zh_tw, en = i18n.split("\n  en: {\n", 1)
-    for locale, messages in (("zh-TW", zh_tw), ("en", en)):
-        match = re.search(r'session: \{.*?defaultNickname: "([^"]+)"', messages, re.S)
+    messages = i18n.split("const messages = {\n", 1)[1].split("\n} as const;", 1)[0]
+    starts = list(re.finditer(r'^  "?([A-Za-z-]+)"?: \{$', messages, re.M))
+    ends = [start.start() for start in starts[1:]] + [len(messages)]
+    return {
+        start.group(1): messages[start.end() : end] for start, end in zip(starts, ends, strict=True)
+    }
+
+
+def test_the_frontend_offers_exactly_the_servers_languages() -> None:
+    assert sorted(i18n_locale_blocks()) == sorted(LOCALES)
+
+
+def test_default_nicknames_match_the_frontend_wording() -> None:
+    blocks = i18n_locale_blocks()
+    for locale in LOCALES:
+        assert locale in blocks, f"frontend/src/i18n.ts has no {locale} messages"
+        match = re.search(r'session: \{.*?defaultNickname: "([^"]+)"', blocks[locale], re.S)
         assert match, locale
         assert match.group(1) == DEFAULT_NICKNAMES[locale]
     assert default_nickname(4821, "zh-TW") == "玩家 4821"
     assert default_nickname(4821, "en") == "Player 4821"
+    assert default_nickname(4821, "th") == "ผู้เล่น 4821"

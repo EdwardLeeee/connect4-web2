@@ -538,3 +538,33 @@ def test_restoring_after_a_restart_keeps_the_default_number(
     ).json()
     assert restored["nickname"] == f"Player {before['default_number']}"
     assert restored["default_number"] == before["default_number"]
+
+
+def test_thai_default_nickname_by_number(fresh_manager: GameManager) -> None:
+    client = TestClient(app)
+    client.get("/api/session", headers={"Origin": SITE_ORIGIN})
+    body = client.patch(
+        "/api/session",
+        headers={"Origin": SITE_ORIGIN},
+        json={"locale": "th", "default_number": 4821},
+    ).json()
+    assert (body["nickname"], body["locale"], body["default_number"]) == (
+        "ผู้เล่น 4821",
+        "th",
+        4821,
+    )
+
+
+def test_an_older_client_switching_to_thai_renames_a_default_nickname(
+    fresh_manager: GameManager,
+) -> None:
+    client = TestClient(app)
+    token = client.get("/api/session", headers=app_headers(IOS_ORIGIN)).json()["token"]
+    first = client.get("/api/session", headers=app_headers(IOS_ORIGIN, token)).json()
+    switched = client.patch(
+        "/api/session",
+        headers=app_headers(IOS_ORIGIN, token),
+        json={"nickname": first["nickname"], "locale": "th"},
+    ).json()
+    assert switched["nickname"] == f"ผู้เล่น {first['default_number']}"
+    assert switched["default_number"] == first["default_number"]
