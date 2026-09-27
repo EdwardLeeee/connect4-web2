@@ -2448,6 +2448,15 @@ async function thaiLayoutProblems(page: Page) {
       if (rect.right > parent.right + 1 || rect.left < parent.left - 1) {
         problems.push(`${name} sticks out of its box`);
       }
+      // A phrase kept whole (ClauseText) sits on one line.
+      if (element.parentElement!.classList.contains("clauses")) {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const lines = new Set(
+          [...range.getClientRects()].map((line) => Math.round(line.bottom)),
+        );
+        if (lines.size > 1) problems.push(`${name} is split across lines`);
+      }
     }
     return problems;
   });
@@ -2583,7 +2592,7 @@ test("Thai play, waiting and result screens fit", async ({
   const screens = {
     P01: "กำลังหาคู่แข่ง",
     P02: "รอเพื่อนเข้าห้อง",
-    P03: "ตาคุณแล้ว",
+    P03: "ตาคุณ",
     P04: "ผู้เล่น 4821 กำลังคิด",
     P06: "มะลิ ออฟไลน์",
     P07: "คุณชนะ!",
@@ -2605,6 +2614,14 @@ test("Thai play, waiting and result screens fit", async ({
       await expect(page).toHaveScreenshot(
         `${testInfo.project.name}-th-game.png`,
       );
+    }
+    if (id === "P18") {
+      // Never 「เล่นอีกเกม ／ ไม่ได้」: the break falls between phrases.
+      await expect(page.locator(".rematch-row .clauses > span")).toHaveText([
+        "มะลิ",
+        "ออกจากห้องแล้ว",
+        "เล่นอีกเกมไม่ได้",
+      ]);
     }
   }
 });

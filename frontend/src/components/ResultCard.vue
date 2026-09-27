@@ -8,6 +8,7 @@ import type {
   RoomMode,
 } from "../utils/presentation";
 import AppIcon from "./AppIcon.vue";
+import ClauseText from "./ClauseText.vue";
 
 const props = defineProps<{
   result: ResultModel;
@@ -107,32 +108,67 @@ function icon(action: ResultAction) {
     <div class="result-top">
       <span class="emblem-icon"><AppIcon :name="result.emblem" /></span>
       <div>
-        <h2>{{ t(result.title.key, result.title.args ?? {}) }}</h2>
-        <p>{{ t(result.sub.key, result.sub.args ?? {}) }}</p>
+        <h2>
+          <ClauseText
+            :text="t(result.title.key, result.title.args ?? {})"
+            thai-only
+          />
+        </h2>
+        <p>
+          <ClauseText
+            :text="t(result.sub.key, result.sub.args ?? {})"
+            thai-only
+          />
+        </p>
       </div>
     </div>
     <div v-if="result.rematch === 'leftAfter'" class="rematch-row">
       <AppIcon name="back" />
       <div>
-        <strong>{{ t("game.leftAfter", { name: opponentName }) }}</strong>
+        <strong>
+          <ClauseText
+            :text="t('game.leftAfter', { name: opponentName })"
+            thai-only
+          />
+        </strong>
       </div>
     </div>
     <div v-else-if="result.rematch === 'sent'" class="rematch-row">
       <span class="dots" aria-hidden="true"><i /><i /><i /></span>
       <div>
-        <strong>{{ t("game.rematchSent", { name: opponentName }) }}</strong>
-        <small>{{ t("game.rematchPending", { name: opponentName }) }}</small>
+        <strong>
+          <ClauseText
+            :text="t('game.rematchSent', { name: opponentName })"
+            thai-only
+          />
+        </strong>
+        <small>
+          <ClauseText
+            :text="t('game.rematchPending', { name: opponentName })"
+            thai-only
+          />
+        </small>
       </div>
     </div>
     <div v-else-if="result.rematch === 'incoming'" class="rematch-row incoming">
       <i class="token stat-token" :class="opponent" />
       <div>
-        <strong>{{ t("game.rematchIncoming", { name: opponentName }) }}</strong>
-        <small>{{
-          t("game.rematchIncomingSub", {
-            name: youMoveFirst ? opponentName : t("game.you"),
-          })
-        }}</small>
+        <strong>
+          <ClauseText
+            :text="t('game.rematchIncoming', { name: opponentName })"
+            thai-only
+          />
+        </strong>
+        <small>
+          <ClauseText
+            :text="
+              t('game.rematchIncomingSub', {
+                name: youMoveFirst ? opponentName : t('game.you'),
+              })
+            "
+            thai-only
+          />
+        </small>
       </div>
     </div>
     <div

@@ -28,6 +28,11 @@ function backendErrorCodes(): string[] {
   return [...codes].sort();
 }
 
+function flatValues(value: unknown): string[] {
+  if (typeof value !== "object" || value === null) return [String(value)];
+  return Object.values(value).flatMap(flatValues);
+}
+
 function flatKeys(value: unknown, prefix = ""): string[] {
   if (typeof value !== "object" || value === null) return [prefix];
   return Object.entries(value).flatMap(([key, child]) =>
@@ -85,6 +90,36 @@ describe("translations", () => {
         "ไทย",
       ]);
     }
+  });
+});
+
+describe("Thai wording that lays out well", () => {
+  const messages = i18n.global.getLocaleMessage("th");
+  const strings = flatValues(messages);
+  // Before a long verb phrase a name may stand on its own line.
+  const MAY_BREAK_AFTER_NAME = ["game.left", "game.leftAfter"];
+
+  // A space after 「คุณชนะ!」 may break; one beside a name may not.
+  it("ties a name to the Thai words beside it, so a phrase keeps it", () => {
+    const loose = flatKeys(messages).filter(
+      (key) =>
+        !MAY_BREAK_AFTER_NAME.includes(key) &&
+        /[\u0E00-\u0E7F] \{name\}|\{name\} [\u0E00-\u0E7F]/.test(
+          String(
+            key
+              .split(".")
+              .reduce<unknown>(
+                (value, part) => (value as Record<string, unknown>)[part],
+                messages,
+              ),
+          ),
+        ),
+    );
+    expect(loose).toEqual([]);
+  });
+
+  it("uses straight quotes: the Thai font has no curly ones", () => {
+    expect(strings.filter((text) => /[“”‘’]/.test(text))).toEqual([]);
   });
 });
 

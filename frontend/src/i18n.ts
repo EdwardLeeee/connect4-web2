@@ -360,7 +360,10 @@ const messages = {
   // 3.3.0: the same friendly tone; คุณ for "you", never the gendered
   // ครับ／ค่ะ. Words run together and browsers break lines by dictionary,
   // which splits some loanwords (ออฟ|ไลน์, แท็|บอื่น): text that wraps
-  // avoids them (หลุด, อีกแท็บ).
+  // avoids them (หลุด, อีกแท็บ). A name is tied to a short verb with a
+  // no-break space (\u00A0), so a sentence split into phrases keeps
+  // 「มะลิ เดินก่อน」 together; before 「ออกจากห้องแล้ว」 it may stand on its
+  // own line. Quotes are straight, as in English: the Thai font has none.
   th: {
     common: {
       brand: "CONNECT 4",
@@ -399,7 +402,7 @@ const messages = {
       inviteEyebrow: "คำเชิญ",
       inviteTitle: "เพื่อนชวนคุณมาเล่น",
       inviteRoom: "ห้อง",
-      inviteBodyName: "กรอกชื่อเล่นของคุณ แล้วแตะ “เข้าห้อง” เพื่อเริ่มเล่น",
+      inviteBodyName: 'กรอกชื่อเล่นของคุณ แล้วแตะ "เข้าห้อง" เพื่อเริ่มเล่น',
       inviteNameLabel: "ชื่อเล่นของคุณ",
       inviteNameHint: "เพื่อนจะเห็นชื่อนี้นะ",
       notNow: "ยังไม่เข้า ไปล็อบบี้ก่อน",
@@ -425,9 +428,9 @@ const messages = {
     },
     game: {
       board: "กระดาน",
-      yourTurn: "ตาคุณแล้ว",
-      yourTurnHint: "เลือกคอลัมน์ที่จะหยอด",
-      opponentTurn: "{name} กำลังคิด",
+      yourTurn: "ตาคุณ",
+      yourTurnHint: "เลือกคอลัมน์",
+      opponentTurn: "{name}\u00A0กำลังคิด",
       aiThinking: "AI กำลังคิด",
       moveNo: "ตาที่ {n}",
       movesTotal: "ทั้งหมด {n} ตา",
@@ -451,24 +454,24 @@ const messages = {
       modeAi: "ท้าดวล Super AI",
       modePrivate: "ห้องส่วนตัว",
       modeMatch: "สุ่มจับคู่",
-      paused: "{name} ออฟไลน์",
+      paused: "{name}\u00A0ออฟไลน์",
       pausedBody: "เกมจะรอ 30 วินาทีให้อีกฝ่ายกลับมา",
-      reconnected: "{name} กลับมาแล้ว",
+      reconnected: "{name}\u00A0กลับมาแล้ว",
       win: "คุณชนะ!",
       winSub: "เรียงครบสี่ใน {n} ตา",
       stickerWin: "คุณชนะ!",
       stickerWinSub: "เรียงครบสี่ใน {n} ตา",
       stickerLose: "แพ้เกมนี้",
-      stickerLoseSub: "{name} ชนะเกมนี้",
+      stickerLoseSub: "{name}\u00A0ชนะเกมนี้",
       stickerDraw: "เสมอ!",
       stickerDrawSub: "เชือกขาดแล้ว ก็ยังไม่รู้ผลแพ้ชนะ",
       stickerSkip: "แตะเพื่อข้าม",
       loseAi: "Super AI ชนะเกมนี้",
       loseAiSub: "อย่าเพิ่งท้อนะผู้ท้าชิง ลองอีกครั้งไหม?",
-      lose: "{name} ชนะเกมนี้",
+      lose: "{name}\u00A0ชนะเกมนี้",
       draw: "เสมอ!",
       drawSub: "ช่องเต็มทั้ง 42 ช่อง ไม่มีใครเรียงครบสี่",
-      forfeitWin: "คุณชนะ! {name} หลุดนานเกินไป",
+      forfeitWin: "คุณชนะ! {name}\u00A0หลุดนานเกินไป",
       forfeitWinSub: "คู่แข่งไม่กลับมาภายใน 30 วินาที",
       forfeitLose: "หลุดนานเกินไป แพ้เกมนี้",
       forfeitLoseSub: "การเชื่อมต่อของคุณหลุดเกิน 30 วินาที คู่แข่งจึงชนะ",
@@ -476,12 +479,12 @@ const messages = {
       leftSub: "เกมนี้คุณชนะ คู่แข่งออกไปแล้ว จึงเล่นอีกเกมไม่ได้",
       solverError: "AI ใช้งานไม่ได้ชั่วคราว",
       solverErrorBody: "เกมนี้หยุดแล้ว ระบบจะไม่เปลี่ยนไปใช้ AI ที่อ่อนกว่า",
-      rematchSent: "ชวน {name} เล่นอีกเกมแล้ว",
-      rematchPending: "{name} ยังไม่ตอบ",
+      rematchSent: "ชวน\u00A0{name}\u00A0เล่นอีกเกมแล้ว",
+      rematchPending: "{name}\u00A0ยังไม่ตอบ",
       rematchWaiting: "รอคู่แข่งตอบ…",
-      rematchIncoming: "{name} อยากเล่นอีกเกม!",
+      rematchIncoming: "{name}\u00A0อยากเล่นอีกเกม!",
       rematchIncomingSub:
-        "แตะเพื่อเริ่มเกมต่อไป สีเหมือนเดิม เกมนี้ {name} เดินก่อน",
+        "แตะเพื่อเริ่มเกมต่อไป สีเหมือนเดิม เกมนี้\u00A0{name}\u00A0เดินก่อน",
       rematchAccept: "ได้ เล่นอีกเกม",
       leftAfter: "{name} ออกจากห้องแล้ว เล่นอีกเกมไม่ได้",
       offlineTitle: "การเชื่อมต่อหลุด กำลังเชื่อมต่อใหม่…",

@@ -4490,3 +4490,9 @@ input.has-error:focus {
 html:lang(th) {
   text-wrap-style: pretty;
 }
+
+/* A Thai sentence in the result panel and the ending sticker breaks only
+   between its phrases (ClauseText thai-only), in lines of even length. */
+:is(.result-card, .ending-sticker) :has(> .clauses) {
+  text-wrap: balance;
+}
