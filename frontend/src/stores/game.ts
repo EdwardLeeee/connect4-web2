@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { markRaw, type Raw } from "vue";
 import { i18n } from "../i18n";
 import type { LocalGame, Outgoing, SavedGame } from "../local/localGame";
+import { detectLocale, deviceLanguages, type Locale } from "../locales";
 import {
   isNative,
   localGameStore,
@@ -14,7 +15,6 @@ import { apiUrl, socketUrl } from "../utils/origin";
 
 type ConnectionState = "connecting" | "online" | "offline" | "replaced";
 type Source = "server" | "local";
-type Locale = Snapshot["session"]["locale"];
 
 // The server closes an older socket with this code when the same session opens
 // a newer one (manager.py CLOSE_REPLACED). Reconnecting would evict the newer tab.
@@ -278,7 +278,8 @@ export const useGameStore = defineStore("game", {
       const response = await sessionRequest({ cache: "no-store" });
       if (!response.ok) throw new Error("Unable to create session");
       const { session, created } = await sessionReply(response);
-      const kept = this.savedSession;
+      const kept =
+        this.savedSession ?? (created ? this.firstProfile(session) : null);
       if ((created || this.restorePending) && kept) {
         // 06: the server started over. The device's profile goes back before
         // the socket connects, so the new default never shows.
@@ -287,6 +288,30 @@ export const useGameStore = defineStore("game", {
       }
       this.keepSession(session);
       this.applyLocale(session.locale);
+    },
+
+    /**
+     * A first visit to the website, with nothing remembered or waiting: the
+     * new session takes the browser's language, its default nickname renamed
+     * with it (3.3.0). Null when the server's language is that already.
+     */
+    firstProfile(server: Session): Session | null {
+      const locale = detectLocale(deviceLanguages());
+      if (
+        this.pendingLocale ||
+        server.default_number === null ||
+        locale === server.locale
+      ) {
+        return null;
+      }
+      const first = {
+        nickname: defaultNickname(locale, server.default_number),
+        locale,
+        default_number: server.default_number,
+      };
+      // Kept like any profile, so a failed save is tried again (06).
+      this.rememberSession(first);
+      return first;
     },
 
     /** Puts the device's profile back on a new session (06, and 04b's first). */

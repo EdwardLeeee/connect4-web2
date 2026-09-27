@@ -3,12 +3,12 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import AppIcon from "../components/AppIcon.vue";
+import ClauseText from "../components/ClauseText.vue";
 import InviteScreen from "../components/InviteScreen.vue";
 import MiniBoardDemo from "../components/MiniBoardDemo.vue";
 import { usesLocalAi } from "../native";
 import { useGameStore } from "../stores/game";
 import { roomCodeFrom } from "../utils/invite";
-import { clauses } from "../utils/presentation";
 
 const store = useGameStore();
 const route = useRoute();
@@ -59,13 +59,7 @@ function onRoomCodeInput() {
       role="status"
     >
       <AppIcon name="wifiOff" />
-      <span v-if="appOffline" class="clauses">
-        <span
-          v-for="(part, index) in clauses(t('lobby.offlineApp'))"
-          :key="index"
-          >{{ part }}</span
-        >
-      </span>
+      <ClauseText v-if="appOffline" :text="t('lobby.offlineApp')" />
       <span v-else>{{ t("lobby.offline") }}</span>
     </div>
 

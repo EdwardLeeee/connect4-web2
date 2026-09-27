@@ -3,6 +3,7 @@
 import { Capacitor } from "@capacitor/core";
 import { Preferences } from "@capacitor/preferences";
 import { Share } from "@capacitor/share";
+import { isLocale, type Locale } from "./locales";
 
 export function isNative(): boolean {
   return Capacitor.isNativePlatform();
@@ -54,7 +55,7 @@ export const localGameStore = {
 // keeps nothing.
 type Session = {
   nickname: string;
-  locale: "zh-TW" | "en";
+  locale: Locale;
   default_number: number | null;
 };
 const LAST_SESSION_KEY = "last-session";
@@ -83,10 +84,6 @@ async function write(key: string, value: string | null): Promise<void> {
   } catch {
     // Nothing is kept; everything still works from the server.
   }
-}
-
-function isLocale(value: unknown): value is Session["locale"] {
-  return value === "zh-TW" || value === "en";
 }
 
 export const profileMemory = {

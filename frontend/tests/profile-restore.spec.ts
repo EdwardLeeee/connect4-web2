@@ -2,22 +2,24 @@ import { createPinia, setActivePinia } from "pinia";
 import { watch } from "vue";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "../src/i18n";
+import { detectLocale } from "../src/locales";
 import { useGameStore } from "../src/stores/game";
 import { FakeWebSocket } from "./fakeSocket";
 
 // 3.2.0 04b, 05, 06: a new app install names itself; a default nickname
 // follows the language; the device's profile goes back on a server that
 // started over, before the socket connects, so no default ever shows.
+type Locale = "zh-TW" | "en" | "th";
 type Session = {
   nickname: string;
-  locale: "zh-TW" | "en";
+  locale: Locale;
   default_number: number | null;
 };
 
 const native = vi.hoisted(() => ({
   app: false,
   last: null as unknown,
-  pending: null as "zh-TW" | "en" | null,
+  pending: null as Locale | null,
   restore: false,
 }));
 vi.mock("../src/native", () => ({
@@ -31,7 +33,7 @@ vi.mock("../src/native", () => ({
       native.last = session;
     },
     pendingLocale: async () => native.pending,
-    setPendingLocale: async (locale: "zh-TW" | "en" | null) => {
+    setPendingLocale: async (locale: Locale | null) => {
       native.pending = locale;
     },
     restorePending: async () => native.restore,
@@ -50,8 +52,30 @@ const server = {
   patches: [] as Record<string, unknown>[],
 };
 
-function named(locale: "zh-TW" | "en", n: number) {
-  return `${locale === "en" ? "Player" : "玩家"} ${n}`;
+const DEFAULT_NAMES = { "zh-TW": "玩家", en: "Player", th: "ผู้เล่น" };
+
+function named(locale: Locale, n: number) {
+  return `${DEFAULT_NAMES[locale]} ${n}`;
+}
+
+/** The browser's languages, and the language the page then loads in. */
+function browser(...languages: string[]) {
+  Object.defineProperty(navigator, "languages", {
+    configurable: true,
+    get: () => languages,
+  });
+  i18n.global.locale.value = detectLocale(languages);
+}
+
+/** Every language the screen showed, from now on. */
+function watchLocales() {
+  const shown: string[] = [];
+  watch(
+    () => i18n.global.locale.value,
+    (locale) => shown.push(locale),
+    { flush: "sync" },
+  );
+  return shown;
 }
 
 function stubServer() {
@@ -158,6 +182,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  browser("zh-TW");
 });
 
 describe("a new app install (04b)", () => {
@@ -187,6 +212,122 @@ describe("a new app install (04b)", () => {
     const store = useGameStore();
     await store.initialise().catch(() => {});
     expect(store.shownSession?.nickname).toMatch(/^Player \d{4}$/);
+  });
+});
+
+describe("a first visit follows the browser (3.3.0)", () => {
+  it.each(["en", "th"] as const)(
+    "starts in %s, and the new session takes it before the socket connects",
+    async (locale) => {
+      browser(locale === "en" ? "en-US" : "th-TH");
+      server.created = true;
+      const store = useGameStore();
+      const locales = watchLocales();
+      const names = watchNames(store);
+      await store.initialise();
+      expect(server.patches).toEqual([{ locale, default_number: 4553 }]);
+      expect(FakeWebSocket.instances).toHaveLength(1);
+      connect();
+      expect(store.shownSession).toEqual({
+        nickname: named(locale, 4553),
+        locale,
+        default_number: 4553,
+      });
+      expect(native.last).toEqual(store.shownSession);
+      // Chinese and the Chinese default never showed.
+      expect(locales).not.toContain("zh-TW");
+      expect(names).not.toContain("玩家 4553");
+    },
+  );
+
+  it("sends nothing when the browser is Chinese", async () => {
+    browser("zh-TW", "en");
+    server.created = true;
+    const store = useGameStore();
+    await store.initialise();
+    connect();
+    expect(server.patches).toEqual([]);
+    expect(store.shownSession?.nickname).toBe("玩家 4553");
+  });
+
+  it("leaves a session that was not new alone, in the server's language", async () => {
+    browser("th-TH");
+    const store = useGameStore();
+    await store.initialise();
+    connect();
+    expect(server.patches).toEqual([]);
+    expect(i18n.global.locale.value).toBe("zh-TW");
+  });
+
+  it("gives way to what the device remembers", async () => {
+    browser("th-TH");
+    native.last = { nickname: "曜宇", locale: "en", default_number: null };
+    server.created = true;
+    const store = useGameStore();
+    await store.initialise();
+    expect(server.patches).toEqual([
+      { nickname: "曜宇", locale: "en", default_number: null },
+    ]);
+  });
+
+  it("gives way to a language waiting to sync", async () => {
+    browser("en-US");
+    native.pending = "th";
+    server.created = true;
+    const store = useGameStore();
+    const locales = watchLocales();
+    await store.initialise();
+    connect();
+    await settle();
+    expect(server.patches).toEqual([{ locale: "th", default_number: 4553 }]);
+    expect(locales).not.toContain("en");
+  });
+
+  it("keeps the browser's language on screen when the network fails, and tries again", async () => {
+    browser("en-US");
+    server.created = true;
+    server.failPatch = "network";
+    const store = useGameStore();
+    const locales = watchLocales();
+    await store.initialise();
+    expect(native.restore).toBe(true);
+
+    server.failPatch = null;
+    connect();
+    expect(store.shownSession?.nickname).toBe("Player 4553");
+    await settle();
+    expect(server.patches).toEqual([
+      { locale: "en", default_number: 4553 },
+      { locale: "en", default_number: 4553 },
+    ]);
+    expect(native.restore).toBe(false);
+    expect(FakeWebSocket.instances.at(-1)!.sent).toContain("state.request");
+    expect(locales).not.toContain("zh-TW");
+  });
+
+  it("takes the server's language when the server refuses it", async () => {
+    browser("th-TH");
+    server.created = true;
+    server.failPatch = 422;
+    const store = useGameStore();
+    await store.initialise();
+    connect();
+    expect(i18n.global.locale.value).toBe("zh-TW");
+    expect(store.shownSession?.nickname).toBe("玩家 4553");
+    expect(native.restore).toBe(false);
+  });
+
+  it("names a new app install in the device's language", async () => {
+    browser("th-TH");
+    native.app = true;
+    server.created = true;
+    const store = useGameStore();
+    await store.initialise();
+    const own = store.shownSession!;
+    expect(own.nickname).toMatch(/^ผู้เล่น \d{4}$/);
+    expect(server.patches).toEqual([
+      { locale: "th", default_number: own.default_number },
+    ]);
   });
 });
 
@@ -348,6 +489,40 @@ describe("a default nickname and the language (05)", () => {
       locale: "en",
       default_number: 4553,
     });
+  });
+
+  it.each([
+    ["zh-TW", "th"],
+    ["th", "zh-TW"],
+    ["en", "th"],
+    ["th", "en"],
+    ["zh-TW", "en"],
+    ["en", "zh-TW"],
+  ] as const)("follows the language from %s to %s", async (from, to) => {
+    server.session = {
+      nickname: named(from, 4553),
+      locale: from,
+      default_number: 4553,
+    };
+    const store = await online();
+    await store.saveProfile(named(from, 4553), to);
+    expect(server.patches).toEqual([{ locale: to, default_number: 4553 }]);
+    expect(store.shownSession?.nickname).toBe(named(to, 4553));
+  });
+
+  it("follows Thai offline at once, and syncs as a default", async () => {
+    const store = await online();
+    await offline(store);
+    await store.saveProfile("玩家 4553", "th");
+    expect(store.shownSession?.nickname).toBe("ผู้เล่น 4553");
+    expect(server.patches).toEqual([]);
+
+    await vi.advanceTimersByTimeAsync(5000);
+    await settle();
+    connect();
+    await settle();
+    expect(server.patches).toEqual([{ locale: "th", default_number: 4553 }]);
+    expect(store.shownSession?.nickname).toBe("ผู้เล่น 4553");
   });
 
   it("follows the language offline at once, and syncs as a default", async () => {

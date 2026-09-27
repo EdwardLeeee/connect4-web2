@@ -10,6 +10,7 @@ import { useProfileSheet } from "./composables/useProfileSheet";
 import { usesLocalAi } from "./native";
 import { useGameStore } from "./stores/game";
 import { roomCodeFrom } from "./utils/invite";
+import { initial } from "./utils/presentation";
 
 const store = useGameStore();
 const router = useRouter();
@@ -102,7 +103,7 @@ onUnmounted(() => {
     ]"
   >
     <header class="topbar">
-      <RouterLink class="brand" to="/" aria-label="Connect 4 home">
+      <RouterLink class="brand" to="/" :aria-label="t('common.home')">
         <span class="brand-mark" aria-hidden="true">
           <i class="token green mini" />
           <i class="token pink mini" />
@@ -126,7 +127,7 @@ onUnmounted(() => {
           @click="profileOpen = true"
         >
           <span class="avatar">{{
-            store.shownSession?.nickname.slice(0, 1) || "?"
+            initial(store.shownSession?.nickname ?? "") || "?"
           }}</span>
           <span class="profile-name">{{
             store.shownSession?.nickname || "…"

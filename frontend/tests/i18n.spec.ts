@@ -3,7 +3,9 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { nextTick } from "vue";
 import { i18n } from "../src/i18n";
+import { LOCALES } from "../src/locales";
 
 const backendDir = join(__dirname, "../../backend/connect4_app");
 const ERROR_PATTERNS = [
@@ -34,7 +36,7 @@ function flatKeys(value: unknown, prefix = ""): string[] {
 }
 
 describe("translations", () => {
-  const locales = ["zh-TW", "en"] as const;
+  const locales = LOCALES;
 
   it("finds the backend error codes", () => {
     expect(backendErrorCodes()).toEqual(
@@ -53,10 +55,47 @@ describe("translations", () => {
     expect(missing).toEqual([]);
   });
 
-  it("offers the same messages in both languages", () => {
-    const [chinese, english] = locales.map((locale) =>
+  it("offers the same messages in every language", () => {
+    const [chinese, ...others] = locales.map((locale) =>
       flatKeys(i18n.global.getLocaleMessage(locale)).sort(),
     );
-    expect(chinese).toEqual(english);
+    expect(others).toHaveLength(2);
+    for (const keys of others) expect(keys).toEqual(chinese);
+  });
+
+  it("names a default nickname as the server does, in Thai too", () => {
+    const named = (locale: (typeof LOCALES)[number]) =>
+      i18n.global.t("session.defaultNickname", { n: 4553 }, { locale });
+    expect(LOCALES.map(named)).toEqual([
+      "玩家 4553",
+      "Player 4553",
+      "ผู้เล่น 4553",
+    ]);
+  });
+
+  it("lists every language by its own name", () => {
+    for (const locale of locales) {
+      const profile = i18n.global.getLocaleMessage(locale).profile as Record<
+        string,
+        string
+      >;
+      expect([profile.chinese, profile.english, profile.thai]).toEqual([
+        "繁體中文",
+        "English",
+        "ไทย",
+      ]);
+    }
+  });
+});
+
+describe("the page's language", () => {
+  it("follows the language shown, for screen readers and line breaks", async () => {
+    const shown: string[] = [];
+    for (const locale of ["th", "en", "zh-TW"] as const) {
+      i18n.global.locale.value = locale;
+      await nextTick();
+      shown.push(document.documentElement.lang);
+    }
+    expect(shown).toEqual(["th", "en", "zh-Hant"]);
   });
 });

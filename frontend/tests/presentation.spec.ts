@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { pageSnapshot, type PageId } from "../e2e/states";
 import type { Cell, Color, GameState } from "../src/types";
 import {
+  clauses,
+  initial,
   lastMove,
   movesSince,
   opponentOf,
@@ -168,5 +170,45 @@ describe("moves since", () => {
     const game = played("3344");
     expect(movesSince(game, 3)).toEqual([lastMove(game)]);
     expect(movesSince(game, 4)).toEqual([]);
+  });
+});
+
+describe("notices split into clauses (3.2.0, Thai 3.3.0)", () => {
+  it("breaks Chinese only after its clause marks", () => {
+    expect(clauses("沒有網路也沒關係，挑戰 AI 隨時都能玩！")).toEqual([
+      "沒有網路也沒關係，",
+      "挑戰 AI 隨時都能玩！",
+    ]);
+  });
+
+  it("breaks Thai only at the spaces between phrases, kept apart", () => {
+    expect(clauses("ไม่มีเน็ตก็ไม่เป็นไร เล่นกับ AI ได้ทุกเมื่อ!")).toEqual([
+      "ไม่มีเน็ตก็ไม่เป็นไร",
+      " ",
+      "เล่นกับ",
+      " ",
+      "AI",
+      " ",
+      "ได้ทุกเมื่อ!",
+    ]);
+  });
+
+  it("keeps English whole", () => {
+    const text = "No internet? No problem. The AI game works anytime!";
+    expect(clauses(text)).toEqual([text]);
+  });
+});
+
+describe("the avatar's letter", () => {
+  it.each([
+    ["玩家 4553", "玩"],
+    ["Player 4553", "P"],
+    ["ผู้เล่น 4553", "ผู้"],
+    ["ไอซ์", "ไอ"],
+    ["เก่ง", "เก่"],
+    ["😀 Ann", "😀"],
+    ["", ""],
+  ])("%s shows %s", (nickname, letter) => {
+    expect(initial(nickname)).toBe(letter);
   });
 });

@@ -1,5 +1,6 @@
 // Snapshots for the design/spec.md page IDs, ported from
 // design/mockups/round2/states.js into the protocol shape (docs/protocol.md).
+import type { Locale } from "../src/locales";
 import type { Cell, GameState, Player, Snapshot } from "../src/types";
 
 export const SERVER_TIME = 1_790_000_000;
@@ -100,15 +101,28 @@ function game(
   };
 }
 
+const OWN_NAMES: Record<Locale, string> = {
+  "zh-TW": "曜宇",
+  en: "Taylor",
+  th: "ผู้เล่น 4553",
+};
+
+// 3.3.0: the Thai pages carry Thai names, as a Thai player would see them.
+const THAI_NAMES: Record<string, string> = {
+  曜宇: "ผู้เล่น 4553",
+  小安: "มะลิ",
+  "玩家 4821": "ผู้เล่น 4821",
+};
+
 function snapshot(
-  locale: "zh-TW" | "en",
+  locale: Locale,
   room: Snapshot["room"],
   state: GameState | null,
   searching = false,
 ): Snapshot {
   return {
     server_time: SERVER_TIME,
-    session: { nickname: locale === "zh-TW" ? "曜宇" : "Taylor", locale },
+    session: { nickname: OWN_NAMES[locale], locale },
     queue: { searching },
     room,
     game: state,
@@ -174,7 +188,15 @@ export type PageId =
   | "P18";
 
 /** The snapshot each page ID starts from; interactions are added by the test. */
-export function pageSnapshot(id: PageId, locale: "zh-TW" | "en"): Snapshot {
+export function pageSnapshot(id: PageId, locale: Locale): Snapshot {
+  const page = pageIn(id, locale);
+  if (locale !== "th") return page;
+  return JSON.parse(JSON.stringify(page), (key, value) =>
+    key === "nickname" && value in THAI_NAMES ? THAI_NAMES[value] : value,
+  );
+}
+
+function pageIn(id: PageId, locale: Locale): Snapshot {
   const lobby = snapshot(locale, null, null);
   switch (id) {
     case "L01":

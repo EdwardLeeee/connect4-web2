@@ -1,4 +1,6 @@
 // Mirrors the snapshot contract in docs/protocol.md; manager.py is the source of truth.
+import type { Locale } from "./locales";
+
 export type Color = "green" | "pink";
 export type Cell = Color | null;
 export type GameStatus =
@@ -43,7 +45,7 @@ export interface Snapshot {
   server_time: number;
   session: {
     nickname: string;
-    locale: "zh-TW" | "en";
+    locale: Locale;
     /** The default nickname's number; null for a name the player chose. */
     default_number?: number | null;
   };
