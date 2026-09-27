@@ -1,4 +1,4 @@
 {
-  "status": "draft",
-  "note": "待使用者核准。商店文字由 ui 準備草稿；使用者核准定稿後，由 ui 把最後的文字寫進這個資料夾，並把 status 改成 approved。status 不是 approved 時，上傳腳本只能 dry-run。"
+  "status": "approved",
+  "note": "使用者 2026-09-27 核准第 26 輪（中文、英文）。泰文文字由 ceo 依使用者授權核准；泰文截圖與影片等泰文介面完成後補上。"
 }
