@@ -66,6 +66,8 @@ case "$1" in
         [ "${profile}" -ef "${DIR}/app-store.mobileprovision" ] || mv "${profile}" "${DIR}/app-store.mobileprovision"
         key="${DIR}/$(basename "${p8}")"
         [ "${p8}" -ef "${key}" ] || mv "${p8}" "${key}"
+        # mv keeps the browser's mode (often 0644); the key and profile must be private like the rest.
+        chmod 600 "${DIR}/app-store.mobileprovision" "${key}"
 
         REPO="$(gh repo view --json nameWithOwner --jq .nameWithOwner)"
         base64 -w0 "${DIR}/distribution.p12" | gh secret set IOS_DIST_CERT_P12_BASE64 --repo "${REPO}"
