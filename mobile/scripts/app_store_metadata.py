@@ -36,7 +36,7 @@ API = "https://api.appstoreconnect.apple.com/v1"
 BUNDLE_ID = "com.oraclelee.connect4"
 STORE = Path(__file__).resolve().parents[1] / "store" / "app-store"
 CREDENTIALS = Path.home() / ".config" / "connect4-mobile" / "ios"
-LOCALES = ("en-US", "zh-Hant")
+LOCALES = ("en-US", "zh-Hant", "th")
 EDITABLE = {"PREPARE_FOR_SUBMISSION", "DEVELOPER_REJECTED", "REJECTED", "METADATA_REJECTED"}
 # 6.9" iPhone screenshots (1320x2868, 1290x2796, 1260x2736). Apple's enum still lists them as
 # APP_IPHONE_67; confirm on the first real upload.
@@ -51,7 +51,7 @@ PREVIEW_TYPE = "IPHONE_67"
 PREVIEW_SIZES = {(886, 1920), (1920, 886)}
 PREVIEW_TYPES = {".mp4": "video/mp4", ".m4v": "video/mp4", ".mov": "video/quicktime"}
 PLAY = STORE.parent / "google-play"
-PLAY_LOCALES = ("en-US", "zh-TW")
+PLAY_LOCALES = ("en-US", "zh-TW", "th")
 
 # file name -> (API attribute, resource, max characters, required)
 FIELDS = {

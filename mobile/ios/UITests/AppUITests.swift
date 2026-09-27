@@ -112,8 +112,9 @@ final class AppUITests: XCTestCase {
         shot("online-result")
 
         // The privacy link must open in Safari while the app keeps its page.
-        let profile = web.buttons.matching(
-            NSPredicate(format: "label == %@ OR label BEGINSWITH %@", "玩", "玩家")).firstMatch
+        let profile = web.buttons.matching(NSPredicate(
+            format: "label == %@ OR label BEGINSWITH %@ OR label == %@ OR label BEGINSWITH %@",
+            "玩", "玩家", "P", "Player ")).firstMatch
         XCTAssertTrue(profile.waitForExistence(timeout: 10), "no profile button")
         profile.tap()
         let privacy = matching(web.links, "label CONTAINS %@", "隱私權政策", "Privacy Policy").firstMatch
@@ -157,5 +158,37 @@ final class AppUITests: XCTestCase {
         let moves = play(again, "offline-after-restore")
         XCTAssertGreaterThanOrEqual(moves, 2, "the restored game did not continue")
         shot("offline-result")
+    }
+
+    /// Run once per device language on a fresh install (see the Mobile workflow): the first screen,
+    /// the default nickname and the home-screen name all follow the device language.
+    func testFreshInstallInDeviceLanguage() throws {
+        let env = ProcessInfo.processInfo.environment
+        let name = try XCTUnwrap(env["EXPECTED_NAME"])
+        let play = try XCTUnwrap(env["EXPECTED_PLAY"])
+        let nickname = try XCTUnwrap(env["EXPECTED_NICKNAME"])
+        let web = launchWebView()
+        let start = web.buttons.matching(NSPredicate(format: "label CONTAINS %@", play)).firstMatch
+        XCTAssertTrue(start.waitForExistence(timeout: 60), "the first screen has no \"\(play)\" button")
+        shot("\(name)-lobby")
+
+        // The avatar is the nickname's first letter (with its marks, for Thai) or the whole nickname.
+        let letter = try XCTUnwrap(nickname.unicodeScalars.first)
+        let profile = web.buttons.matching(
+            NSPredicate(format: "label MATCHES %@", "^(\(letter)\\p{M}*|\(nickname) .*)$")).firstMatch
+        XCTAssertTrue(profile.waitForExistence(timeout: 30), "no \(nickname) avatar in the header")
+        profile.tap()
+        let field = web.textFields.matching(
+            NSPredicate(format: "value MATCHES %@", "^\(nickname) [0-9]{4}$")).firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "the profile sheet has no \(nickname) NNNN")
+        print("SMOKE \(name): first screen \"\(play)\", avatar \"\(profile.label)\", "
+            + "nickname \"\(field.value as? String ?? "")\"")
+        shot("\(name)-profile")
+
+        XCUIDevice.shared.press(.home)
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        XCTAssertTrue(springboard.icons[name].waitForExistence(timeout: 20), "no home-screen icon named \(name)")
+        print("SMOKE \(name): home-screen icon found")
+        shot("\(name)-home")
     }
 }
