@@ -61,6 +61,41 @@ final class AppUITests: XCTestCase {
         cancel.tap()
     }
 
+    /// Renames the player in the profile sheet (offline since 3.3.1) and checks the header avatar.
+    private func rename(_ web: XCUIElement, to name: String) {
+        let profile = web.buttons.matching(NSPredicate(
+            format: "label == %@ OR label BEGINSWITH %@ OR label == %@ OR label BEGINSWITH %@",
+            "玩", "玩家", "P", "Player ")).firstMatch
+        XCTAssertTrue(profile.waitForExistence(timeout: 10), "no profile button")
+        profile.tap()
+        let field = web.textFields.matching(
+            NSPredicate(format: "value MATCHES %@", "^(玩家|Player) [0-9]{4}$")).firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "the profile sheet has no nickname field")
+        // Put the caret at the end, clear the default name and type the new one.
+        field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 20) + name)
+        shot("offline-rename")
+        let save = matching(web.buttons, "label == %@", "儲存", "Save").firstMatch
+        XCTAssertTrue(save.waitForExistence(timeout: 5), "the profile sheet has no Save button")
+        XCTAssertTrue(waitUntil("isEnabled == true", save, timeout: 5), "Save stayed disabled")
+        save.tap()
+        checkAvatar(web, name, "after renaming offline")
+    }
+
+    private func checkAvatar(_ web: XCUIElement, _ name: String, _ when: String) {
+        let avatar = web.buttons.matching(NSPredicate(
+            format: "label == %@ OR label == %@", String(name.prefix(1)), name)).firstMatch
+        XCTAssertTrue(avatar.waitForExistence(timeout: 10), "the avatar did not change to \(name) \(when)")
+        print("SMOKE offline: avatar \"\(avatar.label)\" \(when)")
+    }
+
+    /// The match card of the on-device AI game shows our nickname.
+    private func checkMatchCard(_ web: XCUIElement, _ name: String, _ when: String) {
+        let card = web.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", name)).firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 30), "the AI game does not show \(name) \(when)")
+        print("SMOKE offline: AI game shows \"\(name)\" \(when)")
+    }
+
     /// Plays the middle open column until the game ends or `maxMoves` of our moves are made, and
     /// checks that the AI (on the phone) answers every move within 30 seconds.
     @discardableResult
@@ -138,7 +173,11 @@ final class AppUITests: XCTestCase {
         let start = playNow(web)
         shot("offline-lobby")
         checkDefaultNickname(web, "offline")
+        // 3.3.1: the nickname changes offline at once, in the header and in the AI game.
+        let newName = "Smoke Tester"
+        rename(web, to: newName)
         start.tap()
+        checkMatchCard(web, newName, "after renaming offline")
 
         // Two of our moves, then leave the app while the game is in progress.
         play(web, "offline", maxMoves: 2)
@@ -153,11 +192,19 @@ final class AppUITests: XCTestCase {
         let restored = again.staticTexts.matching(NSPredicate(format: "label == %@", before)).firstMatch
         XCTAssertTrue(restored.waitForExistence(timeout: 60), "the unfinished game was not restored (\(before))")
         print("SMOKE offline: restored at \"\(before)\" after relaunch")
+        checkMatchCard(again, newName, "after relaunch")
         shot("offline-restored")
 
         let moves = play(again, "offline-after-restore")
         XCTAssertGreaterThanOrEqual(moves, 2, "the restored game did not continue")
         shot("offline-result")
+
+        // Back in the lobby, the renamed profile is still there after the relaunch.
+        let lobby = matching(again.buttons, "label CONTAINS %@", "回到大廳", "Back to lobby").firstMatch
+        XCTAssertTrue(lobby.waitForExistence(timeout: 10), "the result has no Back to lobby button")
+        lobby.tap()
+        checkAvatar(again, newName, "after relaunch")
+        shot("offline-renamed-lobby")
     }
 
     /// Run once per device language on a fresh install (see the Mobile workflow): the first screen,
