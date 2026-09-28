@@ -85,7 +85,7 @@ pull request 動到 `mobile/**`、`design/app-icon/**`、`frontend/**`（測試�
   （`mobile/scripts/android-smoke.sh` 與 `android-smoke.mjs`）：
   - APK 的桌面名稱：預設「Four In A Row」、zh「四子棋」、th「เรียงสี่」（aapt2 dump badging）。
   - 全新安裝（英文）：離線大廳、預設暱稱、離線改名（頭像與 AI 對局立刻換）、下兩手後重開回到同一手、下完一局。
-    每手等 AI 最多 60 秒。
+    每手等 AI 最多 30 秒（實測約 1 秒）。
   - 裝置語言 en-US、zh-TW、th-TH 各全新安裝：第一個畫面的按鈕與預設暱稱。
   連線版做不到：Cloudflare 擋 GitHub 的 Ubuntu runner。截圖在 artifact `android-smoke-screenshots`。
 

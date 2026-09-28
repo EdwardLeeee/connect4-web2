@@ -13,8 +13,9 @@ const { _android } = require("@playwright/test");
 
 const PKG = "com.oraclelee.connect4";
 const NEW_NAME = "Smoke Tester";
-// Generous while we learn how fast the emulator's WebView runs the on-device AI.
-const AI_REPLY_MS = 60_000;
+// As on iOS. Measured on the API 36 emulator: about 1 s per reply (6 s for the last move,
+// which includes the ending animation).
+const AI_REPLY_MS = 30_000;
 
 const [mode, outArg, play, nickname] = process.argv.slice(2);
 const out = path.resolve(outArg ?? "smoke");
