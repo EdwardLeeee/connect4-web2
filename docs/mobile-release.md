@@ -65,8 +65,10 @@ pull request 動到 `mobile/**`、`design/app-icon/**`、`frontend/**`（測試�
   換版前要先解除安裝舊的）。
 - `ios`：建置模擬器版，檢查 Bundle ID、版本、`ITSAppUsesNonExemptEncryption`、只支援 iPhone、
   四個語系（英、繁中、簡中、泰）的名稱與隱私清單，再建置一次不簽章的 Release 裝置版；另附模擬器截圖。
-- `ios-smoke`：只在手動執行（Run workflow，勾選 smoke）時跑，會連正式站，不要排成定時執行。在 macOS runner 的
-  iPhone 模擬器用 XCUITest（`mobile/ios/UITests/AppUITests.swift`）跑三段：
+- `ios-smoke`（流程在 `mobile-ios-smoke.yml`，Mobile 與 Mobile release 共用）：pull request 自動跑離線版與三種
+  裝置語言（非必要檢查，發版前看結果）；手動執行（Run workflow，勾選 smoke）三段都跑。連線版會連正式站，只有
+  正式站已經是要測的版本才有意義，所以不在 PR 跑，改在 Mobile release 上傳前跑；不要排成定時執行。在 macOS
+  runner 的 iPhone 模擬器用 XCUITest（`mobile/ios/UITests/AppUITests.swift`）跑三段：
   - 連線版：全新安裝的預設暱稱（頭像不是「?」、玩家設定是「Player NNNN」或「玩家 NNNN」）、下完一局 AI（每手 30 秒內回應）、
     隱私權連結會開 Safari 且 app 停在原頁。
   - 離線版：網頁改用連不到的 `VITE_API_ORIGIN=https://offline.invalid` 重建、先移除 app 再裝：離線大廳文案、
@@ -92,9 +94,11 @@ pull request 動到 `mobile/**`、`design/app-icon/**`、`frontend/**`（測試�
    正式站在 Cloudflare 後面，Cloudflare 會擋 GitHub runner 的請求（回 403），這時版本檢查會失敗並
    說明原因：自己打開 https://connect4.oraclelee.com/api/health 確認版本後，勾選 `production_checked`
    重新執行（加 `-f production_checked=true`），Summary 會註明這次的版本是人工確認。
-4. `android`：用上傳金鑰簽出 AAB，比對簽章指紋等於 repo 變數 `ANDROID_UPLOAD_CERT_SHA256`，
+4. `ios-online-smoke`：用這個 tag 的 app 連正式站跑 `ios-smoke` 的連線版（預設暱稱、下完一局 AI、隱私權連結）；
+   失敗時下面兩個平台都不建置、不上傳。
+5. `android`：用上傳金鑰簽出 AAB，比對簽章指紋等於 repo 變數 `ANDROID_UPLOAD_CERT_SHA256`，
    以 artifact `android-aab` 保留 30 天。
-5. `ios`：封存並上傳到 App Store Connect，處理完成後出現在 TestFlight。
+6. `ios`：封存並上傳到 App Store Connect，處理完成後出現在 TestFlight。
 
 ## Android 上傳金鑰
 
