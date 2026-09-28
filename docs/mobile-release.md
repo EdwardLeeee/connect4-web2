@@ -80,8 +80,14 @@ pull request 動到 `mobile/**`、`design/app-icon/**`、`frontend/**`（測試�
   測試 target 不在 commit 的 Xcode 專案裡，由 `mobile/scripts/add-ui-test-target.rb`（固定 Ruby 3.3、
   xcodeproj 1.28.1）在 runner 上臨時加入。截圖在 artifact `ios-smoke-screenshots`（`online/`、`offline/`、`lang-en/`、`lang-zh/`、`lang-th/`），
   每手耗時寫在 run 的 Summary。
-  Android 沒有對應的自動對局：Cloudflare 擋 GitHub 的 Ubuntu runner，模擬器連不到正式站；需要時用
-  `connect4-debug-apk` 側載到 Android 手機測。
+- `android-smoke`：觸發條件同 `ios-smoke`（PR 自動、手動勾 smoke），非必要檢查。網頁用
+  `VITE_API_ORIGIN=https://offline.invalid` 建置 debug APK，在 API 36 模擬器上以 Playwright 連進 app 的 WebView
+  （`mobile/scripts/android-smoke.sh` 與 `android-smoke.mjs`）：
+  - APK 的桌面名稱：預設「Four In A Row」、zh「四子棋」、th「เรียงสี่」（aapt2 dump badging）。
+  - 全新安裝（英文）：離線大廳、預設暱稱、離線改名（頭像與 AI 對局立刻換）、下兩手後重開回到同一手、下完一局。
+    每手等 AI 最多 30 秒（實測約 1 秒）。
+  - 裝置語言 en-US、zh-TW、th-TH 各全新安裝：第一個畫面的按鈕與預設暱稱。
+  連線版做不到：Cloudflare 擋 GitHub 的 Ubuntu runner。截圖在 artifact `android-smoke-screenshots`。
 
 ### `Mobile release`（`.github/workflows/mobile-release.yml`）
 

@@ -16,7 +16,8 @@ on:
       smoke:
         description: >-
           iOS simulator smoke test: online (production server), offline (unreachable server) and a
-          fresh install in English, Chinese and Thai. Pull requests run all but the online part.
+          fresh install in English, Chinese and Thai, plus the offline Android run. Pull requests run all but
+          the online part.
         type: boolean
         default: false
 
@@ -160,6 +161,63 @@ jobs:
         with:
           name: ios-simulator-screenshots
           path: screenshots/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # The Android app on an emulator, offline only: Cloudflare blocks the Ubuntu runners from the
+  # production site. Same triggers as the iOS smoke; not a required check.
+  android-smoke:
+    if: github.event_name == 'pull_request' || inputs.smoke
+    runs-on: ubuntu-latest
+    env:
+      VITE_API_ORIGIN: https://offline.invalid
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            mobile/package-lock.json
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+      - run: npm ci
+        working-directory: mobile
+      - run: npx cap sync android
+        working-directory: mobile
+      - run: ./gradlew assembleDebug
+        working-directory: mobile/android
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: "Offline: lobby, rename, AI game, relaunch; three device languages"
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: bash mobile/scripts/android-smoke.sh mobile/android/app/build/outputs/apk/debug/app-debug.apk android-smoke
+      - name: Summary
+        if: always()
+        run: |
+          { echo "### Android smoke"; grep -hE "^SMOKE |::error::" android-smoke/smoke.log 2>/dev/null \
+              | sed 's/^/- /'; } >> "${GITHUB_STEP_SUMMARY}" || true
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-smoke-screenshots
+          path: android-smoke/
           retention-days: 14
           if-no-files-found: ignore
 
