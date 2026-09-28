@@ -2,30 +2,42 @@
 # Cut a release: bump the version on a release branch, open a pull request, let CI
 # merge it, then tag the merged commit so CI publishes the image to GHCR.
 #
-# Usage: scripts/release.sh patch|minor [--dry-run]
-#   patch     small change   3.0.0 -> 3.0.1
-#   minor     large change   3.0.0 -> 3.1.0
-#   --dry-run bump in a throwaway worktree and run the checks, but push nothing
+# Usage: scripts/release.sh patch|minor [--dry-run [--base REV]]
+#   patch       small change   3.0.0 -> 3.0.1
+#   minor       large change   3.0.0 -> 3.1.0
+#   --dry-run   bump in a throwaway worktree and run the checks, but push nothing
+#   --base REV  dry run only: bump and check REV instead of origin/main. CI passes HEAD, the
+#               pull request merged into main, so leftovers of the old version are caught
+#               before merging rather than at release time.
 #
 # The script never touches the checkout it runs from: the bump happens in a throwaway
 # worktree, so it is safe to run while other sessions have uncommitted work.
 set -euo pipefail
 
 usage() {
-    echo "usage: scripts/release.sh patch|minor [--dry-run]" >&2
+    echo "usage: scripts/release.sh patch|minor [--dry-run [--base REV]]" >&2
     exit 2
 }
 
 BUMP=""
 DRY_RUN=0
-for arg in "$@"; do
-    case "${arg}" in
-        patch|minor) BUMP="${arg}" ;;
+BASE=""
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        patch|minor) BUMP="$1" ;;
         --dry-run) DRY_RUN=1 ;;
+        --base) [ "$#" -ge 2 ] || usage; BASE="$2"; shift ;;
         *) usage ;;
     esac
+    shift
 done
 [ -n "${BUMP}" ] || usage
+# A real release always starts from origin/main; another base is only for checking.
+if [ -n "${BASE}" ] && [ "${DRY_RUN}" != 1 ]; then
+    echo "--base is only allowed with --dry-run" >&2
+    exit 2
+fi
+BASE="${BASE:-origin/main}"
 
 for tool in git gh rg node npm; do
     command -v "${tool}" >/dev/null || { echo "${tool} is required" >&2; exit 1; }
@@ -35,9 +47,9 @@ cd "${ROOT}"
 git fetch --quiet origin
 
 # --- compute the new version from origin/main (the only source of truth) ---------
-current="$(git show origin/main:pyproject.toml | sed -n 's/^version = "\(.*\)"$/\1/p')"
+current="$(git show "${BASE}:pyproject.toml" | sed -n 's/^version = "\(.*\)"$/\1/p')"
 if ! [[ "${current}" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-    echo "cannot parse version '${current}' in pyproject.toml on origin/main" >&2
+    echo "cannot parse version '${current}' in pyproject.toml on ${BASE}" >&2
     exit 1
 fi
 major="${BASH_REMATCH[1]}"
@@ -50,14 +62,22 @@ esac
 new="${major}.${minor}.${patch}"
 tag="v${new}"
 branch="release/${tag}"
+# A dry run only warns: in CI these depend on a release that may be under way right now,
+# and every pull request would fail for those few minutes.
+stop_or_warn() {
+    if [ "${DRY_RUN}" = 1 ]; then
+        echo "warning: $1" >&2
+    else
+        echo "$1" >&2
+        exit 1
+    fi
+}
 if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null \
     || git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
-    echo "tag ${tag} already exists" >&2
-    exit 1
+    stop_or_warn "tag ${tag} already exists"
 fi
 if git ls-remote --exit-code --heads origin "refs/heads/${branch}" >/dev/null 2>&1; then
-    echo "branch ${branch} already exists on origin; finish or delete that release first" >&2
-    exit 1
+    stop_or_warn "branch ${branch} already exists on origin; finish or delete that release first"
 fi
 echo "release ${current} -> ${new} (${BUMP})$( [ "${DRY_RUN}" = 1 ] && echo ' [dry run]')"
 
@@ -69,7 +89,7 @@ cleanup() {
 }
 trap cleanup EXIT
 rmdir "${WT}"
-git worktree add --quiet -b "${branch}" "${WT}" origin/main
+git worktree add --quiet -b "${branch}" "${WT}" "${BASE}"
 
 # pyproject.toml is the source of truth: the backend reads it through package metadata
 # and the Containerfile installs whatever wheel was built, so nothing else is edited.

@@ -42,7 +42,25 @@ jobs:
         working-directory: frontend
       - run: python -m pip install --upgrade pip setuptools
       - run: pip install -e ".[dev]" pip-audit
-      - run: ruff check backend tests
+      # Every Python file in the repo; pyproject.toml lists what is excluded and why.
+      - run: ruff check .
+      - run: ruff format --check .
+      # Every tracked shell script, so a new one is checked without editing this list.
+      - run: |
+          shellcheck --version
+          git ls-files -z '*.sh' | xargs -0 shellcheck
+          git ls-files -z '*.sh' | xargs -0 -n1 bash -n
+      # The release script's checks run on this change as merged (HEAD), so an old version
+      # left in a build or deploy file fails here instead of at release time.
+      - name: Release dry run
+        env:
+          GIT_AUTHOR_NAME: ci
+          GIT_AUTHOR_EMAIL: ci@users.noreply.github.com
+          GIT_COMMITTER_NAME: ci
+          GIT_COMMITTER_EMAIL: ci@users.noreply.github.com
+        run: |
+          command -v rg >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq ripgrep; }
+          scripts/release.sh patch --dry-run --base HEAD
       - run: pytest
       - run: pip-audit
       - run: cargo fmt --manifest-path native_solver/Cargo.toml -- --check
@@ -117,6 +135,9 @@ jobs:
           --label org.opencontainers.image.version=${{ github.ref_name }}
           --label org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           .
+      # Start the image and use it as a deploy and a player would: health, sessions, a
+      # restart and one AI move. It runs on every event, so a failing image is never pushed.
+      - run: python3 tests/container_smoke.py connect4-web:ci
       # Release tags (v*) publish the tested image to GHCR; the host then pulls it with
       # deploy/deploy.sh instead of rebuilding from source.
       - if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')

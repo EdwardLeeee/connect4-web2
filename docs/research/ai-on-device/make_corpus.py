@@ -1,8 +1,12 @@
-import json, random, sys, time
+import random
+import sys
+import time
+
 from connect4_app import _solver
 
 ROWS, COLS = 6, 7
 random.seed(20260926)
+
 
 def board_of(moves):
     b = [[0] * COLS for _ in range(ROWS)]
@@ -13,6 +17,7 @@ def board_of(moves):
         heights[c] += 1
     return b, heights
 
+
 def wins(b, player):
     for r in range(ROWS):
         for c in range(COLS):
@@ -21,23 +26,28 @@ def wins(b, player):
                 for k in range(4):
                     rr, cc = r + dr * k, c + dc * k
                     if not (0 <= rr < ROWS and 0 <= cc < COLS) or b[rr][cc] != player:
-                        ok = False; break
+                        ok = False
+                        break
                 if ok:
                     return True
     return False
 
+
 def legal(moves):
     _, h = board_of(moves)
     return [c for c in range(COLS) if h[c] < ROWS]
+
 
 def makes_win(moves, c):
     nxt = moves + str(c + 1)
     b, _ = board_of(nxt)
     return wins(b, 1 if len(moves) % 2 == 0 else 2)
 
+
 def hands_win(moves, c):
     nxt = moves + str(c + 1)
     return any(makes_win(nxt, d) for d in legal(nxt))
+
 
 random_positions = []
 for length in range(8, 17):
@@ -48,12 +58,12 @@ for length in range(8, 17):
         while len(moves) < length:
             options = [c for c in legal(moves) if not makes_win(moves, c)]
             if not options:
-                ok = False; break
+                ok = False
+                break
             moves += str(random.choice(options) + 1)
-        if ok and not any(makes_win(moves, c) for c in legal(moves)) is None:
-            pass
         if ok:
-            random_positions.append(("r", moves)); got += 1
+            random_positions.append(("r", moves))
+            got += 1
 
 games = []
 t0 = time.time()
