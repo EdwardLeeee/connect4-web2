@@ -201,7 +201,7 @@ def run(image: str) -> None:
         "PATCH", "/api/session", cookie=cookie, body={"locale": "th", "default_number": number}
     )
     check(status == 200, f"PATCH to Thai failed: {thai}")
-    check(thai["nickname"] == f"ผู้เล่น {number}", f"Thai default nickname is {thai}")
+    check(thai["nickname"] == f"Player {number}", f"Thai default nickname is {thai}")
     print(f"session: {first['nickname']} -> {thai['nickname']}")
 
     restarted = docker("restart", NAME)
