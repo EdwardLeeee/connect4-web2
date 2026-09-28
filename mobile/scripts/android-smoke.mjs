@@ -92,7 +92,7 @@ async function playMoves(page, tag, maxMoves = Infinity) {
 }
 
 async function expectInMatchCard(page, name, when) {
-  await page.locator(".match-card", { hasText: name }).waitFor({ timeout: 30_000 });
+  await page.locator(".match-card", { hasText: name }).first().waitFor({ timeout: 30_000 });
   log(`offline: AI game shows "${name}" ${when}`);
 }
 
@@ -112,13 +112,14 @@ if (mode === "offline") {
   await page.locator(".ai-card button.btn.primary").click();
   await expectInMatchCard(page, NEW_NAME, "after renaming offline");
   await playMoves(page, "offline", 2);
-  const chip = page.locator(".move-chip");
+  // The chip can exist twice while the view transitions; read the visible one.
+  const chip = page.locator(".move-chip:visible").first();
   await chip.waitFor({ timeout: 30_000 });
   const before = (await chip.innerText()).trim();
   await shot("02-before-restart");
 
   page = await relaunch();
-  await page.locator(".move-chip", { hasText: before }).waitFor({ timeout: 60_000 });
+  await page.locator(".move-chip:visible", { hasText: before }).first().waitFor({ timeout: 60_000 });
   log(`offline: restored at "${before}" after relaunch`);
   await expectInMatchCard(page, NEW_NAME, "after relaunch");
   await shot("03-restored");
