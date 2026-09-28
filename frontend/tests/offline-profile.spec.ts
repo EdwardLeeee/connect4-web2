@@ -5,8 +5,9 @@ import { i18n } from "../src/i18n";
 import { useGameStore } from "../src/stores/game";
 import { FakeWebSocket } from "./fakeSocket";
 
-// 3.2.0 app 離線 03 and 04b: offline, only the language changes, at once, and
-// reaches the server once connected; the app shows the last profile it saw.
+// 3.2.0 app 離線 04b and 3.3.1: offline, the nickname and the language change
+// at once, and reach the server once connected; the app shows the last
+// profile it saw.
 const native = vi.hoisted(() => ({
   app: false,
   last: null as {
@@ -14,7 +15,10 @@ const native = vi.hoisted(() => ({
     locale: "zh-TW" | "en";
     default_number: number | null;
   } | null,
-  pending: null as "zh-TW" | "en" | null,
+  pending: null as {
+    locale: "zh-TW" | "en" | "th";
+    nickname: string | null;
+  } | null,
   remembered: [] as unknown[],
 }));
 vi.mock("../src/native", () => ({
@@ -27,9 +31,9 @@ vi.mock("../src/native", () => ({
     rememberSession: async (session: unknown) => {
       native.remembered.push(session);
     },
-    pendingLocale: async () => native.pending,
-    setPendingLocale: async (locale: "zh-TW" | "en" | null) => {
-      native.pending = locale;
+    pendingProfile: async () => native.pending,
+    setPendingProfile: async (pending: typeof native.pending) => {
+      native.pending = pending;
     },
     restorePending: async () => false,
     setRestorePending: async () => {},
@@ -39,7 +43,11 @@ vi.mock("../src/native", () => ({
 
 type Patch = { nickname: string; locale: string };
 let patches: Patch[] = [];
-let patchReply: () => Promise<{ ok: boolean; status: number }>;
+let patchReply: () => Promise<{
+  ok: boolean;
+  status: number;
+  json?: () => Promise<unknown>;
+}>;
 
 function stubServer(session = { nickname: "Taylor", locale: "en" }) {
   vi.stubGlobal(
@@ -49,7 +57,7 @@ function stubServer(session = { nickname: "Taylor", locale: "en" }) {
         const body = JSON.parse(String(init.body)) as Patch;
         patches.push(body);
         const reply = await patchReply();
-        return { ...reply, json: async () => body };
+        return { json: async () => body, ...reply };
       }
       return { ok: true, status: 200, json: async () => session };
     }),
@@ -110,16 +118,16 @@ afterEach(() => {
 describe("the language chosen offline", () => {
   it("changes at once, without sending anything", async () => {
     const store = await offlineInTheLobby();
-    await store.saveProfile("Someone else", "zh-TW");
+    await store.saveProfile("Taylor", "zh-TW");
     expect(i18n.global.locale.value).toBe("zh-TW");
     expect(store.pendingLocale).toBe("zh-TW");
-    expect(native.pending).toBe("zh-TW");
+    expect(native.pending).toEqual({ locale: "zh-TW", nickname: null });
     expect(patches).toEqual([]);
   });
 
   it("reaches the server with its nickname once connected, with no flash back", async () => {
     const store = await offlineInTheLobby();
-    await store.saveProfile("Someone else", "zh-TW");
+    await store.saveProfile("Taylor", "zh-TW");
     const shown: string[] = [];
     watch(
       () => i18n.global.locale.value,
@@ -127,7 +135,7 @@ describe("the language chosen offline", () => {
       { flush: "sync" },
     );
     await reconnect();
-    // Both fields, and the server's own nickname (see syncNickname).
+    // Both fields, and the server's own nickname (see syncProfile).
     expect(patches).toEqual([
       { nickname: "Taylor", locale: "zh-TW", default_number: null },
     ]);
@@ -139,7 +147,7 @@ describe("the language chosen offline", () => {
 
   it("is sent again on the next connection when it fails", async () => {
     const store = await offlineInTheLobby();
-    await store.saveProfile("", "zh-TW");
+    await store.saveProfile("Taylor", "zh-TW");
     patchReply = async () => {
       throw new TypeError("offline");
     };
@@ -157,7 +165,7 @@ describe("the language chosen offline", () => {
 
   it("gives way to the server's language when the server refuses it", async () => {
     const store = await offlineInTheLobby();
-    await store.saveProfile("", "zh-TW");
+    await store.saveProfile("Taylor", "zh-TW");
     patchReply = async () => ({ ok: false, status: 422 });
     await reconnect();
     expect(store.pendingLocale).toBeNull();
@@ -166,14 +174,14 @@ describe("the language chosen offline", () => {
 
   it("is dropped when it is the server's language already", async () => {
     const store = await offlineInTheLobby();
-    await store.saveProfile("", "en");
+    await store.saveProfile("Taylor", "en");
     expect(store.pendingLocale).toBeNull();
     await reconnect();
     expect(patches).toEqual([]);
   });
 
   it("is kept across a launch, and shown before the server answers", async () => {
-    native.pending = "zh-TW";
+    native.pending = { locale: "zh-TW", nickname: null };
     const store = useGameStore();
     await store.initialise();
     expect(i18n.global.locale.value).toBe("zh-TW");
@@ -186,7 +194,7 @@ describe("the language chosen offline", () => {
   });
 
   it("is cleared by a save made online", async () => {
-    native.pending = "zh-TW";
+    native.pending = { locale: "zh-TW", nickname: null };
     patchReply = () => new Promise(() => {});
     const store = useGameStore();
     await store.initialise();
@@ -197,6 +205,109 @@ describe("the language chosen offline", () => {
     expect(store.pendingLocale).toBeNull();
     expect(native.pending).toBeNull();
     expect(i18n.global.locale.value).toBe("en");
+  });
+});
+
+describe("a nickname changed offline (3.3.1)", () => {
+  it("shows at once and waits on the device, sending nothing", async () => {
+    const store = await offlineInTheLobby();
+    await store.saveProfile("  曜宇 ", "en");
+    expect(store.shownSession).toEqual({
+      nickname: "曜宇",
+      locale: "en",
+      default_number: null,
+    });
+    expect(native.pending).toEqual({ locale: "en", nickname: "曜宇" });
+    expect(patches).toEqual([]);
+  });
+
+  it("reaches the server once connected, and the state is asked again", async () => {
+    const store = await offlineInTheLobby();
+    await store.saveProfile("曜宇", "en");
+    await reconnect();
+    expect(patches).toEqual([
+      { nickname: "曜宇", locale: "en", default_number: null },
+    ]);
+    expect(native.pending).toBeNull();
+    expect(store.shownSession?.nickname).toBe("曜宇");
+    expect(latest().sent).toContain("state.request");
+  });
+
+  it("goes with a new language in one save", async () => {
+    const store = await offlineInTheLobby();
+    await store.saveProfile("曜宇", "th");
+    expect(i18n.global.locale.value).toBe("th");
+    await reconnect();
+    expect(patches).toEqual([
+      { nickname: "曜宇", locale: "th", default_number: null },
+    ]);
+  });
+
+  it("is sent again on the next connection when it fails", async () => {
+    const store = await offlineInTheLobby();
+    await store.saveProfile("曜宇", "en");
+    patchReply = async () => {
+      throw new TypeError("offline");
+    };
+    await reconnect();
+    expect(store.shownSession?.nickname).toBe("曜宇");
+    patchReply = async () => ({ ok: true, status: 200 });
+    latest().emit("close");
+    await reconnect();
+    expect(patches).toHaveLength(2);
+    expect(native.pending).toBeNull();
+  });
+
+  it("goes back to the server's name and says why when refused", async () => {
+    const store = await offlineInTheLobby();
+    await store.saveProfile("曜宇", "zh-TW");
+    patchReply = async () => ({
+      ok: false,
+      status: 422,
+      json: async () => ({ detail: "invalid_nickname" }),
+    });
+    await reconnect();
+    expect(store.errorCode).toBe("invalid_nickname");
+    expect(store.shownSession?.nickname).toBe("Taylor");
+    expect(i18n.global.locale.value).toBe("en");
+    expect(native.pending).toBeNull();
+  });
+
+  it("follows the server's rule before keeping anything", async () => {
+    const store = await offlineInTheLobby();
+    for (const name of ["", "   ", "x".repeat(19), "tab\there"]) {
+      await expect(store.saveProfile(name, "en")).rejects.toMatchObject({
+        code: "invalid_nickname",
+      });
+    }
+    expect(native.pending).toBeNull();
+    // Counted in characters, as the server counts: 18 emoji fit.
+    await store.saveProfile("😀".repeat(18), "en");
+    expect(native.pending?.nickname).toBe("😀".repeat(18));
+  });
+
+  it("is dropped when it is the server's own profile again", async () => {
+    const store = await offlineInTheLobby();
+    await store.saveProfile("曜宇", "en");
+    await store.saveProfile("Taylor", "en");
+    expect(native.pending).toBeNull();
+    await reconnect();
+    expect(patches).toEqual([]);
+  });
+
+  it("is kept across a launch and shown before the server answers", async () => {
+    native.app = true;
+    native.last = { nickname: "Taylor", locale: "en", default_number: null };
+    native.pending = { locale: "en", nickname: "曜宇" };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("offline");
+      }),
+    );
+    const store = useGameStore();
+    await store.initialise().catch(() => {});
+    expect(store.shownSession?.nickname).toBe("曜宇");
   });
 });
 

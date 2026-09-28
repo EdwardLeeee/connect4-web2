@@ -14,8 +14,8 @@ vi.mock("../src/native", () => ({
   profileMemory: {
     lastSession: async () => null,
     rememberSession: async () => {},
-    pendingLocale: async () => null,
-    setPendingLocale: async () => {},
+    pendingProfile: async () => null,
+    setPendingProfile: async () => {},
     restorePending: async () => false,
     setRestorePending: async () => {},
   },
@@ -139,31 +139,52 @@ describe("profile sheet offline", () => {
     return { host, saveProfile };
   }
 
-  it("locks the nickname and says why", async () => {
+  // 3.3.1: offline the sheet is the one shown online, with no note.
+  it("leaves the nickname open, with no note", async () => {
     const { host } = await mountOffline("曜宇");
     const input = host.querySelector<HTMLInputElement>(".profile-sheet input")!;
-    expect(input.disabled).toBe(true);
-    expect(input.classList).toContain("is-locked");
+    expect(input.disabled).toBe(false);
     expect(input.value).toBe("曜宇");
-    expect(host.querySelector(".sheet-note")?.textContent?.trim()).toBe(
-      "目前離線：暱稱要連線後才能改，語言可以直接切換。",
-    );
-    // The note sits right above Cancel and Save.
+    expect(host.querySelector(".notice-banner")).toBeNull();
     expect(
-      host.querySelector(".sheet-note")?.nextElementSibling?.classList,
+      host.querySelector("label + label")?.nextElementSibling?.classList,
     ).toContain("sheet-actions");
   });
 
-  it("shows no error for an empty nickname, and saves the language", async () => {
-    const { host, saveProfile } = await mountOffline("");
-    expect(host.querySelector(".form-error")).toBeNull();
-    const save = host.querySelector<HTMLButtonElement>("button[type=submit]")!;
-    expect(save.disabled).toBe(false);
+  it("saves a new nickname and language", async () => {
+    const { host, saveProfile } = await mountOffline("曜宇");
+    const input = host.querySelector<HTMLInputElement>(".profile-sheet input")!;
+    input.value = "小安";
+    input.dispatchEvent(new Event("input"));
     const select = host.querySelector<HTMLSelectElement>("select")!;
     select.value = "en";
     select.dispatchEvent(new Event("change"));
+    host.querySelector<HTMLButtonElement>("button[type=submit]")!.click();
+    await nextTick();
+    expect(saveProfile).toHaveBeenCalledWith("小安", "en");
+  });
+
+  it("catches an empty nickname as online", async () => {
+    const { host, saveProfile } = await mountOffline("");
+    expect(host.querySelector(".form-error")?.textContent?.trim()).toBe(
+      "請先輸入暱稱",
+    );
+    const save = host.querySelector<HTMLButtonElement>("button[type=submit]")!;
+    expect(save.disabled).toBe(true);
     save.click();
     await nextTick();
-    expect(saveProfile).toHaveBeenCalledWith("", "en");
+    expect(saveProfile).not.toHaveBeenCalled();
+  });
+
+  it("explains a nickname the server's rule would refuse", async () => {
+    const { host, saveProfile } = await mountOffline("曜宇");
+    const { ProfileError } = await import("../src/stores/game");
+    saveProfile.mockRejectedValue(new ProfileError("invalid_nickname"));
+    host.querySelector<HTMLButtonElement>("button[type=submit]")!.click();
+    await nextTick();
+    await nextTick();
+    expect(host.querySelector(".form-error")?.textContent?.trim()).toBe(
+      "暱稱需為 1–18 個字。",
+    );
   });
 });

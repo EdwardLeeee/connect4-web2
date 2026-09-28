@@ -27,8 +27,8 @@ vi.mock("../src/native", () => ({
     rememberSession: async (session: unknown) => {
       native.last = session;
     },
-    pendingLocale: async () => null,
-    setPendingLocale: async () => {},
+    pendingProfile: async () => null,
+    setPendingProfile: async () => {},
     restorePending: async () => false,
     setRestorePending: async () => {},
   },
@@ -125,6 +125,22 @@ describe("AI games in the app", () => {
     await aiThinks();
     expect(store.game).toMatchObject({ history: "44", status: "playing" });
     expect(latest().sent).toEqual([]);
+  });
+
+  // 3.3.1: a nickname changed offline shows on the device's game at once.
+  it("show a nickname changed offline on the match card at once", async () => {
+    const store = await playing();
+    latest().emit("close");
+    for (const wait of [2000, 1000, 2000]) {
+      await vi.advanceTimersByTimeAsync(wait);
+      await settle();
+      latest().emit("close");
+    }
+    expect(store.serverConnection).toBe("offline");
+    await store.saveProfile("小安", "zh-TW");
+    await settle();
+    expect(store.game?.players.green?.nickname).toBe("小安");
+    expect(store.shownSession?.nickname).toBe("小安");
   });
 
   it("need no connection, and show no connection notice", async () => {

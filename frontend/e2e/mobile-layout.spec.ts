@@ -602,7 +602,7 @@ async function asApp(page: Page) {
         "export const usesLocalAi = () => true;",
         "export const tokenStore = { get: async () => null, set: async () => {} };",
         "export const localGameStore = { get: async () => null, set: async () => {} };",
-        "export const profileMemory = { lastSession: async () => null, rememberSession: async () => {}, pendingLocale: async () => null, setPendingLocale: async () => {}, restorePending: async () => false, setRestorePending: async () => {} };",
+        "export const profileMemory = { lastSession: async () => null, rememberSession: async () => {}, pendingProfile: async () => null, setPendingProfile: async () => {}, restorePending: async () => false, setRestorePending: async () => {} };",
         'export const nativeShare = async () => "shared";',
       ].join("\n"),
     }),
@@ -2108,6 +2108,12 @@ test("the app plays the AI on the device, with or without a connection", async (
   await play(page, testInfo, 2);
   await expect(tokens).toHaveCount(4, { timeout: 20_000 });
   expect(sent.filter((type) => type.startsWith("game."))).toEqual([]);
+
+  // 3.3.1: a nickname changed offline is on the match card at once.
+  await page.locator(".profile").click();
+  await page.locator(".profile-sheet input").fill("小安");
+  await page.locator(".profile-sheet button[type=submit]").click();
+  await expect(page.locator(".player.is-me strong")).toHaveText("小安");
 });
 
 test("an AI game left open resumes after relaunching with no network", async ({
@@ -2183,9 +2189,9 @@ test("the website offline lobby stays as it was", async ({ page }) => {
   await expect(page.locator(".connection-pill")).not.toHaveText("離線");
 });
 
-// 03: offline the nickname is locked, the language changes at once and
-// reaches the server once connected (website and app alike).
-test("offline, the language changes at once and syncs once connected", async ({
+// 3.3.1: offline the nickname and the language change at once and reach the
+// server once connected (website and app alike); the sheet looks as online.
+test("offline, the nickname and language change at once and sync once connected", async ({
   page,
 }) => {
   let down = true;
@@ -2210,25 +2216,58 @@ test("offline, the language changes at once and syncs once connected", async ({
 
   await page.locator(".profile").click();
   const sheet = page.locator(".profile-sheet");
-  await expect(sheet.locator("input")).toBeDisabled();
+  await expect(sheet.locator("input")).toBeEnabled();
   await expect(sheet.locator("input")).toHaveValue("曜宇");
-  await expect(sheet.locator(".sheet-note")).toHaveText(
-    "目前離線：暱稱要連線後才能改，語言可以直接切換。",
-  );
+  await expect(sheet.locator(".notice-banner")).toHaveCount(0);
   await expect(sheet.locator(".form-error")).toHaveCount(0);
+  await sheet.locator("input").fill("小安");
   await sheet.locator("select").selectOption("en");
   await sheet.locator("button[type=submit]").click();
   await expect(sheet).toHaveCount(0);
   // At once, before any request.
   await expect(page.locator(".ai-card h2")).toHaveText("Challenge AI");
+  await expect(page.locator(".profile .avatar")).toHaveText("小");
   expect(patches).toEqual([]);
 
   down = false;
   await page.evaluate(() => window.dispatchEvent(new Event("online")));
   await expect
     .poll(() => patches)
-    .toEqual([{ nickname: "曜宇", locale: "en", default_number: null }]);
+    .toEqual([{ nickname: "小安", locale: "en", default_number: null }]);
   await expect(page.locator(".ai-card h2")).toHaveText("Challenge AI");
+  await expect(page.locator(".profile .avatar")).toHaveText("小");
+});
+
+// 3.3.1: a nickname the server refuses goes back, and the player is told.
+test("a nickname changed offline that the server refuses goes back, with a reason", async ({
+  page,
+}) => {
+  let down = true;
+  const app = await mockApp(page, snapshotFor("L01"), {
+    refuseReconnects: () => down,
+  });
+  await page.route("**/api/session", async (route) => {
+    if (route.request().method() !== "PATCH") return route.fallback();
+    await route.fulfill({
+      status: 422,
+      contentType: "application/json",
+      body: JSON.stringify({ detail: "invalid_nickname" }),
+    });
+  });
+  await page.goto("/");
+  await expect(page.locator(".lobby")).toBeVisible();
+  await app.sockets[0].close({ code: 1011 });
+  await expect(page.locator(".connection-pill")).toBeVisible();
+  await page.locator(".profile").click();
+  const sheet = page.locator(".profile-sheet");
+  await sheet.locator("input").fill("小安");
+  await sheet.locator("button[type=submit]").click();
+  await expect(page.locator(".profile .avatar")).toHaveText("小");
+
+  down = false;
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await expect(page.locator(".toast")).toContainText("暱稱需為 1–18 個字。");
+  await expect(page.locator(".profile .avatar")).toHaveText("曜");
 });
 
 // 04b: launched with no network, the app shows the last profile it saw.
@@ -2245,7 +2284,7 @@ test("the app launched offline shows the last nickname, or none", async ({
   // Never connected: its own default name (04b, round 24), no error.
   await expect(page.locator(".profile .avatar")).toHaveText("玩");
   await page.locator(".profile").click();
-  await expect(page.locator(".profile-sheet input")).toBeDisabled();
+  await expect(page.locator(".profile-sheet input")).toBeEnabled();
   await expect(page.locator(".profile-sheet .form-error")).toHaveCount(0);
 
   await page.evaluate(() =>
@@ -2258,7 +2297,7 @@ test("the app launched offline shows the last nickname, or none", async ({
   await expect(page.locator(".profile .avatar")).toHaveText("曜");
   await page.locator(".profile").click();
   await expect(page.locator(".profile-sheet input")).toHaveValue("曜宇");
-  await expect(page.locator(".profile-sheet input")).toBeDisabled();
+  await expect(page.locator(".profile-sheet input")).toBeEnabled();
   await expect(page.locator(".profile-sheet .form-error")).toHaveCount(0);
 });
 
@@ -2527,7 +2566,7 @@ test("Thai lobby and profile sheet fit, online and offline", async ({
   );
   await expectThaiFits(page, testInfo, "offline lobby");
   await page.locator(".profile").click();
-  await expect(sheet.locator(".sheet-note")).toBeVisible();
+  await expect(sheet.locator("input")).toBeEnabled();
   await expectThaiFits(page, testInfo, "offline profile sheet");
 });
 
