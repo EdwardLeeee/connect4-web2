@@ -8,7 +8,7 @@ App Store 與 Google Play 後台要填的內容。第一次送審是 3.3.0（中
 
 | 欄位 | 內容 |
 |---|---|
-| App Store 商店名稱 | 英文「Four In A Row: Super AI」（已建立 app 記錄；「Four In A Row」已被別的 app 使用）。繁中「四子棋」、泰文「เรียงสี่」上傳時才知道能不能用；泰文被占用就改用「เรียงสี่: Super AI」 |
+| App Store 商店名稱 | 英文「Four In A Row: Super AI」（已建立 app 記錄；「Four In A Row」已被別的 app 使用）。繁中「四子棋 Super AI」（「四子棋」已被別的帳號使用，2026-09-28 上傳時回 409，使用者另取，中間是空格、沒有冒號）。泰文「เรียงสี่」上傳時才知道能不能用；被占用就改用「เรียงสี่ Super AI」（樣式比照中文） |
 | 手機桌面名稱 | 中文（繁、簡）「四子棋」，泰文「เรียงสี่」，其他語言「Four In A Row」 |
 | 主要語言 | English (U.S.)：沒有翻譯的語言會顯示主要語言；再加繁體中文與泰文（App Store `th`，Google Play `th`） |
 | Bundle ID／Package | `com.oraclelee.connect4` |
@@ -22,7 +22,7 @@ App Store 與 Google Play 後台要填的內容。第一次送審是 3.3.0（中
 | 加密出口規範 | 只用系統的 HTTPS；Info.plist 已設 `ITSAppUsesNonExemptEncryption = false`，上傳時不用再回答 |
 
 **名稱被占用**：App Store 的名稱全站唯一。中文名稱若被占用，停下來回報 ceo，由使用者另取，不要自己改名。
-泰文名稱已有備案：「เรียงสี่」被占用就改成「เรียงสี่: Super AI」，改完回報 ceo。
+泰文名稱已有備案：「เรียงสี่」被占用就改成「เรียงสี่ Super AI」，改完回報 ceo。
 
 **商標**：畫面上仍有 CONNECT 4 字樣（Hasbro 的註冊商標）；使用者已接受可能因 Apple 5.2.1 被退件的風險。
 
