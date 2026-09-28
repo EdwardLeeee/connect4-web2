@@ -116,8 +116,18 @@ jobs:
           check ios iOS IOS_DIST_CERT_P12_BASE64 IOS_DIST_CERT_P12_PASSWORD IOS_PROFILE_BASE64 \
             APPLE_TEAM_ID ASC_API_KEY_ID ASC_API_ISSUER_ID ASC_API_KEY_P8_BASE64
 
-  android:
+  # The new app against the new production site, before anything is built for the stores: a
+  # default nickname, one AI game and the privacy link. A failure stops both uploads.
+  ios-online-smoke:
     needs: preflight
+    uses: ./.github/workflows/mobile-ios-smoke.yml
+    with:
+      ref: refs/tags/${{ inputs.tag }}
+      online: true
+      offline: false
+
+  android:
+    needs: [preflight, ios-online-smoke]
     if: needs.preflight.outputs.android == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -183,7 +193,7 @@ jobs:
           if-no-files-found: error
 
   ios:
-    needs: preflight
+    needs: [preflight, ios-online-smoke]
     if: needs.preflight.outputs.ios == 'true'
     runs-on: macos-latest
     steps:

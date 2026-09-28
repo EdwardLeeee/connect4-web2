@@ -1,0 +1,158 @@
+name: Mobile iOS smoke
+
+# The iOS simulator smoke test, called by Mobile (pull requests: offline and languages; by hand:
+# everything) and by Mobile release (online, against production, before anything is uploaded).
+# It runs on a macOS runner because Cloudflare blocks the Ubuntu runners from the production site.
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: What to check out; empty means the calling ref
+        type: string
+        default: ""
+      online:
+        description: "Online run against production: default nickname, one AI game, privacy link"
+        type: boolean
+        default: false
+      offline:
+        description: Offline run (unreachable API origin) and a fresh install in three device languages
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+env:
+  VITE_API_ORIGIN: https://connect4.oraclelee.com
+
+jobs:
+  ios-smoke:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            mobile/package-lock.json
+      # Pinned Ruby and xcodeproj, so a runner image update cannot change the test target.
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+      - run: gem install --no-document xcodeproj -v 1.28.1
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+      - run: npm ci
+        working-directory: mobile
+      - run: npx cap sync ios
+        working-directory: mobile
+      - run: ruby mobile/scripts/add-ui-test-target.rb mobile/ios/App/App.xcodeproj
+      - name: Pick a simulator
+        run: |
+          udid="$(xcrun simctl list devices available -j | node -e '
+            const d = JSON.parse(require("fs").readFileSync(0, "utf8")).devices;
+            const phones = Object.entries(d).filter(([rt]) => rt.includes("iOS")).flatMap(([, list]) => list)
+              .filter((x) => x.name.startsWith("iPhone"));
+            console.log(phones.at(-1).udid);')"
+          echo "SIM_UDID=${udid}" >> "${GITHUB_ENV}"
+      - name: "Online: default nickname, one AI game, privacy link"
+        if: inputs.online
+        working-directory: mobile/ios/App
+        run: |
+          set -o pipefail
+          xcodebuild test -project App.xcodeproj -scheme App -destination "platform=iOS Simulator,id=${SIM_UDID}" \
+            -only-testing:AppUITests/AppUITests/testOnlineGameAndPrivacyPolicy \
+            -resultBundlePath "${RUNNER_TEMP}/online.xcresult" CODE_SIGNING_ALLOWED=NO 2>&1 \
+            | tee "${RUNNER_TEMP}/online.log"
+      # The same app with an API origin that never resolves (.invalid), on a fresh install:
+      # the offline lobby, the default nickname, an AI game and restoring it after a relaunch.
+      - name: Build the web app for the offline run
+        if: ${{ !cancelled() && inputs.offline }}
+        working-directory: frontend
+        env:
+          VITE_API_ORIGIN: https://offline.invalid
+        run: npm run build
+      - if: ${{ !cancelled() && inputs.offline }}
+        run: npx cap sync ios
+        working-directory: mobile
+      - name: "Offline: lobby, default nickname, AI game, restore after relaunch"
+        if: ${{ !cancelled() && inputs.offline }}
+        working-directory: mobile/ios/App
+        run: |
+          set -o pipefail
+          # xcodebuild shuts the simulator down after the online run; uninstalling needs it booted,
+          # and a fresh install is the point of this run, so a failed uninstall stops here.
+          xcrun simctl boot "${SIM_UDID}" 2>/dev/null || true
+          xcrun simctl bootstatus "${SIM_UDID}" -b
+          xcrun simctl uninstall "${SIM_UDID}" com.oraclelee.connect4
+          if xcrun simctl get_app_container "${SIM_UDID}" com.oraclelee.connect4 data >/dev/null 2>&1; then
+            echo "::error::the app is still installed after uninstalling it"
+            exit 1
+          fi
+          xcodebuild test -project App.xcodeproj -scheme App -destination "platform=iOS Simulator,id=${SIM_UDID}" \
+            -only-testing:AppUITests/AppUITests/testOfflineLobbyGameAndRestore \
+            -resultBundlePath "${RUNNER_TEMP}/offline.xcresult" CODE_SIGNING_ALLOWED=NO 2>&1 \
+            | tee "${RUNNER_TEMP}/offline.log"
+      # A fresh install per device language, on the offline build from the step above, so it checks
+      # the app itself whichever version production runs: the first screen, the default nickname
+      # and the home-screen name all follow the device language.
+      - name: "Fresh install in three device languages"
+        if: ${{ !cancelled() && inputs.offline }}
+        working-directory: mobile/ios/App
+        run: |
+          set -o pipefail
+          failed=""
+          for entry in "en-US|en_US|Four In A Row|Play now|Player|lang-en" \
+            "zh-Hant-TW|zh_TW|四子棋|立即對戰|玩家|lang-zh" "th-TH|th_TH|เรียงสี่|เล่นเลย|ผู้เล่น|lang-th"; do
+            IFS='|' read -r lang locale name play nickname run <<<"${entry}"
+            xcrun simctl boot "${SIM_UDID}" 2>/dev/null || true
+            xcrun simctl bootstatus "${SIM_UDID}" -b
+            xcrun simctl uninstall "${SIM_UDID}" com.oraclelee.connect4 || true
+            if xcrun simctl get_app_container "${SIM_UDID}" com.oraclelee.connect4 data >/dev/null 2>&1; then
+              echo "::error::${lang}: the app is still installed after uninstalling it"
+              failed="${failed} ${lang}"
+              continue
+            fi
+            xcrun simctl spawn "${SIM_UDID}" defaults write "Apple Global Domain" AppleLanguages -array "${lang}"
+            xcrun simctl spawn "${SIM_UDID}" defaults write "Apple Global Domain" AppleLocale -string "${locale}"
+            # The home screen reads the language when the simulator boots.
+            xcrun simctl shutdown "${SIM_UDID}"
+            xcrun simctl boot "${SIM_UDID}"
+            xcrun simctl bootstatus "${SIM_UDID}" -b
+            TEST_RUNNER_EXPECTED_NAME="${name}" TEST_RUNNER_EXPECTED_PLAY="${play}" \
+              TEST_RUNNER_EXPECTED_NICKNAME="${nickname}" xcodebuild test -project App.xcodeproj -scheme App \
+              -destination "platform=iOS Simulator,id=${SIM_UDID}" \
+              -only-testing:AppUITests/AppUITests/testFreshInstallInDeviceLanguage \
+              -resultBundlePath "${RUNNER_TEMP}/${run}.xcresult" CODE_SIGNING_ALLOWED=NO 2>&1 \
+              | tee "${RUNNER_TEMP}/${run}.log" || failed="${failed} ${lang}"
+          done
+          # Every language runs even when one fails, so one run shows all three.
+          if [ -n "${failed}" ]; then
+            echo "::error::fresh-install language check failed for:${failed}"
+            exit 1
+          fi
+      - name: Export the screenshots
+        if: always()
+        run: |
+          for run in online offline lang-en lang-zh lang-th; do
+            mkdir -p "smoke-screenshots/${run}"
+            if [ -d "${RUNNER_TEMP}/${run}.xcresult" ]; then
+              xcrun xcresulttool export attachments --path "${RUNNER_TEMP}/${run}.xcresult" \
+                --output-path "smoke-screenshots/${run}"
+            fi
+            { echo "### ${run}"; grep -hE "^SMOKE |error: |\*\* TEST" "${RUNNER_TEMP}/${run}.log" 2>/dev/null \
+                | sed 's/^/- /'; } >> "${GITHUB_STEP_SUMMARY}" || true
+          done
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-smoke-screenshots
+          path: smoke-screenshots/
+          retention-days: 14
+          if-no-files-found: ignore
