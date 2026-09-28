@@ -57,6 +57,9 @@ npm --prefix mobile run icons
 pull request 動到 `mobile/**`、`design/app-icon/**`、`frontend/**`（測試除外）或這兩個 workflow 時執行，
 不是必要檢查。
 
+- `store-assets`：執行 `app_store_metadata.py --check`，檢查商店文字的字數與商標字、網址、截圖尺寸與透明度、
+  預覽影片規格（ffprobe）與 Google Play 素材；有 Problems 就失敗，connect4 關鍵字只警告。不需要金鑰。
+
 - `android`：建置網頁、檢查 Capacitor 版本與 `npm audit`、`cap sync`、`assembleDebug` 與不簽章的
   `bundleRelease`，上傳 `connect4-debug-apk`（保留 14 天，可直接側載測試；每次建置的 debug 簽章不同，
   換版前要先解除安裝舊的）。
@@ -155,6 +158,7 @@ App Preview 規格（App Store Connect 說明「App preview specifications」）
 上傳腳本 `mobile/scripts/app_store_metadata.py`（在開發機執行，需要 PyJWT、cryptography 與 ffprobe）：
 
 ```bash
+mobile/scripts/app_store_metadata.py --check                     # 只檢查檔案，不需要金鑰、不連 Apple
 mobile/scripts/app_store_metadata.py --version 3.3.0             # dry-run：只讀取、印出會改的內容
 mobile/scripts/app_store_metadata.py --version 3.3.0 --apply     # 真的上傳
 ```

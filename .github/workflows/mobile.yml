@@ -31,6 +31,18 @@ env:
   VITE_API_ORIGIN: https://connect4.oraclelee.com
 
 jobs:
+  # The App Store and Google Play files, without credentials: texts, screenshots, previews.
+  # The dry run and the upload that need the App Store Connect key stay on the developer machine.
+  store-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+      - run: python3 mobile/scripts/app_store_metadata.py --check
+
   android:
     runs-on: ubuntu-latest
     steps:

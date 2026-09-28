@@ -6,6 +6,10 @@ It also checks the Google Play assets in mobile/store/google-play/, which are up
 Usage:
   mobile/scripts/app_store_metadata.py --version 3.2.0 [--build 7]          # dry run (default)
   mobile/scripts/app_store_metadata.py --version 3.2.0 [--build 7] --apply  # upload
+  mobile/scripts/app_store_metadata.py --check                              # files only, no API
+
+--check reads no credentials and never contacts Apple: it checks the texts, screenshots, previews
+and Google Play assets in the repository and exits 1 on any problem (the Mobile workflow runs it).
 
 The dry run only reads App Store Connect and prints every change it would make. --apply refuses
 to run unless mobile/store/app-store/status.json says "approved" and every required text is filled
@@ -13,7 +17,8 @@ in; it asks for the review contact details at run time (they never go into the r
 asks for confirmation before it writes anything. It never submits the version for review.
 
 Credentials: ~/.config/connect4-mobile/ios/asc.json ({"key_id": ..., "issuer_id": ...}) and the
-matching AuthKey_<key_id>.p8 next to it. Needs PyJWT, cryptography and ffprobe (for previews).
+matching AuthKey_<key_id>.p8 next to it. Needs PyJWT and cryptography (not for --check) and
+ffprobe (for previews).
 """
 
 from __future__ import annotations
@@ -29,8 +34,6 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-
-import jwt
 
 API = "https://api.appstoreconnect.apple.com/v1"
 BUNDLE_ID = "com.oraclelee.connect4"
@@ -76,6 +79,8 @@ class Api:
         self.key = (CREDENTIALS / f"AuthKey_{self.key_id}.p8").read_text()
 
     def _token(self) -> str:
+        import jwt  # only the API needs it, so --check runs without PyJWT
+
         now = int(time.time())
         return jwt.encode(
             {"iss": self.issuer_id, "iat": now, "exp": now + 600, "aud": "appstoreconnect-v1"},
@@ -337,18 +342,40 @@ def short(text: str | None, width: int = 70) -> str:
     return flat if len(flat) <= width else flat[: width - 1] + "…"
 
 
+def report(warnings: list[str], problems: list[str], play_problems: list[str]) -> None:
+    if warnings:
+        print("\nWarnings (do not block --apply):")
+        for warning in warnings:
+            print(f"  ~ {warning}")
+    if problems:
+        print("\nProblems (must be fixed before --apply):")
+        for problem in problems:
+            print(f"  ! {problem}")
+    if PLAY.is_dir():
+        print("\nGoogle Play assets (uploaded by hand in Play Console):")
+        for problem in play_problems or ["all checks passed"]:
+            print(f"  {'!' if play_problems else '-'} {problem}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("--version", required=True, help="App version to submit, e.g. 3.2.0")
+    parser.add_argument("--version", help="App version to submit, e.g. 3.2.0")
     parser.add_argument(
         "--build", help="Build number (default: the newest VALID build of --version)"
     )
     parser.add_argument(
         "--apply", action="store_true", help="Upload instead of the default dry run"
     )
+    parser.add_argument(
+        "--check", action="store_true", help="Check the files only, without credentials or the API"
+    )
     args = parser.parse_args()
+    if args.check and (args.apply or args.build or args.version):
+        parser.error("--check takes no other option")
+    if not args.check and not args.version:
+        parser.error("--version is required unless --check")
 
     status = json.loads((STORE / "status.json").read_text(encoding="utf-8"))["status"]
     listing, notes, problems, warnings = read_listing()
@@ -358,6 +385,14 @@ def main() -> None:
     problems += preview_problems
     warnings += preview_warnings
     play_problems = check_play()
+
+    if args.check:
+        print(f"Store files (listing status: {status}); nothing is read from App Store Connect")
+        report(warnings, problems, play_problems)
+        if problems or play_problems:
+            sys.exit(1)
+        print("\nAll store file checks passed.")
+        return
 
     api = Api()
     apps = api.get(f"/apps?filter[bundleId]={BUNDLE_ID}")["data"]
@@ -467,18 +502,7 @@ def main() -> None:
     print("\nPlanned changes:")
     for description, _kind, _payload in plan:
         print(f"  - {description}")
-    if warnings:
-        print("\nWarnings (do not block --apply):")
-        for warning in warnings:
-            print(f"  ~ {warning}")
-    if problems:
-        print("\nProblems (must be fixed before --apply):")
-        for problem in problems:
-            print(f"  ! {problem}")
-    if PLAY.is_dir():
-        print("\nGoogle Play assets (uploaded by hand in Play Console):")
-        for problem in play_problems or ["all checks passed"]:
-            print(f"  {'!' if play_problems else '-'} {problem}")
+    report(warnings, problems, play_problems)
 
     if not args.apply:
         print("\nDry run: nothing was sent. Submitting for review is always done by hand.")
