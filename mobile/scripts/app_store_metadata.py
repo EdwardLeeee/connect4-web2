@@ -566,6 +566,33 @@ def main() -> None:
                 {"data": {"type": "appInfoLocalizations", "id": loc_id, "attributes": payload}},
             )
         elif kind == "create-version":
+            # Creating an appInfo localization can make App Store Connect add this version's
+            # localization for the same locale; update that one instead of creating a duplicate.
+            existing = next(
+                (
+                    loc
+                    for loc in api.get(f"/appStoreVersions/{vid}/appStoreVersionLocalizations")[
+                        "data"
+                    ]
+                    if loc["attributes"]["locale"] == payload["locale"]
+                ),
+                None,
+            )
+            if existing:
+                attributes = {k: v for k, v in payload.items() if k != "locale"}
+                api.call(
+                    "PATCH",
+                    f"/appStoreVersionLocalizations/{existing['id']}",
+                    {
+                        "data": {
+                            "type": "appStoreVersionLocalizations",
+                            "id": existing["id"],
+                            "attributes": attributes,
+                        }
+                    },
+                )
+                version_locs[payload["locale"]] = existing
+                continue
             created = api.call(
                 "POST",
                 "/appStoreVersionLocalizations",
