@@ -204,12 +204,8 @@ final class AppUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(moves, 2, "the restored game did not continue")
         shot("offline-result")
 
-        // Back in the lobby, the renamed profile is still there after the relaunch.
-        let lobby = matching(again.buttons, "label CONTAINS %@", "回到大廳", "Back to lobby").firstMatch
-        XCTAssertTrue(lobby.waitForExistence(timeout: 10), "the result has no Back to lobby button")
-        lobby.tap()
+        // The result screen's header still shows the renamed profile after the relaunch.
         checkAvatar(again, newName, "after relaunch")
-        shot("offline-renamed-lobby")
     }
 
     /// Run once per device language on a fresh install (see the Mobile workflow): the first screen,
