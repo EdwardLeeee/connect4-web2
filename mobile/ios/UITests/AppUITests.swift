@@ -67,9 +67,14 @@ final class AppUITests: XCTestCase {
             format: "label == %@ OR label BEGINSWITH %@ OR label == %@ OR label BEGINSWITH %@",
             "玩", "玩家", "P", "Player ")).firstMatch
         XCTAssertTrue(profile.waitForExistence(timeout: 10), "no profile button")
-        profile.tap()
+        // A tap while the previous sheet is still closing is swallowed: wait for it to go, and
+        // tap once more if the sheet does not open.
+        _ = waitUntil("exists == false", web.textFields.firstMatch, timeout: 10)
+        Thread.sleep(forTimeInterval: 0.5)
         let field = web.textFields.matching(
             NSPredicate(format: "value MATCHES %@", "^(玩家|Player) [0-9]{4}$")).firstMatch
+        profile.tap()
+        if !field.waitForExistence(timeout: 5) { profile.tap() }
         XCTAssertTrue(field.waitForExistence(timeout: 10), "the profile sheet has no nickname field")
         // Put the caret at the end, clear the default name and type the new one.
         field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
