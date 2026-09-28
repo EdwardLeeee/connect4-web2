@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import http.client
 import json
 import os
 import struct
@@ -40,6 +41,12 @@ BUNDLE_ID = "com.oraclelee.connect4"
 STORE = Path(__file__).resolve().parents[1] / "store" / "app-store"
 CREDENTIALS = Path.home() / ".config" / "connect4-mobile" / "ios"
 LOCALES = ("en-US", "zh-Hant", "th")
+LIVE_INFO_STATES = {
+    "READY_FOR_DISTRIBUTION",
+    "READY_FOR_SALE",
+    "ACCEPTED",
+    "REPLACED_WITH_NEW_INFO",
+}
 EDITABLE = {"PREPARE_FOR_SUBMISSION", "DEVELOPER_REJECTED", "REJECTED", "METADATA_REJECTED"}
 # 6.9" iPhone screenshots (1320x2868, 1290x2796, 1260x2736). Apple's enum still lists them as
 # APP_IPHONE_67; confirm on the first real upload.
@@ -51,6 +58,17 @@ SCREENSHOT_SIZES = {(1320, 2868), (1290, 2796), (1260, 2736)}
 # silent one is fine). The API type name for 6.9" is not documented; IPHONE_67 is assumed like
 # the screenshots and is confirmed on the first real upload.
 PREVIEW_TYPE = "IPHONE_67"
+ASSET_SETS = {
+    "screenshots": (
+        "appScreenshotSets",
+        "screenshotDisplayType",
+        SCREENSHOT_TYPE,
+        "appScreenshots",
+    ),
+    "previews": ("appPreviewSets", "previewType", PREVIEW_TYPE, "appPreviews"),
+}
+# Apple processes screenshots in seconds and previews in minutes.
+PROCESSING_TIMEOUT = 900
 PREVIEW_SIZES = {(886, 1920), (1920, 886)}
 PREVIEW_TYPES = {".mp4": "video/mp4", ".m4v": "video/mp4", ".mov": "video/quicktime"}
 PLAY = STORE.parent / "google-play"
@@ -110,7 +128,21 @@ class Api:
         return json.loads(raw) if raw else None
 
     def get(self, path: str) -> dict | None:
-        return self.call("GET", path)
+        # App Store Connect sometimes drops a connection; a read is safe to repeat, a write is not.
+        for attempt in range(3):
+            try:
+                return self.call("GET", path)
+            except (urllib.error.URLError, http.client.HTTPException, ConnectionError) as error:
+                if attempt == 2:
+                    raise
+                print(f"  GET {path} failed ({error}); retrying")
+                time.sleep(5 * (attempt + 1))
+        return None
+
+
+def info_state(info: dict) -> str:
+    attributes = info["attributes"]
+    return attributes.get("state") or attributes.get("appStoreState") or ""
 
 
 def mentions_trademark(text: str) -> bool:
@@ -410,7 +442,9 @@ def main() -> None:
         build_filter += f"&filter[version]={args.build}"
     builds = api.get(f"/builds?{build_filter}")["data"]
     current_build = api.get(f"/appStoreVersions/{version['id']}/build")
-    app_info = api.get(f"/apps/{app_id}/appInfos")["data"][0]
+    # After the first release an app has two appInfos: the live one and the one being edited.
+    infos = api.get(f"/apps/{app_id}/appInfos")["data"]
+    app_info = next((i for i in infos if info_state(i) not in LIVE_INFO_STATES), infos[0])
     info_locs = {
         loc["attributes"]["locale"]: loc
         for loc in api.get(f"/appInfos/{app_info['id']}/appInfoLocalizations")["data"]
@@ -481,23 +515,17 @@ def main() -> None:
         plan.append((f"review notes: {short(old_notes)} → {short(notes)}", "review", {}))
     plan.append(("review contact name, phone and email: asked at run time", "review", {}))
 
+    # A set is replaced only when its file names or checksums differ from the local files, so a
+    # dry run with nothing listed here also proves the listing on App Store Connect is complete.
+    changed_assets: set[tuple[str, str]] = set()
     for locale in LOCALES:
-        if shots[locale]:
-            names = ", ".join(p.name for p in shots[locale])
-            plan.append(
-                (
-                    f"replace {locale} {SCREENSHOT_TYPE} screenshots with: {names}",
-                    "screenshots",
-                    {"locale": locale},
+        for kind, files in (("screenshots", shots[locale]), ("previews", previews[locale])):
+            if files and not same_assets(api, version_locs.get(locale), kind, files):
+                changed_assets.add((locale, kind))
+                names = ", ".join(p.name for p in files)
+                plan.append(
+                    (f"replace {locale} {ASSET_SETS[kind][2]} {kind} with: {names}", kind, {})
                 )
-            )
-
-    for locale in LOCALES:
-        if previews[locale]:
-            names = ", ".join(p.name for p in previews[locale])
-            plan.append(
-                (f"replace {locale} {PREVIEW_TYPE} app previews with: {names}", "previews", {})
-            )
 
     print("\nPlanned changes:")
     for description, _kind, _payload in plan:
@@ -650,9 +678,9 @@ def main() -> None:
         )
 
     for locale in LOCALES:
-        if shots[locale]:
+        if (locale, "screenshots") in changed_assets:
             upload_screenshots(api, version_locs[locale]["id"], shots[locale])
-        if previews[locale]:
+        if (locale, "previews") in changed_assets:
             upload_previews(api, version_locs[locale]["id"], previews[locale])
 
     print("\nUploaded. Review it in App Store Connect; submitting for review is done by hand.")
@@ -682,45 +710,24 @@ def upload_screenshots(api: Api, localization_id: str, files: list[Path]) -> Non
     for old in api.get(f"/appScreenshotSets/{target['id']}/appScreenshots")["data"]:
         api.call("DELETE", f"/appScreenshots/{old['id']}")
     for path in files:
-        data = path.read_bytes()
-        shot = api.call(
-            "POST",
-            "/appScreenshots",
-            {
-                "data": {
-                    "type": "appScreenshots",
-                    "attributes": {"fileName": path.name, "fileSize": len(data)},
-                    "relationships": {
-                        "appScreenshotSet": {
-                            "data": {"type": "appScreenshotSets", "id": target["id"]}
-                        }
-                    },
-                }
-            },
-        )["data"]
-        for op in shot["attributes"]["uploadOperations"]:
-            chunk = data[op["offset"] : op["offset"] + op["length"]]
-            headers = {h["name"]: h["value"] for h in op.get("requestHeaders", [])}
-            request = urllib.request.Request(
-                op["url"], data=chunk, method=op["method"], headers=headers
-            )
-            with urllib.request.urlopen(request, timeout=120):
-                pass
-        api.call(
-            "PATCH",
-            f"/appScreenshots/{shot['id']}",
-            {
-                "data": {
-                    "type": "appScreenshots",
-                    "id": shot["id"],
-                    "attributes": {
-                        "uploaded": True,
-                        "sourceFileChecksum": hashlib.md5(data).hexdigest(),
-                    },
-                }
-            },
-        )
-        print(f"  uploaded {path.name}")
+        upload_asset(api, "appScreenshots", "appScreenshotSets", target["id"], path, {})
+    check_set(api, "appScreenshotSets", "appScreenshots", target["id"], files)
+
+
+def same_assets(api: Api, localization: dict | None, kind: str, files: list[Path]) -> bool:
+    """Whether the set already holds these files, by name, order and MD5."""
+    if localization is None:
+        return False
+    set_kind, type_attribute, type_value, item_kind = ASSET_SETS[kind]
+    sets = api.get(f"/appStoreVersionLocalizations/{localization['id']}/{set_kind}")["data"]
+    target = next((s for s in sets if s["attributes"][type_attribute] == type_value), None)
+    if target is None:
+        return False
+    remote = [
+        (a["attributes"]["fileName"], a["attributes"].get("sourceFileChecksum"))
+        for a in api.get(f"/{set_kind}/{target['id']}/{item_kind}")["data"]
+    ]
+    return remote == [(p.name, hashlib.md5(p.read_bytes()).hexdigest()) for p in files]
 
 
 def upload_asset(api: Api, kind: str, set_kind: str, set_id: str, path: Path, extra: dict) -> None:
@@ -759,7 +766,31 @@ def upload_asset(api: Api, kind: str, set_kind: str, set_id: str, path: Path, ex
             }
         },
     )
-    print(f"  uploaded {path.name}")
+    wait_processed(api, kind, asset["id"], path.name)
+
+
+def wait_processed(api: Api, kind: str, asset_id: str, name: str) -> None:
+    """Apple processes an upload after the commit; wait until it is COMPLETE or FAILED."""
+    deadline = time.time() + PROCESSING_TIMEOUT
+    while True:
+        state = api.get(f"/{kind}/{asset_id}")["data"]["attributes"]["assetDeliveryState"]
+        if state["state"] == "COMPLETE":
+            print(f"  uploaded {name} (processed)")
+            return
+        if state["state"] == "FAILED":
+            sys.exit(f"Apple could not process {name}: {json.dumps(state.get('errors'))}")
+        if time.time() > deadline:
+            sys.exit(f"{name} is still {state['state']} after {PROCESSING_TIMEOUT} s")
+        time.sleep(5)
+
+
+def check_set(api: Api, set_kind: str, kind: str, set_id: str, files: list[Path]) -> None:
+    """The set on App Store Connect must hold exactly the local files, in the local order."""
+    remote = [a["attributes"]["fileName"] for a in api.get(f"/{set_kind}/{set_id}/{kind}")["data"]]
+    local = [path.name for path in files]
+    if remote != local:
+        sys.exit(f"{set_kind} {set_id} holds {remote}, expected {local}")
+    print(f"  checked {len(remote)} in the set")
 
 
 def upload_previews(api: Api, localization_id: str, files: list[Path]) -> None:
@@ -786,6 +817,7 @@ def upload_previews(api: Api, localization_id: str, files: list[Path]) -> None:
     for path in files:
         mime = PREVIEW_TYPES[path.suffix.lower()]
         upload_asset(api, "appPreviews", "appPreviewSets", target["id"], path, {"mimeType": mime})
+    check_set(api, "appPreviewSets", "appPreviews", target["id"], files)
 
 
 if __name__ == "__main__":
