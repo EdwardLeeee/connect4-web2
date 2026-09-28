@@ -57,7 +57,6 @@ const messages = {
       title: "玩家設定",
       nickname: "暱稱",
       errNicknameEmpty: "請先輸入暱稱",
-      offlineNote: "目前離線：暱稱要連線後才能改，語言可以直接切換。",
       // App only (spec: App（iOS／Android）專用).
       privacyPolicy: "隱私權政策",
       appVersion: "版本 {v}",
@@ -232,8 +231,6 @@ const messages = {
       title: "Player settings",
       nickname: "Nickname",
       errNicknameEmpty: "Enter a nickname first",
-      offlineNote:
-        "You're offline. Your nickname can change once you're back online; the language can change now.",
       // App only (spec: App（iOS／Android）專用).
       privacyPolicy: "Privacy Policy",
       appVersion: "Version {v}",
@@ -417,8 +414,6 @@ const messages = {
       title: "ตั้งค่าผู้เล่น",
       nickname: "ชื่อเล่น",
       errNicknameEmpty: "กรอกชื่อเล่นก่อน",
-      offlineNote:
-        "ตอนนี้ออฟไลน์ เปลี่ยนชื่อเล่นได้เมื่อออนไลน์ ส่วนภาษาเปลี่ยนได้เลย",
       privacyPolicy: "นโยบายความเป็นส่วนตัว",
       appVersion: "เวอร์ชัน {v}",
       language: "ภาษา",

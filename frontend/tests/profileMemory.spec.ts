@@ -56,12 +56,33 @@ describe("profile memory on the website", () => {
     expect(window.localStorage.getItem("connect4.restore-pending")).toBeNull();
   });
 
-  it("keeps a pending language until it is cleared", async () => {
-    await profileMemory.setPendingLocale("en");
-    expect(await profileMemory.pendingLocale()).toBe("en");
-    await profileMemory.setPendingLocale(null);
-    expect(await profileMemory.pendingLocale()).toBeNull();
+  it("keeps a change made offline until it is cleared (3.3.1)", async () => {
+    const pending = { locale: "en", nickname: "曜宇" } as const;
+    await profileMemory.setPendingProfile(pending);
+    expect(await profileMemory.pendingProfile()).toEqual(pending);
+    await profileMemory.setPendingProfile({ locale: "th", nickname: null });
+    expect(await profileMemory.pendingProfile()).toEqual({
+      locale: "th",
+      nickname: null,
+    });
+    await profileMemory.setPendingProfile(null);
+    expect(await profileMemory.pendingProfile()).toBeNull();
+    expect(window.localStorage.getItem("connect4.pending-profile")).toBeNull();
+  });
+
+  it("reads a language 3.3.0 kept as a change of language only", async () => {
+    window.localStorage.setItem("connect4.pending-locale", "th");
+    expect(await profileMemory.pendingProfile()).toEqual({
+      locale: "th",
+      nickname: null,
+    });
+    // Replaced by the new record once anything is saved.
+    await profileMemory.setPendingProfile({ locale: "en", nickname: "A" });
     expect(window.localStorage.getItem("connect4.pending-locale")).toBeNull();
+    expect(await profileMemory.pendingProfile()).toEqual({
+      locale: "en",
+      nickname: "A",
+    });
   });
 
   it("ignores what it cannot read", async () => {
@@ -73,7 +94,14 @@ describe("profile memory on the website", () => {
     );
     expect(await profileMemory.lastSession()).toBeNull();
     window.localStorage.setItem("connect4.pending-locale", "fr");
-    expect(await profileMemory.pendingLocale()).toBeNull();
+    expect(await profileMemory.pendingProfile()).toBeNull();
+    window.localStorage.setItem("connect4.pending-profile", "{not json");
+    expect(await profileMemory.pendingProfile()).toBeNull();
+    window.localStorage.setItem(
+      "connect4.pending-profile",
+      JSON.stringify({ locale: "en", nickname: 7 }),
+    );
+    expect(await profileMemory.pendingProfile()).toBeNull();
   });
 
   it("keeps nothing, and throws nothing, when storage fails", async () => {
@@ -90,8 +118,10 @@ describe("profile memory on the website", () => {
         default_number: null,
       }),
     ).resolves.toBeUndefined();
-    await expect(profileMemory.setPendingLocale("en")).resolves.toBeUndefined();
+    await expect(
+      profileMemory.setPendingProfile({ locale: "en", nickname: "A" }),
+    ).resolves.toBeUndefined();
     expect(await profileMemory.lastSession()).toBeNull();
-    expect(await profileMemory.pendingLocale()).toBeNull();
+    expect(await profileMemory.pendingProfile()).toBeNull();
   });
 });

@@ -19,7 +19,7 @@ type Session = {
 const native = vi.hoisted(() => ({
   app: false,
   last: null as unknown,
-  pending: null as Locale | null,
+  pending: null as { locale: Locale; nickname: string | null } | null,
   restore: false,
 }));
 vi.mock("../src/native", () => ({
@@ -32,9 +32,9 @@ vi.mock("../src/native", () => ({
     rememberSession: async (session: unknown) => {
       native.last = session;
     },
-    pendingLocale: async () => native.pending,
-    setPendingLocale: async (locale: Locale | null) => {
-      native.pending = locale;
+    pendingProfile: async () => native.pending,
+    setPendingProfile: async (pending: typeof native.pending) => {
+      native.pending = pending;
     },
     restorePending: async () => native.restore,
     setRestorePending: async (pending: boolean) => {
@@ -208,7 +208,7 @@ describe("a new app install (04b)", () => {
 
   it("names itself in English when the app is in English", async () => {
     native.app = true;
-    native.pending = "en";
+    native.pending = { locale: "en", nickname: null };
     const store = useGameStore();
     await store.initialise().catch(() => {});
     expect(store.shownSession?.nickname).toMatch(/^Player \d{4}$/);
@@ -272,7 +272,7 @@ describe("a first visit follows the browser (3.3.0)", () => {
 
   it("gives way to a language waiting to sync", async () => {
     browser("en-US");
-    native.pending = "th";
+    native.pending = { locale: "th", nickname: null };
     server.created = true;
     const store = useGameStore();
     const locales = watchLocales();
@@ -430,6 +430,36 @@ describe("a server that started over (06)", () => {
     expect(FakeWebSocket.instances.at(-1)!.sent).toContain("state.request");
   });
 
+  it("puts back a nickname changed offline, not the one before (3.3.1)", async () => {
+    native.last = { nickname: "Taylor", locale: "en", default_number: null };
+    native.pending = { locale: "th", nickname: "曜宇" };
+    server.created = true;
+    const store = useGameStore();
+    const names = watchNames(store);
+    await store.initialise();
+    expect(server.patches).toEqual([
+      { nickname: "曜宇", locale: "th", default_number: null },
+    ]);
+    connect();
+    expect(store.shownSession?.nickname).toBe("曜宇");
+    expect(native.pending).toBeNull();
+    expect(names).not.toContain("玩家 4553");
+    expect(names).not.toContain("Taylor");
+  });
+
+  it("says why when a nickname changed offline is refused on the way back", async () => {
+    native.last = { nickname: "Taylor", locale: "en", default_number: null };
+    native.pending = { locale: "en", nickname: "曜宇" };
+    server.created = true;
+    server.failPatch = 422;
+    const store = useGameStore();
+    await store.initialise();
+    expect(store.errorCode).toBe("invalid_nickname");
+    expect(native.pending).toBeNull();
+    connect();
+    expect(store.shownSession?.nickname).toBe("玩家 4553");
+  });
+
   it("takes the server's profile when the server refuses the device's", async () => {
     native.last = { nickname: "曜宇", locale: "en", default_number: null };
     server.created = true;
@@ -441,6 +471,8 @@ describe("a server that started over (06)", () => {
     expect(i18n.global.locale.value).toBe("zh-TW");
     expect(native.last).toEqual(server.session);
     expect(native.restore).toBe(false);
+    // Nothing the player changed was refused, so nothing is shown.
+    expect(store.errorCode).toBeNull();
   });
 
   it("works with a server that sends no default_number", async () => {

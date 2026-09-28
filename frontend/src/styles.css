@@ -4350,37 +4350,14 @@ input.has-error:focus {
 
 /* ================= 3.2.0 app 離線 (design/spec.md) ================= */
 
-/* 01, 03: Chinese notices break only between clauses; two-line English
-   notices split evenly. */
+/* 01: Chinese notices break only between clauses; two-line English notices
+   split evenly. */
 .clauses {
   text-wrap: balance;
 }
 
 .clauses > span {
   display: inline-block;
-}
-
-/* 03: the note above the profile sheet's buttons. */
-.notice-banner.sheet-note {
-  margin: 2px 0 14px;
-  padding: 10px 12px;
-  gap: 10px;
-  box-shadow: none;
-  font-size: 15px;
-  line-height: 1.35;
-}
-
-.sheet-note .icon {
-  flex: none;
-  width: 22px;
-  height: 22px;
-}
-
-/* 03: offline the nickname is locked, and never shows an error. */
-.profile-sheet input.is-locked {
-  color: var(--muted);
-  border-style: dashed;
-  background: var(--disabled);
 }
 
 /* 04c: modes that need the internet, while the app is offline. */

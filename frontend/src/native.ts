@@ -48,9 +48,9 @@ export const localGameStore = {
   },
 };
 
-// The last profile the server gave, a language chosen offline that the
+// The last profile the server gave, a profile change made offline that the
 // server has yet to hear, and whether that profile still has to be put back
-// on a server that started over (3.2.0 app 離線 03, 04b, 05, 06). The app
+// on a server that started over (3.2.0 app 離線 04b, 05, 06; 3.3.1). The app
 // keeps them in Preferences, the website in localStorage; storage that fails
 // keeps nothing.
 type Session = {
@@ -58,7 +58,14 @@ type Session = {
   locale: Locale;
   default_number: number | null;
 };
+/**
+ * A profile change made offline (3.3.1): the language, and the new nickname,
+ * or null for the one shown (a default nickname then follows the language).
+ */
+export type PendingProfile = { locale: Locale; nickname: string | null };
 const LAST_SESSION_KEY = "last-session";
+const PENDING_PROFILE_KEY = "pending-profile";
+// 3.2.0–3.3.0 kept only a language chosen offline.
 const PENDING_LOCALE_KEY = "pending-locale";
 const RESTORE_PENDING_KEY = "restore-pending";
 
@@ -113,12 +120,29 @@ export const profileMemory = {
       }),
     );
   },
-  async pendingLocale(): Promise<Session["locale"] | null> {
-    const value = await read(PENDING_LOCALE_KEY);
-    return isLocale(value) ? value : null;
+  async pendingProfile(): Promise<PendingProfile | null> {
+    try {
+      const saved = JSON.parse((await read(PENDING_PROFILE_KEY)) ?? "null");
+      if (
+        isLocale(saved?.locale) &&
+        (saved.nickname === null || typeof saved.nickname === "string")
+      ) {
+        return { locale: saved.locale, nickname: saved.nickname };
+      }
+    } catch {
+      // Unreadable: as if nothing were kept.
+    }
+    const locale = await read(PENDING_LOCALE_KEY);
+    return isLocale(locale) ? { locale, nickname: null } : null;
   },
-  async setPendingLocale(locale: Session["locale"] | null): Promise<void> {
-    await write(PENDING_LOCALE_KEY, locale);
+  async setPendingProfile(pending: PendingProfile | null): Promise<void> {
+    await write(
+      PENDING_PROFILE_KEY,
+      pending
+        ? JSON.stringify({ locale: pending.locale, nickname: pending.nickname })
+        : null,
+    );
+    await write(PENDING_LOCALE_KEY, null);
   },
   async restorePending(): Promise<boolean> {
     return (await read(RESTORE_PENDING_KEY)) === "1";

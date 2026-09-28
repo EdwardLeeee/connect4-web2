@@ -5,7 +5,6 @@ import type { Locale } from "../locales";
 import { isNative } from "../native";
 import { ProfileError, useGameStore } from "../stores/game";
 import AppIcon from "./AppIcon.vue";
-import ClauseText from "./ClauseText.vue";
 
 const emit = defineEmits<{ close: [] }>();
 // The privacy policy and the version at the foot of the sheet, on the
@@ -26,13 +25,10 @@ const { t } = useI18n();
 const nickname = ref(store.shownSession?.nickname ?? "");
 const locale = ref<Locale>(store.shownLocale);
 const errorCode = ref<string | null>(null);
-// 3.2.0 app 離線 03: offline the nickname is locked and only the language
-// changes, at once; an empty nickname is then no error either.
-const offline = computed(() => store.serverConnection === "offline");
 // L10: an empty nickname is caught while typing, before anything is sent.
-const nicknameEmpty = computed(
-  () => !offline.value && nickname.value.trim() === "",
-);
+// 3.3.1: offline the sheet is the same; a change waits on the device and
+// syncs once connected.
+const nicknameEmpty = computed(() => nickname.value.trim() === "");
 const fieldError = computed(() =>
   nicknameEmpty.value
     ? "errNicknameEmpty"
@@ -88,10 +84,8 @@ async function save() {
         <span class="field-label">{{ t("profile.nickname") }}</span>
         <input
           v-model="nickname"
-          :disabled="offline"
           :class="{
             'has-error': nicknameEmpty || errorCode === 'invalid_nickname',
-            'is-locked': offline,
           }"
           maxlength="18"
           autocomplete="nickname"
@@ -120,10 +114,6 @@ async function save() {
           <AppIcon name="chevron" />
         </span>
       </label>
-      <p v-if="offline" class="notice-banner sheet-note" role="status">
-        <AppIcon name="wifiOff" />
-        <ClauseText :text="t('profile.offlineNote')" />
-      </p>
       <div class="sheet-actions">
         <button class="btn secondary" type="button" @click="emit('close')">
           <span>{{ t("common.cancel") }}</span>
