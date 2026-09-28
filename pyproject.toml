@@ -23,6 +23,8 @@ dev = [
   "pytest>=9.1,<10",
   "pytest-asyncio>=1.4,<2",
   "ruff>=0.12,<1",
+  # Pinned so CI and local runs agree; the runner's own shellcheck is older and reports differently.
+  "shellcheck-py==0.11.0.1",
 ]
 
 [tool.maturin]

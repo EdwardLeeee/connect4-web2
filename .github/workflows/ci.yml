@@ -46,6 +46,7 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       # Every tracked shell script, so a new one is checked without editing this list.
+      # shellcheck comes from the dev extras (shellcheck-py), not the runner's older copy.
       - run: |
           shellcheck --version
           git ls-files -z '*.sh' | xargs -0 shellcheck
