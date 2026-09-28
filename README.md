@@ -62,6 +62,10 @@ npm run test:e2e
 
 測試會檢查水平溢位、44px 觸控目標、鍵盤高度與視覺基準。
 
+視覺基準圖由 CI 的 Ubuntu 22.04 產生，字型與瀏覽器和 CI 的 `frontend` 檢查相同。改了畫面之後，到 GitHub Actions
+手動執行 `Update screenshots` 並填入分支名稱（可選填 `grep` 只跑部分測試）。它只重寫對不上或缺少的基準圖，
+commit 回那個分支，再在分支上啟動 CI。
+
 ## 行動版 app
 
 iOS／Android app「四子棋」（英文 Four In A Row，bundle ID `com.oraclelee.connect4`）放在

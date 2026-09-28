@@ -5,6 +5,9 @@ on:
     branches: [main]
     tags: ["v*"]
   pull_request:
+  # Update screenshots starts CI on a branch after committing baselines, since a
+  # push made with a workflow's own token starts no workflow.
+  workflow_dispatch:
 
 # A newer push to the same branch or pull request cancels the run still going.
 concurrency:
