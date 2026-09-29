@@ -175,6 +175,17 @@ const messages = {
       // Same format as the server (docs/protocol.md 預設暱稱); {n} is 1000–9999.
       defaultNickname: "玩家 {n}",
     },
+    // 3.3.2 (Apple 2.1): the app says its own name and never "Connect 4";
+    // the website keeps common/lobby/game. Every key the app replaces is
+    // here in each language, even where the words stay the same.
+    app: {
+      brand: "四子棋",
+      home: "四子棋首頁",
+      shareTitle: "四子棋",
+      shareText: "來四子棋跟我下一局！房號 {code}",
+      matchmakingBody: "立即配對線上玩家，看看誰能先連成四子。",
+      drawSub: "42 格全滿，沒有人連成四子。",
+    },
   },
   en: {
     common: {
@@ -353,6 +364,15 @@ const messages = {
       // Same format as the server (docs/protocol.md 預設暱稱); {n} is 1000–9999.
       defaultNickname: "Player {n}",
     },
+    app: {
+      brand: "Four In A Row",
+      home: "Four In A Row home",
+      shareTitle: "Four In A Row",
+      shareText: "Play Four In A Row with me! Room {code}",
+      matchmakingBody:
+        "Jump into a live match and race to get four in a row first.",
+      drawSub: "All 42 slots are full and nobody got four in a row.",
+    },
   },
   // 3.3.0: the same friendly tone; คุณ for "you", never the gendered
   // ครับ／ค่ะ. Words run together and browsers break lines by dictionary,
@@ -528,6 +548,14 @@ const messages = {
     session: {
       // Same format as the server (docs/protocol.md 預設暱稱); {n} is 1000–9999.
       defaultNickname: "ผู้เล่น {n}",
+    },
+    app: {
+      brand: "เรียงสี่",
+      home: "หน้าแรก เรียงสี่",
+      shareTitle: "เรียงสี่",
+      shareText: "มาเล่นเรียงสี่กับฉันสิ! ห้อง {code}",
+      matchmakingBody: "จับคู่กับผู้เล่นออนไลน์ แล้วดูว่าใครจะเรียงครบสี่ก่อน",
+      drawSub: "ช่องเต็มทั้ง 42 ช่อง ไม่มีใครเรียงครบสี่",
     },
   },
 } as const;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, watch } from "vue";
+import { computed, onMounted, onUnmounted, watch, watchEffect } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import AppIcon from "./components/AppIcon.vue";
@@ -7,7 +7,8 @@ import OtherTabScreen from "./components/OtherTabScreen.vue";
 import ProfileSheet from "./components/ProfileSheet.vue";
 import { useMedia } from "./composables/useMedia";
 import { useProfileSheet } from "./composables/useProfileSheet";
-import { usesLocalAi } from "./native";
+import { shownKey } from "./appText";
+import { isNative, usesLocalAi } from "./native";
 import { useGameStore } from "./stores/game";
 import { roomCodeFrom } from "./utils/invite";
 import { initial } from "./utils/presentation";
@@ -17,6 +18,11 @@ const router = useRouter();
 const route = useRoute();
 const { t } = useI18n();
 const profileOpen = useProfileSheet();
+// 3.3.2: the app is named for itself (see appText.ts), its window title too.
+const app = isNative();
+watchEffect(() => {
+  if (app) document.title = t("app.brand");
+});
 
 // Pill in the top bar while connecting or reconnecting; a replaced tab shows
 // its own screen instead (P15). A quick reconnect shows nothing.
@@ -96,6 +102,7 @@ onUnmounted(() => {
     :class="[
       `view-${view}`,
       {
+        'is-app': app,
         'has-sheet': profileOpen,
         'has-connection': connectionLabel && !lobbyOffline,
         'has-connection-short': lobbyOffline,
@@ -103,12 +110,12 @@ onUnmounted(() => {
     ]"
   >
     <header class="topbar">
-      <RouterLink class="brand" to="/" :aria-label="t('common.home')">
+      <RouterLink class="brand" to="/" :aria-label="t(shownKey('common.home'))">
         <span class="brand-mark" aria-hidden="true">
           <i class="token green mini" />
           <i class="token pink mini" />
         </span>
-        <span class="brand-text">{{ t("common.brand") }}</span>
+        <span class="brand-text">{{ t(shownKey("common.brand")) }}</span>
       </RouterLink>
       <div class="topbar-actions">
         <span

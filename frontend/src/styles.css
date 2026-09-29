@@ -4389,6 +4389,15 @@ input.has-error:focus {
   }
 }
 
+/* 3.3.2: in English the app's own name, Four In A Row, is wider than
+   CONNECT 4 and meets the "Offline" pill below 390px, so it hides there
+   too; 四子棋 and เรียงสี่ keep the 360px rule above. */
+@media (max-width: 389px) {
+  html:lang(en) .app.is-app.has-connection-short .brand-text {
+    display: none;
+  }
+}
+
 /* ================= narrow screens 320–389px (design/spec.md, 2026-09-26) ================= */
 
 /* 01: while the connection pill shows on a phone, the brand keeps only its

@@ -603,7 +603,7 @@ async function asApp(page: Page) {
         "export const tokenStore = { get: async () => null, set: async () => {} };",
         "export const localGameStore = { get: async () => null, set: async () => {} };",
         "export const profileMemory = { lastSession: async () => null, rememberSession: async () => {}, pendingProfile: async () => null, setPendingProfile: async () => {}, restorePending: async () => false, setRestorePending: async () => {} };",
-        'export const nativeShare = async () => "shared";',
+        'export const nativeShare = async (share) => { window.__nativeShared = share; return "shared"; };',
       ].join("\n"),
     }),
   );
@@ -2752,4 +2752,149 @@ test("Thai is in the language menu, and a default name follows it", async ({
   expect(server.patches).toEqual([{ locale: "th", default_number: 4553 }]);
   await expect(page.locator(".profile .avatar")).toHaveText("ผู้");
   await expect(page.locator(".ai-card h2")).toHaveText("ท้าดวล AI");
+});
+
+// ================= 3.3.2 the app's own name =================
+
+// Apple 2.1: the app says 四子棋, Four In A Row or เรียงสี่, never Connect 4;
+// the website keeps CONNECT 4 (see the lobby tests above).
+const APP_NAMES = [
+  ["zh-TW", "四子棋", "四子棋首頁"],
+  ["en", "Four In A Row", "Four In A Row home"],
+  ["th", "เรียงสี่", "หน้าแรก เรียงสี่"],
+] as const;
+const TRADEMARK = /connect ?4|connect four/i;
+
+test("the app names itself and never says Connect 4", async ({
+  page,
+}, testInfo) => {
+  thaiOnly(testInfo);
+  await asApp(page);
+  for (const [locale, name, home] of APP_NAMES) {
+    await mockApp(page, snapshotFor("L01", locale));
+    await page.goto("/");
+    await expect(page.locator(".brand-text")).toHaveText(name);
+    await expect(page.locator(".brand")).toHaveAttribute("aria-label", home);
+    expect(await page.title()).toBe(name);
+    const words = await page.evaluate(() => document.body.textContent ?? "");
+    expect(words, locale).not.toMatch(TRADEMARK);
+
+    // A draw explains itself without the trademark too.
+    await mockApp(page, snapshotFor("P09", locale));
+    await page.goto("/play");
+    await expect(page.locator(".result-card")).toBeVisible();
+    expect(
+      await page.evaluate(() => document.body.textContent ?? ""),
+      `${locale} draw`,
+    ).not.toMatch(TRADEMARK);
+  }
+  await expect(page.locator(".result-top p")).toHaveText(
+    "ช่องเต็มทั้ง 42 ช่อง ไม่มีใครเรียงครบสี่",
+  );
+
+  await mockApp(page, snapshotFor("L01", "en"));
+  await page.goto("/");
+  await expect(page.locator(".match-card-lobby p").first()).toHaveText(
+    "Jump into a live match and race to get four in a row first.",
+  );
+  await mockApp(page, snapshotFor("P09", "en"));
+  await page.goto("/play");
+  await expect(page.locator(".result-top p")).toHaveText(
+    "All 42 slots are full and nobody got four in a row.",
+  );
+
+  if (kind(testInfo) === "phone") {
+    await mockApp(page, snapshotFor("P02", "en"));
+    await page.goto("/play");
+    await page.getByRole("button", { name: "Share invite" }).click();
+    const shared = await page.evaluate(
+      () =>
+        (
+          window as typeof window & {
+            __nativeShared?: { title: string; text: string; url: string };
+          }
+        ).__nativeShared,
+    );
+    expect(shared?.title).toBe("Four In A Row");
+    expect(shared?.text).toBe("Play Four In A Row with me! Room LAN427");
+  }
+});
+
+test("the website keeps its name when the app would not", async ({
+  page,
+}, testInfo) => {
+  thaiOnly(testInfo);
+  await mockApp(page, snapshotFor("L01", "en"));
+  await page.goto("/");
+  await expect(page.locator(".brand-text")).toHaveText("CONNECT 4");
+  await expect(page.locator(".brand")).toHaveAttribute(
+    "aria-label",
+    "Connect 4 home",
+  );
+  expect(await page.title()).toBe("Connect 4");
+});
+
+/** The top bar: the app's name, the pill and the avatar, side by side. */
+async function appTopBar(page: Page) {
+  return page.evaluate(() => {
+    const brand = document.querySelector<HTMLElement>(".brand-text")!;
+    const range = document.createRange();
+    range.selectNodeContents(brand);
+    const lines = new Set(
+      [...range.getClientRects()].map((line) => Math.round(line.top)),
+    ).size;
+    const pill = document.querySelector(".connection-pill");
+    return {
+      brandShown: brand.offsetParent !== null,
+      brandLines: lines,
+      brandRight: brand.getBoundingClientRect().right,
+      pillLeft: pill ? pill.getBoundingClientRect().left : null,
+      pillLines: pill ? Math.round(pill.getBoundingClientRect().height) : 0,
+      avatarLeft: document.querySelector(".profile")!.getBoundingClientRect()
+        .left,
+      avatarRight: document.querySelector(".profile")!.getBoundingClientRect()
+        .right,
+      overflow:
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+      width: window.innerWidth,
+    };
+  });
+}
+
+test("the app's name fits the top bar from 320 to 430px, offline too", async ({
+  page,
+}, testInfo) => {
+  narrowOnly(testInfo);
+  await asApp(page);
+  for (const [locale, name] of APP_NAMES) {
+    const app = await mockApp(page, snapshotFor("L01", locale), {
+      refuseReconnects: true,
+    });
+    await page.goto("/");
+    await expect(page.locator(".brand-text")).toHaveText(name);
+    for (const offline of [false, true]) {
+      if (offline) {
+        await app.sockets[0].close({ code: 1011 });
+        await expect(page.locator(".connection-pill")).toBeVisible();
+      }
+      for (const width of [320, 360, 390, 430]) {
+        await page.setViewportSize({ width, height: 780 });
+        const bar = await appTopBar(page);
+        const where = `${locale} ${offline ? "offline" : "online"} ${width}px`;
+        // Hidden beside the pill below 360px, and in English below 390px.
+        const hidden =
+          offline && (width < 360 || (locale === "en" && width < 390));
+        expect(bar.brandShown, where).toBe(!hidden);
+        expect(bar.overflow, where).toBe(0);
+        expect(bar.avatarRight, where).toBeLessThanOrEqual(width);
+        if (!hidden) {
+          expect(bar.brandLines, where).toBe(1);
+          expect(bar.brandRight, where).toBeLessThan(
+            bar.pillLeft ?? bar.avatarLeft,
+          );
+        }
+      }
+    }
+  }
 });

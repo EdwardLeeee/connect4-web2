@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { shownKey } from "../appText";
 import type { Color } from "../types";
 import type {
   ResultAction,
@@ -110,13 +111,13 @@ function icon(action: ResultAction) {
       <div>
         <h2>
           <ClauseText
-            :text="t(result.title.key, result.title.args ?? {})"
+            :text="t(shownKey(result.title.key), result.title.args ?? {})"
             thai-only
           />
         </h2>
         <p>
           <ClauseText
-            :text="t(result.sub.key, result.sub.args ?? {})"
+            :text="t(shownKey(result.sub.key), result.sub.args ?? {})"
             thai-only
           />
         </p>
