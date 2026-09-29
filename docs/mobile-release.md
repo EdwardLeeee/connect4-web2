@@ -178,8 +178,9 @@ mobile/scripts/app_store_metadata.py --version 3.3.0 --apply     # 真的上傳
 
 - 憑證讀 `~/.config/connect4-mobile/ios/asc.json`（`key_id`、`issuer_id`，不是秘密）與同目錄的
   `AuthKey_<key_id>.p8`。
-- `--apply` 只在 `status.json` 是 `approved`、必填欄位都有內容、截圖與影片都符合規格時才執行；執行時才詢問
-  審核聯絡人的姓名、電話、email（也可用 `C4_REVIEW_*` 環境變數），輸入 `UPLOAD` 確認後才寫入。
+- `--apply` 只在 `status.json` 是 `approved`、必填欄位都有內容、截圖與影片都符合規格時才執行，輸入 `UPLOAD`
+  確認後才寫入。審核聯絡人（名、姓、電話、email）：App Store Connect 上已經有的欄位直接沿用、不會送出，缺的才在
+  執行時詢問；`C4_REVIEW_*` 環境變數優先。dry-run 會寫出哪些沿用、哪些要問，但不會印出任何值。
 - 商標檢查：名稱、副標題、簡介、宣傳文字出現 Connect 4／connect4 會擋下；**關鍵字的 connect4 只警告**
   （使用者 2026-09-27 決定保留，被 Apple 以 2.3.7 退件就拿掉）。
 - 截圖與影片會整組替換同一個 display type（截圖 `APP_IPHONE_67`、影片 `IPHONE_67`；蘋果沒寫明 6.9 吋對應

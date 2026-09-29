@@ -13,7 +13,8 @@ and Google Play assets in the repository and exits 1 on any problem (the Mobile 
 
 The dry run only reads App Store Connect and prints every change it would make. --apply refuses
 to run unless mobile/store/app-store/status.json says "approved" and every required text is filled
-in; it asks for the review contact details at run time (they never go into the repository) and
+in; it keeps the review contact already on App Store Connect and asks only for missing fields at
+run time (they never go into the repository, a log or the output), and
 asks for confirmation before it writes anything. It never submits the version for review.
 
 Credentials: ~/.config/connect4-mobile/ios/asc.json ({"key_id": ..., "issuer_id": ...}) and the
@@ -374,6 +375,71 @@ def short(text: str | None, width: int = 70) -> str:
     return flat if len(flat) <= width else flat[: width - 1] + "…"
 
 
+# The review contact is personal data: it is read from App Store Connect or asked for at run
+# time, sent only to App Store Connect, and never printed, logged or written to a file.
+CONTACT_FIELDS = {
+    "contactFirstName": ("C4_REVIEW_FIRST_NAME", "first name", "Review contact first name: "),
+    "contactLastName": ("C4_REVIEW_LAST_NAME", "last name", "Review contact last name: "),
+    "contactPhone": ("C4_REVIEW_PHONE", "phone", "Review contact phone (+886…): "),
+    "contactEmail": ("C4_REVIEW_EMAIL", "email", "Review contact email: "),
+}
+
+
+def contact_sources(review: dict | None) -> dict[str, str]:
+    """For each contact field: "env" (a C4_REVIEW_* variable wins), "keep" or "ask"."""
+    attributes = review["attributes"] if review else {}
+    sources = {}
+    for field, (variable, _name, _prompt) in CONTACT_FIELDS.items():
+        if os.environ.get(variable):
+            sources[field] = "env"
+        elif (attributes.get(field) or "").strip():
+            sources[field] = "keep"
+        else:
+            sources[field] = "ask"
+    return sources
+
+
+def contact_plan(review: dict | None) -> str:
+    sources = contact_sources(review)
+    if all(source == "keep" for source in sources.values()):
+        return "keep (App Store Connect already has all four fields)"
+    parts = []
+    for source, text in (
+        ("keep", "keep"),
+        ("env", "from C4_REVIEW_*"),
+        ("ask", "asked at run time"),
+    ):
+        labels = [CONTACT_FIELDS[f][1] for f, s in sources.items() if s == source]
+        if labels:
+            parts.append(f"{text}: {', '.join(labels)}")
+    return "; ".join(parts)
+
+
+def ask_contact(review: dict | None) -> dict[str, str]:
+    """The contact fields to send: from C4_REVIEW_* or asked for. Kept fields are not sent, so
+    the values already on App Store Connect stay as they are."""
+    contact = {}
+    asked = []
+    for field, source in contact_sources(review).items():
+        variable, name, prompt = CONTACT_FIELDS[field]
+        if source == "env":
+            contact[field] = os.environ[variable]
+        elif source == "ask":
+            value = ""
+            while not value:
+                value = input(prompt).strip()
+            contact[field] = value
+            asked.append(name)
+    from_env = [CONTACT_FIELDS[f][1] for f, s in contact_sources(review).items() if s == "env"]
+    if not contact:
+        print("review contact: kept from App Store Connect")
+    if asked:
+        print(f"review contact: asked for {', '.join(asked)}")
+    if from_env:
+        print(f"review contact: {', '.join(from_env)} from C4_REVIEW_*")
+    return contact
+
+
 def report(warnings: list[str], problems: list[str], play_problems: list[str]) -> None:
     if warnings:
         print("\nWarnings (do not block --apply):")
@@ -513,7 +579,7 @@ def main() -> None:
     old_notes = review["attributes"].get("notes") if review else None
     if old_notes != notes:
         plan.append((f"review notes: {short(old_notes)} → {short(notes)}", "review", {}))
-    plan.append(("review contact name, phone and email: asked at run time", "review", {}))
+    plan.append((f"review contact: {contact_plan(review)}", "review", {}))
 
     # A set is replaced only when its file names or checksums differ from the local files, so a
     # dry run with nothing listed here also proves the listing on App Store Connect is complete.
@@ -540,15 +606,7 @@ def main() -> None:
     if problems:
         sys.exit("\nfix the problems above first")
 
-    contact = {
-        "contactFirstName": os.environ.get("C4_REVIEW_FIRST_NAME")
-        or input("Review contact first name: "),
-        "contactLastName": os.environ.get("C4_REVIEW_LAST_NAME")
-        or input("Review contact last name: "),
-        "contactPhone": os.environ.get("C4_REVIEW_PHONE")
-        or input("Review contact phone (+886…): "),
-        "contactEmail": os.environ.get("C4_REVIEW_EMAIL") or input("Review contact email: "),
-    }
+    contact = ask_contact(review)
     if input("\nType UPLOAD to write these changes to App Store Connect: ").strip() != "UPLOAD":
         sys.exit("cancelled; nothing was sent")
 
