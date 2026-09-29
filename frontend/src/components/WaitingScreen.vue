@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { shownKey } from "../appText";
 import { useMedia } from "../composables/useMedia";
 import { useGameStore } from "../stores/game";
 import { copyText } from "../utils/clipboard";
@@ -30,8 +31,8 @@ async function copyLink() {
 async function share() {
   const result = await shareInvite(
     props.code,
-    t("common.shareTitle"),
-    t("common.shareText", { code: props.code }),
+    t(shownKey("common.shareTitle")),
+    t(shownKey("common.shareText"), { code: props.code }),
   );
   if (result === "copied") copied.value = true;
   if (result === "failed") store.errorCode = "copy_failed";

@@ -2,6 +2,7 @@
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
+import { shownKey } from "../appText";
 import AppIcon from "../components/AppIcon.vue";
 import ClauseText from "../components/ClauseText.vue";
 import InviteScreen from "../components/InviteScreen.vue";
@@ -174,7 +175,7 @@ function onRoomCodeInput() {
                 t("lobby.needsInternet")
               }}</span>
             </h2>
-            <p>{{ t("lobby.matchmakingBody") }}</p>
+            <p>{{ t(shownKey("lobby.matchmakingBody")) }}</p>
           </div>
           <button
             class="card-toggle"
