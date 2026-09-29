@@ -182,6 +182,9 @@ mobile/scripts/app_store_metadata.py --version 3.3.0 --apply     # 真的上傳
   （使用者 2026-09-27 決定保留，被 Apple 以 2.3.7 退件就拿掉）。
 - 截圖與影片會整組替換同一個 display type（截圖 `APP_IPHONE_67`、影片 `IPHONE_67`；蘋果沒寫明 6.9 吋對應
   哪個名稱，第一次實際上傳時確認）。
+- 截圖與影片只有在檔名、順序或 MD5 和 App Store Connect 上不同時才列入計畫並重傳；dry-run 沒列出任何
+  「replace … screenshots／previews」就代表商店上的素材和 repo 完全一致，送審前跑一次確認。`--apply` 上傳後會等
+  Apple 處理完（COMPLETE，FAILED 就停下），再核對每組的檔名與順序。讀取失敗（連線被切斷）會自動重試，寫入不重試。
 - 腳本永遠不會送審；送審由使用者在 App Store Connect 網頁上按。
 
 ## Google Play 商店素材（在 Play Console 手動上傳）
