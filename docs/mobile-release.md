@@ -84,7 +84,9 @@ pull request 動到 `mobile/**`、`design/app-icon/**`、`frontend/**`（測試�
   `VITE_API_ORIGIN=https://offline.invalid` 建置 debug APK，在 API 36 模擬器上以 Playwright 連進 app 的 WebView
   （`mobile/scripts/android-smoke.sh` 與 `android-smoke.mjs`）：
   - APK 的桌面名稱：預設「Four In A Row」、zh「四子棋」、th「เรียงสี่」（aapt2 dump badging）。
-  - 全新安裝（英文）：離線大廳、預設暱稱、離線改名（頭像與 AI 對局立刻換）、下兩手後重開回到同一手、下完一局。
+  - 全新安裝（英文）：離線大廳、預設暱稱、離線改名（頭像與 AI 對局立刻換）、下兩手後重開三次都回到同一手、下完一局。
+    重開後 app 會直接回到那一局，大廳只在讀取存檔前短暫出現，所以重開時等「大廳或對局」其中一個，以恢復的那一手為準；
+    每次連上 WebView 會記下第一個看到的畫面，等待逾時時會截圖並印出網址、畫面與主要文字。
     每手等 AI 最多 30 秒（實測約 1 秒）。
   - 裝置語言 en-US、zh-TW、th-TH 各全新安裝：第一個畫面的按鈕與預設暱稱。
   連線版做不到：Cloudflare 擋 GitHub 的 Ubuntu runner。截圖在 artifact `android-smoke-screenshots`。
