@@ -1,7 +1,26 @@
-No sign-in is needed. The app gives you a default nickname the first time it opens.
+Summary of our reply to Guideline 2.1; the screen recording is attached to that reply in App Review.
 
-Games against the AI run entirely on the phone and work without a network. To check, turn on Airplane Mode, open the app, tap "Challenge AI" → "Play now" and play a full game.
+1. Accounts, content and purchases
+No registration, login or accounts. Free, with no in-app purchases, subscriptions or ads. The only user-generated content is the player's nickname (plain text, 1–18 characters; no chat, messaging or images), shown to the other player in an online game; our server keeps it only in memory and the app also saves it on the device. There is no in-app reporting or blocking yet; we will add them if App Review requires them.
 
-Online play needs a second player and a network: tap "Play with friends" → "Create private room" on this device and enter the room code with "Join room" on a second device — or open https://connect4.oraclelee.com in any browser as the second player. Random matching works the same way with two players. Without a network these two options are marked as needing one.
+2. Purpose and audience
+Four In A Row: Super AI is a free, ad-free version of the classic four-in-a-row board game: players take turns dropping discs into a 7×6 grid, and the first to line up four wins. Players can challenge a strong computer opponent that runs entirely on the device (also offline), play friends in a private room, or get a quick match with another player online. It is for anyone who enjoys short, casual board games, and offers a simple way to play without accounts, ads or purchases.
 
-不需要登入，app 第一次打開就會有預設名字。跟 AI 對戰完全在手機上計算，沒有網路也能玩：可以開飛航模式，打開 app，點「挑戰 AI」→「立即對戰」下完一局。線上對戰需要第二位玩家和網路：在這台點「和朋友一起玩」→「建立私人房」，第二台裝置用「加入房間」輸入房間代碼；第二位玩家也可以用任何瀏覽器開 https://connect4.oraclelee.com 。隨機配對同樣需要兩位玩家。沒有網路時，這兩項會標示需要網路。
+3. Setup and main features
+No setup or login is required. On first launch the app assigns a default nickname (for example "Player 1234"). Tap your avatar and nickname at the top right to open Player settings, where you can change the nickname and the language (English, Traditional Chinese or Thai; the default follows the device language).
+- Challenge AI: tap "Play now". This works without a network; turn on Airplane Mode to confirm.
+- Play with friends: tap "Play with friends", then "Create private room" to get a room code, an invite link and a QR code. A second player can tap "Play with friends", then "Join room" and enter the code on another device with the app, or open https://connect4.oraclelee.com in any web browser.
+- Quick match: tap "Quick match", then "Find a match" on two devices at the same time (or one device and the website above).
+Online play needs a network connection and a second player; without a connection, these options are marked "Needs internet".
+
+4. External services
+- Our own game server at connect4.oraclelee.com, run by us and served through Cloudflare. The app uses it only for online games (private rooms and quick matches over HTTPS and WebSocket) and to keep the nickname and language of the connection. Games against the AI never contact the server.
+- GitHub hosts the privacy policy, which opens in Safari.
+- Everything else runs on the device without network access: open-source libraries including connect-four-ai (compiled to WebAssembly, for the computer opponent), Vue, qrcode-generator (invite QR codes) and Capacitor (the app framework), all under the MIT license, and two fonts, Space Grotesk and Noto Sans Thai, under the SIL Open Font License 1.1.
+- The app uses no sign-in or authentication services, payment processors, advertising, analytics, crash reporting, push notifications or cloud AI services. "Super AI" refers to the game's built-in game-solving algorithm, not to a machine-learning or generative AI service.
+
+5. Regional differences
+The app works the same in every region where it is available. Its interface is in English, Traditional Chinese and Thai (following the device language), with identical features and content. The app is not offered in mainland China.
+
+6. Regulated industries and third-party material
+The app is not in a regulated industry, and the app itself contains no protected third-party material. Four in a row is a traditional game with non-proprietary rules; the app's name, icon, artwork, text and code are our own. The only third-party components are the open-source libraries and fonts described above, which are released under the MIT license (libraries) and the SIL Open Font License 1.1 (fonts).
