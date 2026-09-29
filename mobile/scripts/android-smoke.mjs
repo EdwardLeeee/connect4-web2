@@ -16,6 +16,7 @@ const NEW_NAME = "Smoke Tester";
 // As on iOS. Measured on the API 36 emulator: about 1 s per reply (6 s for the last move,
 // which includes the ending animation).
 const AI_REPLY_MS = 30_000;
+const RELAUNCHES = 3;
 
 const [mode, outArg, play, nickname] = process.argv.slice(2);
 const out = path.resolve(outArg ?? "smoke");
@@ -26,19 +27,53 @@ if (!device) throw new Error("no Android device is connected");
 const shot = (name) => device.screenshot({ path: path.join(out, `${name}.png`) });
 const log = (line) => console.log(`SMOKE ${line}`);
 
-async function launch() {
+const LOBBY = ".ai-card button.btn.primary";
+// After a relaunch the app restores an unfinished AI game: the lobby shows only until the
+// saved game loads (App.vue routes to /play), so an attach after that never sees it.
+const LOBBY_OR_GAME = `${LOBBY}, .move-chip:visible`;
+
+/** The view App.vue shows (its root carries view-lobby, view-game, …), or "none". */
+async function currentView(page) {
+  const name = await page
+    .evaluate(() => document.querySelector(".app")?.className ?? "")
+    .catch(() => "");
+  return name.match(/\bview-([a-z]+)/i)?.[1] ?? "none";
+}
+
+/** What the page shows when a wait fails: a screenshot, the route, the view and key texts. */
+async function explain(page, tag) {
+  await shot(`${tag}-timeout`).catch(() => {});
+  const texts = await page
+    .evaluate(() =>
+      [...document.querySelectorAll("h1, h2, .move-chip, .notice-banner, button")]
+        .map((element) => element.textContent?.trim())
+        .filter(Boolean)
+        .slice(0, 12),
+    )
+    .catch((error) => [`(could not read the page: ${error})`]);
+  console.log(`SMOKE ${tag}: url ${page.url()}, view "${await currentView(page)}"`);
+  console.log(`SMOKE ${tag}: on screen ${JSON.stringify(texts)}`);
+}
+
+async function launch(tag, expected = LOBBY) {
   await device.shell(`am start -W -n ${PKG}/.MainActivity`);
   const webview = await device.webView({ pkg: PKG }, { timeout: 60_000 });
   const page = await webview.page();
-  await page.locator(".ai-card button.btn.primary").waitFor({ state: "visible", timeout: 60_000 });
+  log(`${tag}: first view "${await currentView(page)}" when the WebView attached`);
+  try {
+    await page.locator(expected).first().waitFor({ state: "visible", timeout: 60_000 });
+  } catch (error) {
+    await explain(page, tag);
+    throw error;
+  }
   // Let the view's fade-in finish before any screenshot.
   await page.waitForTimeout(1000);
   return page;
 }
 
-async function relaunch() {
+async function relaunch(tag) {
   await device.shell(`am force-stop ${PKG}`);
-  return launch();
+  return launch(tag, LOBBY_OR_GAME);
 }
 
 const avatar = (page) => page.locator("button.profile .avatar").innerText();
@@ -98,7 +133,7 @@ async function expectInMatchCard(page, name, when) {
 }
 
 if (mode === "offline") {
-  let page = await launch();
+  let page = await launch("offline");
   await page.locator(".notice-banner").waitFor({ timeout: 30_000 });
   await shot("01-offline-lobby");
 
@@ -119,9 +154,19 @@ if (mode === "offline") {
   const before = (await chip.innerText()).trim();
   await shot("02-before-restart");
 
-  page = await relaunch();
-  await page.locator(".move-chip:visible", { hasText: before }).first().waitFor({ timeout: 60_000 });
-  log(`offline: restored at "${before}" after relaunch`);
+  // The restored move decides, whichever view the attach saw first. Three relaunches, since
+  // how long the lobby shows before the restore varies from run to run.
+  for (let round = 1; round <= RELAUNCHES; round += 1) {
+    page = await relaunch(`relaunch ${round}`);
+    const restored = page.locator(".move-chip:visible", { hasText: before }).first();
+    try {
+      await restored.waitFor({ timeout: 60_000 });
+    } catch (error) {
+      await explain(page, `relaunch ${round}`);
+      throw error;
+    }
+    log(`offline: restored at "${before}" after relaunch ${round}`);
+  }
   await expectInMatchCard(page, NEW_NAME, "after relaunch");
   await shot("03-restored");
   const moves = await playMoves(page, "offline-after-restore");
@@ -130,7 +175,7 @@ if (mode === "offline") {
   log('offline: avatar "S" after relaunch');
   await shot("04-result");
 } else if (mode === "language") {
-  const page = await launch();
+  const page = await launch("language");
   const label = (await page.locator(".ai-card button.btn.primary").innerText()).trim();
   if (!label.includes(play)) throw new Error(`the first screen shows "${label}", expected "${play}"`);
   await shot("01-lobby");
