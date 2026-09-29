@@ -22,7 +22,7 @@ Python uses four spaces, type hints, Ruff, `snake_case`, and 100-character lines
 
 ## Testing Guidelines
 
-Run Playwright with `npm --prefix frontend run test:e2e` after installing Chromium/WebKit. Preserve the iPhone/Galaxy projects and 0.5% screenshot-diff ceiling. Name tests `test_*.py` or `*.spec.ts`; cover invalid turns and reconnect races as well as happy paths.
+Run Playwright with `npm --prefix frontend run test:e2e` after installing Chromium/WebKit. Preserve the iPhone/Galaxy projects and 0.5% screenshot-diff ceiling. Screenshot baselines come from CI's Ubuntu 22.04 runner: after a visual change, run the `Update screenshots` workflow with your branch name instead of regenerating them locally; it commits the changed baselines and starts CI on the branch. Name tests `test_*.py` or `*.spec.ts`; cover invalid turns and reconnect races as well as happy paths.
 
 ## Commit & Pull Request Guidelines
 
