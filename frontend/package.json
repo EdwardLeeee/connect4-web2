@@ -26,13 +26,13 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
-    "@types/node": "^26.6.2",
+    "@types/node": "^26.6.3",
     "@vitejs/plugin-vue": "^6.0.9",
     "jsdom": "^26.1.0",
-    "prettier": "^3.9.8",
+    "prettier": "^3.9.9",
     "typescript": "~5.8.3",
-    "vite": "^8.3.0",
-    "vitest": "^5.0.1",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2",
     "vue-tsc": "^3.3.11"
   }
 }
