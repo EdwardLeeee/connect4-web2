@@ -21,18 +21,18 @@
     "pinia": "^3.0.3",
     "qrcode-generator": "^2.0.4",
     "vue": "^3.5.43",
-    "vue-i18n": "^11.4.13",
+    "vue-i18n": "^11.4.14",
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0",
-    "@types/node": "^26.6.4",
-    "@vitejs/plugin-vue": "^6.0.9",
+    "@playwright/test": "^1.64.0",
+    "@types/node": "^26.6.5",
+    "@vitejs/plugin-vue": "^6.0.10",
     "jsdom": "^26.1.0",
-    "prettier": "^3.9.9",
+    "prettier": "^3.9.10",
     "typescript": "~5.8.3",
-    "vite": "^8.3.3",
-    "vitest": "^5.0.3",
-    "vue-tsc": "^3.3.12"
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4",
+    "vue-tsc": "^3.3.13"
   }
 }
