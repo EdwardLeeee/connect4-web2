@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from . import __version__
 from .manager import GameManager
 from .sessions import SESSION_COOKIE, UNSET, Session
+from .well_known import APPLE_APP_SITE_ASSOCIATION
 
 ROOT = Path(__file__).resolve().parents[2]
 # WebSocket close codes are part of the client contract; do not renumber them.
@@ -227,6 +228,15 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 
 if FRONTEND_DIST.is_dir():
     app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
+
+
+# Registered before the SPA fallback below, which would otherwise answer with index.html.
+# A file without an extension would be served as text/plain; Apple requires JSON.
+@app.get("/.well-known/apple-app-site-association", include_in_schema=False)
+async def apple_app_site_association() -> JSONResponse:
+    return JSONResponse(
+        APPLE_APP_SITE_ASSOCIATION, headers={"Cache-Control": "public, max-age=3600"}
+    )
 
 
 @app.get("/{path:path}", include_in_schema=False)

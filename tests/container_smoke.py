@@ -9,6 +9,7 @@ the WebSocket client runs inside the container with the image's own `websockets`
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import re
 import struct
@@ -46,6 +47,16 @@ def docker(*args: str, stdin: str | None = None) -> subprocess.CompletedProcess[
     )
 
 
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Report a redirect as the response instead of following it (Apple accepts none)."""
+
+    def redirect_request(self, *args: Any, **kwargs: Any) -> None:
+        return None
+
+
+OPENER = urllib.request.build_opener(NoRedirect)
+
+
 def request(
     method: str, path: str, *, cookie: str | None = None, body: dict[str, Any] | None = None
 ) -> tuple[int, dict[str, str], Any]:
@@ -57,7 +68,7 @@ def request(
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(BASE + path, data=data, method=method, headers=headers)
     try:
-        with urllib.request.urlopen(req, timeout=10) as response:
+        with OPENER.open(req, timeout=10) as response:
             status, raw, got = response.status, response.read(), response.headers
     except urllib.error.HTTPError as error:
         status, raw, got = error.code, error.read(), error.headers
@@ -99,6 +110,26 @@ def reply_table_entries() -> int:
     """The entry count in the committed table's header (native_solver/src/reply_table.rs)."""
     header = (ROOT / "native_solver" / "data" / "reply-table.bin").read_bytes()[:16]
     return struct.unpack_from("<I", header, 8)[0]
+
+
+def repo_apple_app_site_association() -> dict[str, Any]:
+    """The file as the repo defines it; well_known.py is plain Python, so no install needed."""
+    path = ROOT / "backend" / "connect4_app" / "well_known.py"
+    spec = importlib.util.spec_from_file_location("well_known", path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.APPLE_APP_SITE_ASSOCIATION
+
+
+def check_apple_app_site_association() -> None:
+    status, headers, body = request("GET", "/.well-known/apple-app-site-association")
+    check(status == 200, f"apple-app-site-association answered {status}; Apple needs 200")
+    content_type = headers.get("content-type")
+    check(content_type == "application/json", f"apple-app-site-association is {content_type}")
+    check(body == repo_apple_app_site_association(), f"unexpected association: {body}")
+    app_ids = body["applinks"]["details"][0]["appIDs"]
+    print(f"apple-app-site-association: application/json, appIDs {app_ids}")
 
 
 def check_health(health: dict[str, Any]) -> None:
@@ -186,6 +217,9 @@ def run(image: str) -> None:
 
     status, headers, page = request("GET", "/")
     check(status == 200 and '<div id="app">' in page, "GET / did not serve the frontend")
+    status, _, page = request("GET", "/r/ABC123")
+    check(status == 200 and '<div id="app">' in page, "an /r/ invite link did not load the site")
+    check_apple_app_site_association()
 
     status, headers, first = request("GET", "/api/session")
     cookie = session_cookie(headers)

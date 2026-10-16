@@ -17,6 +17,11 @@ const config: CapacitorConfig = {
       insetsHandling: "native",
       style: "LIGHT",
     },
+    // @capacitor/app is here for invite links (appUrlOpen). Its Android back-button handler
+    // would swallow Back once the page can't go back; keep the system's default instead.
+    App: {
+      disableBackButtonHandler: true,
+    },
   },
 };
 
