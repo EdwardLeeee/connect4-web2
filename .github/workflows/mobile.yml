@@ -129,6 +129,18 @@ jobs:
           [ "$(value CFBundleDisplayName "${app}/th.lproj/InfoPlist.strings")" = "เรียงสี่" ] || fail "th name"
           plutil -lint "${app}/PrivacyInfo.xcprivacy"
           [ -f "${app}/public/index.html" ] || fail "web bundle missing"
+          # Invite links: the oraclelee-fourinarow:// scheme, and the associated domain that
+          # signing takes from App.entitlements (unsigned builds here cannot show it in the binary).
+          [ "$(value CFBundleURLTypes.0.CFBundleURLSchemes.0 "${app}/Info.plist")" = oraclelee-fourinarow ] \
+            || fail "URL scheme"
+          entitlements=mobile/ios/App/App/App.entitlements
+          [ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.associated-domains:0' "${entitlements}")" \
+            = applinks:connect4.oraclelee.com ] || fail "associated domain"
+          for configuration in Debug Release; do
+            xcodebuild -project mobile/ios/App/App.xcodeproj -target App -configuration "${configuration}" \
+              -showBuildSettings 2>/dev/null | grep -q "CODE_SIGN_ENTITLEMENTS = App/App.entitlements" \
+              || fail "CODE_SIGN_ENTITLEMENTS in ${configuration}"
+          done
           echo "app bundle checks passed"
       - name: Build Release for devices without signing
         working-directory: mobile/ios/App
