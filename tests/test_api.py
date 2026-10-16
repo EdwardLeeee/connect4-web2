@@ -16,6 +16,7 @@ from connect4_app.app import (
 )
 from connect4_app.manager import GameManager
 from connect4_app.sessions import SESSION_COOKIE
+from connect4_app.well_known import APPLE_APP_SITE_ASSOCIATION, IOS_APP_ID
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
@@ -568,3 +569,40 @@ def test_an_older_client_switching_to_thai_renames_a_default_nickname(
     ).json()
     assert switched["nickname"] == f"ผู้เล่น {first['default_number']}"
     assert switched["default_number"] == first["default_number"]
+
+
+@pytest.mark.asyncio
+async def test_apple_app_site_association_is_json_without_a_redirect() -> None:
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(
+            "/.well-known/apple-app-site-association", follow_redirects=False
+        )
+    # Apple requires the exact path, JSON and no redirect; the SPA would answer with HTML.
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    assert response.json() == APPLE_APP_SITE_ASSOCIATION
+    assert len(response.content) < 128 * 1024
+
+
+def test_apple_app_site_association_names_the_app_and_the_invite_links() -> None:
+    # Team ID (ten capitals or digits) and the iOS bundle ID.
+    assert IOS_APP_ID.split(".", 1) == ["J89WNJYJ63", "com.oraclelee.connect4"]
+    (details,) = APPLE_APP_SITE_ASSOCIATION["applinks"]["details"]
+    assert details["appIDs"] == [IOS_APP_ID]
+    patterns = [{k: v for k, v in c.items() if k != "comment"} for c in details["components"]]
+    assert patterns == [
+        {"/": "/r/??????"},
+        {"/": "/", "?": {"room": "??????"}},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_invite_paths_still_load_the_website() -> None:
+    # Without the app installed, an invite link opens the website, which handles /r/.
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        for path in ("/r/ABC123", "/?room=ABC123", "/.well-known/something-else"):
+            response = await client.get(path, follow_redirects=False)
+            assert response.status_code == 200, path
+            assert '<div id="app"></div>' in response.text, path
