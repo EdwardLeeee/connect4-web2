@@ -20,7 +20,9 @@ const REASONS: Record<string, string> = {
 };
 const joining = ref(false);
 const failure = ref<string | null>(null);
-const online = computed(() => store.shownConnection === "online");
+// The server, not the on-device game (which always shows online): joining
+// ends that game, so it must not happen while the room is out of reach.
+const online = computed(() => store.serverConnection === "online");
 
 // L12 v2 (round 7): prefilled with this device's nickname, focused on entry.
 // iPhone Safari keeps its keyboard down until the field is tapped.
@@ -81,11 +83,20 @@ async function join() {
       return;
     }
   }
+  // Invite first (2026-10-16): an on-device AI game ends as the friend's room
+  // is joined, as leaving it would, and before: while it runs, the server's
+  // room would be left again (leaveServerState).
+  if (onDeviceGame()) store.send("game.leave");
   store.send("room.join", { code: props.code });
 }
 
+function onDeviceGame(): boolean {
+  return store.source === "local" && Boolean(store.game);
+}
+
+/** Not now: back to an on-device AI game left waiting, else the lobby. */
 function toLobby() {
-  void router.replace({ path: "/" });
+  void router.replace({ path: onDeviceGame() ? "/play" : "/" });
 }
 </script>
 
