@@ -5,7 +5,7 @@ import { shownKey } from "../appText";
 import { useMedia } from "../composables/useMedia";
 import { useGameStore } from "../stores/game";
 import { copyText } from "../utils/clipboard";
-import { canShare, inviteUrl, shareInvite } from "../utils/invite";
+import { canShare, inviteUrl, shareInvite, shareUrl } from "../utils/invite";
 import { qrPath } from "../utils/qr";
 import AppIcon from "./AppIcon.vue";
 
@@ -21,7 +21,7 @@ const qr = computed(() => qrPath(inviteUrl(props.code)));
 const copied = ref(false);
 
 async function copyLink() {
-  if (await copyText(inviteUrl(props.code))) {
+  if (await copyText(shareUrl(props.code))) {
     copied.value = true;
   } else {
     store.errorCode = "copy_failed";

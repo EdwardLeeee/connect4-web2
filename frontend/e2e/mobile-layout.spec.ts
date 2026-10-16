@@ -1046,6 +1046,12 @@ test("waiting room has one invite button that stays copied", async ({
 
   await expect(page.locator(".room-code-block strong")).toHaveText("LAN427");
   await expect(page.locator(".qr-card path")).toHaveAttribute("d", /^M/);
+  // The QR code holds the plain /r/ link: a camera never goes through LINE.
+  const qr = await page.evaluate(async () => {
+    const { qrPath } = await import("/src/utils/qr.ts");
+    return qrPath(`${window.location.origin}/r/LAN427`).d;
+  });
+  await expect(page.locator(".qr-card path")).toHaveAttribute("d", qr);
   // Round 3: a single primary button plus the leave link; no copy-code button.
   await expect(page.locator(".waiting-actions .btn.primary")).toHaveCount(1);
   await expect(page.getByRole("button", { name: "複製房號" })).toHaveCount(0);
@@ -1062,7 +1068,7 @@ test("waiting room has one invite button that stays copied", async ({
     () => (window as typeof window & { __copied?: string[] }).__copied,
   );
   expect(copied).toHaveLength(1);
-  expect(copied?.[0]).toMatch(/\/\?room=LAN427$/);
+  expect(copied?.[0]).toMatch(/\/r\/LAN427\?openExternalBrowser=1$/);
   expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
 });
 
@@ -1084,8 +1090,24 @@ test("phones share the invite through the system sheet", async ({
   const shared = await page.evaluate(
     () => (window as typeof window & { __shared?: ShareData }).__shared,
   );
-  expect(shared?.url).toMatch(/\/\?room=LAN427$/);
+  expect(shared?.url).toMatch(/\/r\/LAN427\?openExternalBrowser=1$/);
   expect(shared?.text).toContain("LAN427");
+});
+
+// 2026-10-16: invite links are /r/CODE, shared with LINE's
+// openExternalBrowser=1; the older /?room=CODE links keep working.
+test("a /r/ invite link opens the invite page, and drops LINE's parameter", async ({
+  page,
+}) => {
+  await mockApp(page, snapshotFor("L12"));
+  await page.goto("/r/lan427?openExternalBrowser=1");
+  const card = page.locator(".invite-card");
+  await expect(card.locator(".room-code-block strong")).toHaveText("LAN427");
+  await expect(page).toHaveURL(/\/\?room=lan427$/);
+
+  await page.goto("/?room=LAN427&openExternalBrowser=1");
+  await expect(card.locator(".room-code-block strong")).toHaveText("LAN427");
+  await expect(page).toHaveURL(/\/\?room=LAN427$/);
 });
 
 test("an invite link asks for a nickname and joins only on a tap", async ({

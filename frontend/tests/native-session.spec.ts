@@ -235,7 +235,7 @@ describe("app invites", () => {
     expect(native.nativeShare).toHaveBeenCalledWith({
       title: "Title",
       text: "Text",
-      url: expect.stringContaining("/?room=LAN427"),
+      url: expect.stringContaining("/r/LAN427?openExternalBrowser=1"),
     });
   });
 
@@ -255,7 +255,7 @@ describe("app invites", () => {
       "copied",
     );
     expect(writeText).toHaveBeenCalledWith(
-      expect.stringContaining("/?room=LAN427"),
+      expect.stringContaining("/r/LAN427?openExternalBrowser=1"),
     );
     Reflect.deleteProperty(window, "isSecureContext");
     Reflect.deleteProperty(navigator, "clipboard");
