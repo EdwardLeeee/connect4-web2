@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { inviteUrl } from "../src/utils/invite";
+import { inviteUrl, shareUrl } from "../src/utils/invite";
 import { apiUrl, siteOrigin, socketUrl } from "../src/utils/origin";
 
 // jsdom serves the tests from http://localhost:3000.
@@ -12,7 +12,7 @@ describe("server and site origins", () => {
     expect(apiUrl("/api/session")).toBe("/api/session");
     expect(socketUrl()).toBe(`ws://${window.location.host}/ws`);
     expect(siteOrigin()).toBe(window.location.origin);
-    expect(inviteUrl("LAN427")).toBe(`${window.location.origin}/?room=LAN427`);
+    expect(inviteUrl("LAN427")).toBe(`${window.location.origin}/r/LAN427`);
   });
 
   it("points the app at the API origin, for invites too", () => {
@@ -21,8 +21,10 @@ describe("server and site origins", () => {
       "https://connect4.oraclelee.com/api/session",
     );
     expect(socketUrl()).toBe("wss://connect4.oraclelee.com/ws");
-    expect(inviteUrl("LAN427")).toBe(
-      "https://connect4.oraclelee.com/?room=LAN427",
+    expect(inviteUrl("LAN427")).toBe("https://connect4.oraclelee.com/r/LAN427");
+    // Shared and copied links ask LINE to use the phone's own browser.
+    expect(shareUrl("LAN427")).toBe(
+      "https://connect4.oraclelee.com/r/LAN427?openExternalBrowser=1",
     );
   });
 
