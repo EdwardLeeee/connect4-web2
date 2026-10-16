@@ -10,6 +10,7 @@ import { useProfileSheet } from "./composables/useProfileSheet";
 import { shownKey } from "./appText";
 import { isNative, usesLocalAi } from "./native";
 import { useGameStore } from "./stores/game";
+import { listenForInviteLinks } from "./utils/deepLink";
 import { roomCodeFrom } from "./utils/invite";
 import { initial } from "./utils/presentation";
 
@@ -82,6 +83,13 @@ onMounted(async () => {
   document.addEventListener("visibilitychange", onVisibilityChange);
   window.addEventListener("pageshow", onPageShow);
   window.addEventListener("online", onOnline);
+  // An invite link the app was opened with goes to that room's invite page,
+  // as /?room=CODE does on the website.
+  if (app) {
+    void listenForInviteLinks((room) => {
+      void router.replace({ path: "/", query: { room } });
+    }).catch(() => {});
+  }
   try {
     await store.initialise();
   } catch {

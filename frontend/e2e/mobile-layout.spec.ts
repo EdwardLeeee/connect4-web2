@@ -2917,3 +2917,86 @@ test("the app's name fits the top bar from 320 to 430px, offline too", async ({
     }
   }
 });
+
+// ================= invite links open the app (2026-10-16) =================
+
+/** Stands in for @capacitor/app: a launch URL, and links handed over later. */
+async function withAppLinks(page: Page, launchPath?: string) {
+  await page.route(/@capacitor_app\.js(\?.*)?$/, (route) =>
+    route.fulfill({
+      contentType: "text/javascript",
+      body: [
+        "const listeners = [];",
+        "window.__openLink = (url) => listeners.forEach((listener) => listener({ url }));",
+        "export const App = {",
+        "  addListener: async (event, listener) => { if (event === 'appUrlOpen') listeners.push(listener); return { remove: async () => {} }; },",
+        "  getLaunchUrl: async () => (window.__launchUrl ? { url: window.__launchUrl } : undefined),",
+        "};",
+      ].join("\n"),
+    }),
+  );
+  if (launchPath) {
+    await page.addInitScript((path) => {
+      (window as { __launchUrl?: string }).__launchUrl =
+        `${window.location.origin}${path}`;
+    }, launchPath);
+  }
+}
+
+test("the app opens the invite it was launched with", async ({
+  page,
+}, testInfo) => {
+  thaiOnly(testInfo);
+  await asApp(page);
+  await withAppLinks(page, "/r/lan427?openExternalBrowser=1");
+  await mockApp(page, snapshotFor("L12"));
+  await page.goto("/");
+  await expect(page.locator(".invite-card .room-code-block strong")).toHaveText(
+    "LAN427",
+  );
+  await expect(page).toHaveURL(/\/\?room=LAN427$/);
+});
+
+test("the app opens an invite handed to it while it runs", async ({
+  page,
+}, testInfo) => {
+  thaiOnly(testInfo);
+  await asApp(page);
+  await withAppLinks(page);
+  await mockApp(page, snapshotFor("L12"));
+  await page.goto("/");
+  await expect(page.locator(".lobby")).toBeVisible();
+  // The website's "open in the app" button uses the app's own scheme.
+  await page.evaluate(() =>
+    (window as { __openLink?: (url: string) => void }).__openLink?.(
+      "oraclelee-fourinarow://r/ABC123",
+    ),
+  );
+  await expect(page.locator(".invite-card .room-code-block strong")).toHaveText(
+    "ABC123",
+  );
+  // A link to another site changes nothing.
+  await page.evaluate(() =>
+    (window as { __openLink?: (url: string) => void }).__openLink?.(
+      "https://example.com/r/LAN427",
+    ),
+  );
+  await expect(page.locator(".invite-card .room-code-block strong")).toHaveText(
+    "ABC123",
+  );
+});
+
+test("the website never loads the app's link plugin", async ({
+  page,
+}, testInfo) => {
+  thaiOnly(testInfo);
+  const requested: string[] = [];
+  page.on("request", (request) => {
+    if (/capacitor_app/.test(request.url())) requested.push(request.url());
+  });
+  await mockApp(page, snapshotFor("L01"));
+  await page.goto("/");
+  await expect(page.locator(".lobby")).toBeVisible();
+  await page.waitForTimeout(500);
+  expect(requested).toEqual([]);
+});
