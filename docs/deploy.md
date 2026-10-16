@@ -110,3 +110,27 @@ journalctl --user-unit connect4.service --follow
 開發機 `scripts/release.sh patch|minor` → 等 GitHub Actions 全綠 → 正式主機
 `deploy/deploy.sh vX.Y.Z`（或從原始碼重建相同 production tag 再
 `systemctl --user restart connect4.service`）。程序重啟會清除進行中的房間與配對。
+
+### iOS Universal Links（apple-app-site-association）
+
+有裝 iOS app 的手機點邀請連結（`/r/房號`，舊的 `/?room=房號` 也算）時，會直接打開 app。
+iOS 靠網站上的 `/.well-known/apple-app-site-association` 判斷要不要交給 app：內容在
+`backend/connect4_app/well_known.py`，由 FastAPI 直接回傳。Apple 規定這個網址必須是 HTTPS、
+憑證有效、不能轉址，內容是 `application/json`；CI 的 pytest 與容器冒煙測試都會檢查。
+
+上線後在開發機檢查（GitHub runner 與 Python 的 urllib 都會被 Cloudflare 擋，要用開發機的 curl）：
+
+```bash
+curl -sS -o /dev/null -D - https://connect4.oraclelee.com/.well-known/apple-app-site-association \
+    | grep -iE '^(HTTP|content-type|location)'
+# 應該是 200、content-type: application/json，而且沒有 location
+
+curl -sS -D - https://app-site-association.cdn-apple.com/a/v1/connect4.oraclelee.com
+# 手機讀的是 Apple 的 CDN 這一份，不是正式站。Apple 會在 24 小時內重新抓取，
+# 結果從 404（SWCERR00401 這類原因）變成 200，內容和正式站相同
+```
+
+- 網站要比帶 Associated Domains 的新版 app 先上線，Apple 的 CDN 才來得及抓到。
+- 已安裝 app 的手機大約每週才更新一次這個檔案；改 Team ID 或網址規則時，改 `well_known.py` 再發版。
+- 正式站回應正確、Apple 的 CDN 卻一直抓不到時，可能是 Cloudflare 擋了 Apple 的抓取程式；
+  要調整 Cloudflare 前，先問使用者。
