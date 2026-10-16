@@ -593,7 +593,15 @@ test("profile fields match and explain a rejected nickname", async ({
 });
 
 /** Serves the app build's native module: Capacitor is faked as present. */
-async function asApp(page: Page) {
+/**
+ * Serves the app build's native module: Capacitor is faked as present. With
+ * keepLocalGame, an on-device game is kept in localStorage, so a reload is
+ * the app launched again with that game left open.
+ */
+async function asApp(page: Page, { keepLocalGame = false } = {}) {
+  const localGameStore = keepLocalGame
+    ? "export const localGameStore = { get: async () => localStorage.getItem('test.local-game'), set: async (value) => { if (value === null) localStorage.removeItem('test.local-game'); else localStorage.setItem('test.local-game', value); } };"
+    : "export const localGameStore = { get: async () => null, set: async () => {} };";
   await page.route(/\/src\/native\.ts(\?.*)?$/, (route) =>
     route.fulfill({
       contentType: "text/javascript",
@@ -601,7 +609,7 @@ async function asApp(page: Page) {
         "export const isNative = () => true;",
         "export const usesLocalAi = () => true;",
         "export const tokenStore = { get: async () => null, set: async () => {} };",
-        "export const localGameStore = { get: async () => null, set: async () => {} };",
+        localGameStore,
         "export const profileMemory = { lastSession: async () => null, rememberSession: async () => {}, pendingProfile: async () => null, setPendingProfile: async () => {}, restorePending: async () => false, setRestorePending: async () => {} };",
         'export const nativeShare = async (share) => { window.__nativeShared = share; return "shared"; };',
       ].join("\n"),
@@ -2999,4 +3007,91 @@ test("the website never loads the app's link plugin", async ({
   await expect(page.locator(".lobby")).toBeVisible();
   await page.waitForTimeout(500);
   expect(requested).toEqual([]);
+});
+
+// ================= invite first (2026-10-16) =================
+
+/** An AI game on the device, one move in and the player's turn again. */
+async function aiGameUnderway(page: Page, testInfo: TestInfo) {
+  await page.getByRole("button", { name: "立即對戰" }).click();
+  const board = page.locator(".board");
+  await expect(board).toHaveClass(/is-interactive/, { timeout: 20_000 });
+  await play(page, testInfo, 3);
+  await expect(page.locator(".grid .token:not(.ghost)")).toHaveCount(2, {
+    timeout: 20_000,
+  });
+  await expect(board).toHaveClass(/is-interactive/);
+}
+
+const inviteCode = (page: Page) =>
+  page.locator(".invite-card .room-code-block strong");
+
+test("an invite opened at launch shows over an AI game, and not now goes back to it", async ({
+  page,
+}, testInfo) => {
+  await playOnDevice(page, testInfo);
+  await asApp(page, { keepLocalGame: true });
+  await withAppLinks(page);
+  await mockApp(page, snapshotFor("L01"));
+  await page.goto("/");
+  await aiGameUnderway(page, testInfo);
+  const board = await page
+    .locator(".grid")
+    .evaluate((grid) => grid.innerHTML.length);
+
+  // Launched again with an invite: the game resumes, the invite stays on top.
+  await page.addInitScript(() => {
+    (window as { __launchUrl?: string }).__launchUrl =
+      `${window.location.origin}/r/LAN427`;
+  });
+  await page.reload();
+  await expect(inviteCode(page)).toHaveText("LAN427");
+  await page.waitForTimeout(1500);
+  await expect(page).toHaveURL(/\/\?room=LAN427$/);
+  await expect(inviteCode(page)).toHaveText("LAN427");
+
+  await page.getByRole("button", { name: "不加入，先去大廳" }).click();
+  await expect(page).toHaveURL(/\/play$/);
+  await expect(page.locator(".grid .token:not(.ghost)")).toHaveCount(2);
+  await expect(page.locator(".board")).toHaveClass(/is-interactive/);
+  expect(
+    await page.locator(".grid").evaluate((grid) => grid.innerHTML.length),
+  ).toBe(board);
+});
+
+test("joining from an invite ends the AI game and opens the friend's room", async ({
+  page,
+}, testInfo) => {
+  await playOnDevice(page, testInfo);
+  await asApp(page, { keepLocalGame: true });
+  await withAppLinks(page);
+  const sent: string[] = [];
+  const app = await mockApp(page, snapshotFor("L01"), {
+    onMessage: (message) => {
+      sent.push(message.type);
+      if (message.type === "room.join") app.send(snapshotFor("P02"));
+    },
+  });
+  await page.goto("/");
+  await aiGameUnderway(page, testInfo);
+
+  // Handed over while the app runs.
+  await page.evaluate(() =>
+    (window as { __openLink?: (url: string) => void }).__openLink?.(
+      "oraclelee-fourinarow://r/LAN427",
+    ),
+  );
+  await expect(inviteCode(page)).toHaveText("LAN427");
+  await page.getByRole("button", { name: "加入房間" }).click();
+
+  await expect(page).toHaveURL(/\/play$/);
+  await expect(
+    page.locator(".waiting-card .room-code-block strong"),
+  ).toHaveText("LAN427");
+  // The AI game ended on the device; the server only heard the join.
+  expect(sent).toContain("room.join");
+  expect(sent).not.toContain("game.leave");
+  expect(
+    await page.evaluate(() => localStorage.getItem("test.local-game")),
+  ).toBeNull();
 });

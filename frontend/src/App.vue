@@ -10,6 +10,7 @@ import { useProfileSheet } from "./composables/useProfileSheet";
 import { shownKey } from "./appText";
 import { isNative, usesLocalAi } from "./native";
 import { useGameStore } from "./stores/game";
+import { activityRoute } from "./utils/activityRoute";
 import { listenForInviteLinks } from "./utils/deepLink";
 import { roomCodeFrom } from "./utils/invite";
 import { initial } from "./utils/presentation";
@@ -59,8 +60,11 @@ const view = computed(() => {
 watch(
   () => store.hasActivity,
   (active) => {
-    if (active && route.path !== "/play") void router.replace("/play");
-    if (!active && route.path !== "/") void router.replace("/");
+    const target = activityRoute(active, route.path, {
+      invite: Boolean(roomCodeFrom(route.query.room)),
+      onDevice: store.source === "local",
+    });
+    if (target) void router.replace(target);
   },
 );
 
