@@ -26,7 +26,8 @@
 
 - **Universal Link**：一般的 https 網址。iOS 確認網站和 app 互相認領之後，點它就直接開 app。
 - **AASA**：放在網站 `/.well-known/apple-app-site-association` 的 JSON 檔，寫明哪個 app 可以開哪些網址。
-- **Associated Domains**：app 的權限（entitlement），列出它認領的網域，例如 `applinks:connect4.oraclelee.com`。
+- **Associated Domains**：app 的權限（entitlement），列出它認領的網域，例如 `applinks:connect4.oraclelee.com`
+  和 Safari 橫幅用的 `applinks:connect4-app.oraclelee.com`（第 5 節）。
 - **自訂 scheme**：只有這個 app 認得的網址開頭，例如 `oraclelee-fourinarow://r/ABC123`。
 
 ## 1. Apple 的規則（官方原文）
@@ -111,8 +112,32 @@
 **不建議**：
 
 - 用第二個網域（play.oraclelee.com）做按鈕。要加 DNS、nginx，app 要多認領一個網域；使用者選了自訂 scheme
-  並且不保留這個網域。
+  並且不保留這個網域。（2026-10-19 起，Safari 的橫幅改用第二個網域，見第 5 節。）
 - 在 Safari 用同網域的 https 連結做按鈕。依官方原文，同網域的連結會留在 Safari。
+
+## 5. 之後的改動：網站的「在 App 中打開」橫幅（2026-10-18、10-19）
+
+使用者後來改了網站上開 app 的方式，取代第 2 節網站部分的按鈕和 Smart App Banner。
+
+- **2026-10-18**：不加 Smart App Banner，邀請頁也不加按鈕。改成我們自己做的「在 App 中打開」橫幅：
+  - 只在 iPhone 手機網頁的大廳和邀請頁出現；
+  - 可以關掉。
+- **2026-10-19**：在 Safari 裡，橫幅改連 `connect4-app.oraclelee.com` 上的 Universal Link。
+  - 它和網站是不同網域，依第 1 節「同網域」那條原文，有裝 app 時 iOS 會開 app。
+  - 沒裝 app 時，這個網址的頁面轉到 App Store，不會出現「網址無效」。轉址由 back 設定。
+  - LINE 和 IG 的內建瀏覽器照舊用自訂 scheme。邀請頁用 `oraclelee-fourinarow://r/CODE`；大廳用
+    `oraclelee-fourinarow://open`，app 收到後停在原本的畫面。沒裝 app 時，約 2.5 秒後跳到 App Store。
+- **app 多認領 `applinks:connect4-app.oraclelee.com`。**
+  - 它是 oraclelee.com 底下第一層的子網域，Cloudflare 免費的 Universal SSL 就涵蓋（來源 9）。
+  - 使用者不用在 Apple 網站多做事：
+    - App ID 只有「Associated Domains」一個開關。加 capability 會「adds … the associated domains feature
+      to your app ID」（來源 1），要認哪些網域是寫在 app 的 entitlement 裡。
+    - 描述檔裡的 entitlements「act as an allowlist」，「Some entitlements in the allowlist use wildcard
+      syntax」（來源 10）。
+    - 描述檔重新產生後，會解開確認 associated-domains 的值。
+- **這個網址要有自己的 AASA**：200、application/json、不轉址。裝 TestFlight 之前，Apple CDN 上就要查得到。
+- **網站的橫幅不等 3.4.0 就上線。** 3.3.2 沒有這個網域，也沒有 scheme。在 Safari 按橫幅會到 App Store，
+  按「打開」就進 app。
 
 ## 附錄
 
@@ -124,8 +149,12 @@ curl -sS -o /dev/null -w "%{http_code} %{content_type} redirects=%{num_redirects
   https://connect4.oraclelee.com/.well-known/apple-app-site-association
 # Apple CDN 上的版本（失敗時看 Apple-Failure-Reason 標頭）
 curl -sD- https://app-site-association.cdn-apple.com/a/v1/connect4.oraclelee.com
-# 封存後的 app 有沒有帶到網域（macOS）
-codesign -d --entitlements - --xml App.app | grep applinks:connect4.oraclelee.com
+# Safari 橫幅的網域，同樣兩個檢查
+curl -sS -o /dev/null -w "%{http_code} %{content_type} redirects=%{num_redirects}\n" \
+  https://connect4-app.oraclelee.com/.well-known/apple-app-site-association
+curl -sD- https://app-site-association.cdn-apple.com/a/v1/connect4-app.oraclelee.com
+# 封存後的 app 有沒有帶到兩個網域（macOS）
+codesign -d --entitlements - --xml App.app | grep -o 'applinks:[^<]*'
 ```
 
 2026-10-16 部署前的狀態：網站這個路徑回 `200 text/html`（SPA 的 index.html）；Apple CDN 回 404，標頭是
@@ -152,5 +181,6 @@ codesign -d --entitlements - --xml App.app | grep applinks:connect4.oraclelee.co
 7. Capacitor, *Deep Links* guide 與 *App* API（`appUrlOpen`、`getLaunchUrl`）；`@capacitor/ios` 8.5.2 原始碼 `CAPSceneDelegateProxy.swift`
 8. LINE Developers, *Using LINE features with the LINE URL scheme* →「Opening a URL in an external browser」
 9. Cloudflare, *Universal SSL limitations*、*Bot Fight Mode*
+10. Apple, TN3125 *Inside Code Signing: Provisioning Profiles*（2026-10-19 讀取）
 
 Apple 的頁面是 2026-10-16 從 developer.apple.com 的 DocC JSON（`/tutorials/data/documentation/<path>.json`）讀取的。

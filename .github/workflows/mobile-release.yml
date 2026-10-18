@@ -280,11 +280,13 @@ jobs:
           # The App Store profile must carry Associated Domains, or invite links stay in the
           # browser: check what signing actually put into the archived app.
           signed="${RUNNER_TEMP}/App.xcarchive/Products/Applications/App.app"
-          if ! codesign -d --entitlements - --xml "${signed}" 2>/dev/null \
-            | grep -q "applinks:connect4.oraclelee.com"; then
-            echo "::error::the archived app is not signed with applinks:connect4.oraclelee.com; regenerate the App Store profile with Associated Domains"
-            exit 1
-          fi
+          entitlements="$(codesign -d --entitlements - --xml "${signed}" 2>/dev/null || true)"
+          for domain in connect4.oraclelee.com connect4-app.oraclelee.com; do
+            if ! grep -q "applinks:${domain}<" <<<"${entitlements}"; then
+              echo "::error::the archived app is not signed with applinks:${domain}; regenerate the App Store profile with Associated Domains"
+              exit 1
+            fi
+          done
           cat > "${RUNNER_TEMP}/ExportOptions.plist" <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

@@ -65,7 +65,8 @@ pull request 動到 `mobile/**`、`design/app-icon/**`、`frontend/**`（測試�
   換版前要先解除安裝舊的）。
 - `ios`：建置模擬器版，檢查 Bundle ID、版本、`ITSAppUsesNonExemptEncryption`、只支援 iPhone、
   四個語系（英、繁中、簡中、泰）的名稱與隱私清單、邀請連結用的 URL scheme `oraclelee-fourinarow` 與
-  `App.entitlements` 的 `applinks:connect4.oraclelee.com`，再建置一次不簽章的 Release 裝置版；另附模擬器截圖。
+  `App.entitlements` 的 `applinks:connect4.oraclelee.com` 與 `applinks:connect4-app.oraclelee.com`（Safari 橫幅
+  用的網址），再建置一次不簽章的 Release 裝置版；另附模擬器截圖。
 - `ios-smoke`（流程在 `mobile-ios-smoke.yml`，Mobile 與 Mobile release 共用）：pull request 自動跑離線版與三種
   裝置語言（非必要檢查，發版前看結果）；手動執行（Run workflow，勾選 smoke）全部都跑。連線版會連正式站，只有
   正式站已經是要測的版本才有意義，所以不在 PR 跑，改在 Mobile release 上傳前跑；不要排成定時執行。在 macOS
@@ -114,7 +115,7 @@ pull request 動到 `mobile/**`、`design/app-icon/**`、`frontend/**`（測試�
 5. `android`：用上傳金鑰簽出 AAB，比對簽章指紋等於 repo 變數 `ANDROID_UPLOAD_CERT_SHA256`，
    以 artifact `android-aab` 保留 30 天。
 6. `ios`：封存並上傳到 App Store Connect，處理完成後出現在 TestFlight。封存後先用 `codesign` 確認 app 帶有
-   `applinks:connect4.oraclelee.com`。沒有就停下：App ID 要勾 Associated Domains，並重新產生「Four In A Row App Store」
+   `applinks:connect4.oraclelee.com` 與 `applinks:connect4-app.oraclelee.com`。少一個就停下：App ID 要勾 Associated Domains，並重新產生「Four In A Row App Store」
    描述檔、更新 `IOS_PROFILE_BASE64`（依據見 `docs/research/2026-10-universal-links.md`）。
 
 ## Android 上傳金鑰
