@@ -5,8 +5,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "../src/i18n";
 import type { Snapshot } from "../src/types";
 
+// The app by default; the website where a test says so.
+const native = vi.hoisted(() => ({ app: true }));
 vi.mock("../src/native", () => ({
-  isNative: () => true,
+  isNative: () => native.app,
   usesLocalAi: () => true,
   tokenStore: { get: async () => null, set: async () => {} },
   localGameStore: { get: async () => null, set: async () => {} },
@@ -107,6 +109,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.resetModules();
   i18n.global.locale.value = "zh-TW";
+  native.app = true;
 });
 
 describe("an invite over an on-device AI game (invite first)", () => {
@@ -138,6 +141,12 @@ describe("an invite over an on-device AI game (invite first)", () => {
     expect(sent).toEqual([]);
   });
 
+  it("names the AI game on the button that goes back to it (R28 06-B)", async () => {
+    const { host } = await mountInvite();
+    const ghost = host.querySelector(".btn.ghost")!;
+    expect(ghost.textContent?.trim()).toBe("Not now, back to my AI game");
+  });
+
   it("goes back to the AI game when the guest does not join", async () => {
     const { router, button, sent } = await mountInvite();
     button("Not now").click();
@@ -148,6 +157,12 @@ describe("an invite over an on-device AI game (invite first)", () => {
 });
 
 describe("an invite with no game waiting", () => {
+  it("keeps the words that go to the lobby", async () => {
+    const { host } = await mountInvite({ onDevice: false });
+    const ghost = host.querySelector(".btn.ghost")!;
+    expect(ghost.textContent?.trim()).toBe("Not now, go to lobby");
+  });
+
   it("joins straight away and goes to the lobby when not joining", async () => {
     const { sent, button, router } = await mountInvite({ onDevice: false });
     button("Join room").click();
@@ -156,5 +171,23 @@ describe("an invite with no game waiting", () => {
     button("Not now").click();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(router.currentRoute.value.fullPath).toBe("/");
+  });
+});
+
+describe("the nickname field on entry", () => {
+  it("is focused on the website", async () => {
+    native.app = false;
+    const { host } = await mountInvite({ onDevice: false });
+    await nextTick();
+    expect(document.activeElement).toBe(host.querySelector("input"));
+  });
+
+  // 2026-10-19: the app's web view would raise the keyboard over the field and
+  // both buttons; a tap on the prefilled field brings it, as in Safari.
+  it("is left unfocused in the app", async () => {
+    const { host } = await mountInvite();
+    await nextTick();
+    expect(host.querySelector("input")!.value).toBe("Ann");
+    expect(document.activeElement).not.toBe(host.querySelector("input"));
   });
 });

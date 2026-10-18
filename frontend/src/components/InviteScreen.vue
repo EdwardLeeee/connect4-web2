@@ -5,6 +5,7 @@
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
+import { isNative } from "../native";
 import { ProfileError, useGameStore } from "../stores/game";
 import AppIcon from "./AppIcon.vue";
 
@@ -25,7 +26,9 @@ const failure = ref<string | null>(null);
 const online = computed(() => store.serverConnection === "online");
 
 // L12 v2 (round 7): prefilled with this device's nickname, focused on entry.
-// iPhone Safari keeps its keyboard down until the field is tapped.
+// iPhone Safari keeps its keyboard down until the field is tapped. The app's
+// web view would raise it over the field and both buttons, so the app leaves
+// the field unfocused and a tap brings the keyboard, as in Safari (2026-10-19).
 const nicknameEl = ref<HTMLInputElement | null>(null);
 const nickname = ref(store.shownSession?.nickname ?? "");
 const edited = ref(false);
@@ -46,7 +49,7 @@ watch(
 );
 
 onMounted(() => {
-  void nextTick(() => nicknameEl.value?.focus());
+  if (!isNative()) void nextTick(() => nicknameEl.value?.focus());
 });
 
 function onInput() {
@@ -158,8 +161,11 @@ function toLobby() {
           <AppIcon name="arrow" />
           <span>{{ t("lobby.joinRoom") }}</span>
         </button>
+        <!-- R28 06-B: it names the AI game it returns to. -->
         <button class="btn ghost" type="button" @click="toLobby">
-          <span>{{ t("lobby.notNow") }}</span>
+          <span>{{
+            t(onDeviceGame() ? "lobby.notNowToGame" : "lobby.notNow")
+          }}</span>
         </button>
       </template>
     </div>

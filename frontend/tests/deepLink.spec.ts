@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listenForInviteLinks, roomFromLink } from "../src/utils/deepLink";
+import { APP_LINK_ORIGIN } from "../src/utils/origin";
 
 const app = vi.hoisted(() => ({
   launchUrl: undefined as string | undefined,
@@ -20,6 +21,8 @@ vi.mock("@capacitor/app", () => ({
 }));
 
 const SITE = "https://connect4.oraclelee.com";
+// The website banner's subdomain (3.4.0).
+const BANNER = APP_LINK_ORIGIN;
 
 beforeEach(() => {
   vi.stubEnv("VITE_SITE_ORIGIN", SITE);
@@ -43,6 +46,8 @@ describe("the room an invite link opens (2026-10-16)", () => {
     ["oraclelee-fourinarow://r/LAN427", "LAN427"],
     ["oraclelee-fourinarow://r/lan427/", "LAN427"],
     ["ORACLELEE-FOURINAROW://r/LAN427?from=button", "LAN427"],
+    [`${BANNER}/r/LAN427`, "LAN427"],
+    [`${BANNER}/r/lan427/`, "LAN427"],
   ])("opens %s", (link, room) => {
     expect(roomFromLink(link)).toBe(room);
   });
@@ -59,6 +64,14 @@ describe("the room an invite link opens (2026-10-16)", () => {
     "oraclelee-fourinarow://r/LAN427/extra",
     "other-scheme://r/LAN427",
     "not a link",
+    // The banner from the lobby only opens the app.
+    "oraclelee-fourinarow://open",
+    "oraclelee-fourinarow://",
+    `${BANNER}/open`,
+    `${BANNER}/?room=LAN427`,
+    `${BANNER}/r/LAN427/extra`,
+    `${BANNER}.example.com/r/LAN427`,
+    `${BANNER.replace("https:", "http:")}/r/LAN427`,
   ])("leaves %s alone", (link) => {
     expect(roomFromLink(link)).toBe("");
   });
@@ -91,6 +104,8 @@ describe("links handed to the app", () => {
     const open = vi.fn();
     await listenForInviteLinks(open);
     app.listeners[0]({ url: "https://example.com/r/LAN427" });
+    app.listeners[0]({ url: `${BANNER}/open` });
+    app.listeners[0]({ url: "oraclelee-fourinarow://open" });
     expect(open).not.toHaveBeenCalled();
   });
 });

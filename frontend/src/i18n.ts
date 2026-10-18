@@ -47,6 +47,8 @@ const messages = {
       inviteNameLabel: "你的暱稱",
       inviteNameHint: "你的朋友會看到這個名字呦",
       notNow: "不加入，先去大廳",
+      // R28 06-B: the app, with an on-device AI game waiting behind the invite.
+      notNowToGame: "不加入，回到 AI 對局",
       inviteGone: "這個房間無法加入",
       inviteGoneBody:
         "房號 {code} 不存在，可能房主已經離開。請朋友重新分享邀請。",
@@ -230,6 +232,7 @@ const messages = {
       inviteNameLabel: "Your nickname",
       inviteNameHint: "Your friend will see this name!",
       notNow: "Not now, go to lobby",
+      notNowToGame: "Not now, back to my AI game",
       inviteGone: "This room can't be joined",
       inviteGoneBody:
         "Room {code} doesn't exist; the host may have left. Ask your friend to share a new invite.",
@@ -423,6 +426,7 @@ const messages = {
       inviteNameLabel: "ชื่อเล่นของคุณ",
       inviteNameHint: "เพื่อนจะเห็นชื่อนี้นะ",
       notNow: "ยังไม่เข้า ไปล็อบบี้ก่อน",
+      notNowToGame: "ยังไม่เข้า กลับไปเล่นกับ AI ต่อ",
       inviteGone: "เข้าห้องนี้ไม่ได้",
       inviteGoneBody:
         "ไม่มีห้อง {code} เจ้าของห้องอาจออกไปแล้ว ขอให้เพื่อนส่งคำเชิญใหม่",

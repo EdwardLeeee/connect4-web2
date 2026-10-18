@@ -3049,8 +3049,13 @@ test("an invite opened at launch shows over an AI game, and not now goes back to
   await page.waitForTimeout(1500);
   await expect(page).toHaveURL(/\/\?room=LAN427$/);
   await expect(inviteCode(page)).toHaveText("LAN427");
+  // 2026-10-19: no keyboard over the buttons; the field waits for a tap.
+  await expect(
+    page.locator(".invite-card").getByRole("textbox", { name: "你的暱稱" }),
+  ).not.toBeFocused();
 
-  await page.getByRole("button", { name: "不加入，先去大廳" }).click();
+  // R28 06-B: the button names the game it goes back to.
+  await page.getByRole("button", { name: "不加入，回到 AI 對局" }).click();
   await expect(page).toHaveURL(/\/play$/);
   await expect(page.locator(".grid .token:not(.ghost)")).toHaveCount(2);
   await expect(page.locator(".board")).toHaveClass(/is-interactive/);
