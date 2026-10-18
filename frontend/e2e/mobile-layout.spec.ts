@@ -3142,6 +3142,11 @@ test.describe("on an iPhone's Safari", () => {
     );
     await expectTouchSafe(page, ".app-banner-close, .app-banner-open");
     expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
+    if (testInfo.project.name.startsWith("iphone-")) {
+      await expect(page).toHaveScreenshot(
+        `${testInfo.project.name}-banner-lobby.png`,
+      );
+    }
 
     await page.goto("/r/LAN427");
     await expect(inviteCode(page)).toHaveText("LAN427");
@@ -3164,6 +3169,52 @@ test.describe("on an iPhone's Safari", () => {
     await page.waitForTimeout(300);
     await expect(banner(page)).toHaveCount(0);
   });
+
+  for (const locale of ["en", "th"] as const) {
+    test(`the banner fits a 320px iPhone in ${locale}`, async ({
+      page,
+    }, testInfo) => {
+      test.skip(
+        !["galaxy-s26-ultra", "iphone-16e-17e"].includes(testInfo.project.name),
+        "Once per engine.",
+      );
+      await page.setViewportSize({ width: 320, height: 640 });
+      await mockApp(page, snapshotFor("L12", locale));
+      for (const path of ["/", "/r/LAN427"]) {
+        await page.goto(path);
+        await expect(banner(page)).toBeVisible();
+        // R28 07-B at 320: every word on one line, nothing cut off.
+        const words = await banner(page).evaluate((element) =>
+          [
+            ...element.querySelectorAll(
+              ".app-banner-name, .app-banner-text, .app-banner-open",
+            ),
+          ].map((part) => {
+            const range = document.createRange();
+            range.selectNodeContents(part);
+            const lines = new Set(
+              [...range.getClientRects()]
+                .filter((rect) => rect.width > 1)
+                .map((rect) => Math.round(rect.bottom)),
+            ).size;
+            return {
+              text: part.textContent,
+              lines,
+              cut: part.scrollWidth > part.clientWidth + 1,
+            };
+          }),
+        );
+        for (const word of words) {
+          expect(word, JSON.stringify(word)).toMatchObject({
+            lines: 1,
+            cut: false,
+          });
+        }
+        await expectTouchSafe(page, ".app-banner-close, .app-banner-open");
+        expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
+      }
+    });
+  }
 
   test("the banner stays off during a game", async ({ page }, testInfo) => {
     test.skip(kind(testInfo) !== "phone", "An iPhone in portrait.");
