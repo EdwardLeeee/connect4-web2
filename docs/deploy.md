@@ -134,3 +134,58 @@ curl -sS -D - https://app-site-association.cdn-apple.com/a/v1/connect4.oraclelee
 - 已安裝 app 的手機大約每週才更新一次這個檔案；改 Team ID 或網址規則時，改 `well_known.py` 再發版。
 - 正式站回應正確、Apple 的 CDN 卻一直抓不到時，可能是 Cloudflare 擋了 Apple 的抓取程式；
   要調整 Cloudflare 前，先問使用者。
+
+### App 連結網域（connect4-app.oraclelee.com）
+
+手機網頁上「在 App 中打開」的橫幅連到 `https://connect4-app.oraclelee.com/r/房號`（不在房間時是 `/open`）。
+在 Safari 裡按同一個網域的 universal link 會留在 Safari，所以橫幅要連到另一個子網域
+（Apple TN3155「Use universal links on your site」："To use a universal link to open your app while
+already browsing in the web browser, use a different subdomain."）。有裝 app 的 iPhone 直接開 app；
+沒裝的話，瀏覽器會打開這個網址，伺服器再把它轉到 App Store。
+
+這個網域由同一個容器依 Host 回應（`backend/connect4_app/app.py` 的 `AppLinkHost`，內容在
+`well_known.py`）：
+
+- `/.well-known/apple-app-site-association`：它自己的一份（`/r/??????` 與 `/open`），200、`application/json`、不轉址。
+  每個寫進 entitlement 的網域都要有自己的一份（TN3155）。
+- 其他所有請求：302 轉到 App Store，`Cache-Control: no-store`，不設 cookie；WebSocket 一律拒絕。
+  用 302 而不是 301，是因為瀏覽器會永久記住 301，以後要改轉址目的地（例如 Android 上架後轉 Google Play）就收不回來。
+- 其他 Host 完全照舊，所以 `CONNECT4_ALLOWED_ORIGINS`、`CONNECT4_APP_ORIGINS` 都不用加這個網域：它不提供網頁，
+  session cookie 也沒有設 Domain，不會送到這裡。
+
+送出的 app 會把這個網域寫進 Associated Domains，之後就不能改名或拿掉。
+
+第一次設定（順序不能換：還沒更新的程式會把主站那份 AASA 回給這個網域，Apple 的 CDN 要是先抓到，
+沒辦法清除，最多 24 小時才重抓）：
+
+1. 部署帶有 `AppLinkHost` 的版本（3.3.4 以後）。
+2. Nginx 加上 `connect4.conf` 裡這個網域的 port 80 server block（`/.well-known/acme-challenge/` 由
+   `/var/www/certbot` 提供），`sudo nginx -t` 後 reload。
+3. Cloudflare 新增 A 記錄 `connect4-app`，內容與 `connect4` 那一筆相同的 IP（有 AAAA 也照抄），先選
+   **DNS only**：Let's Encrypt 第一次發憑證要直接連到主機。
+4. `sudo certbot certonly --webroot -w /var/www/certbot -d connect4-app.oraclelee.com`。
+5. 加上 443 的 server block，`sudo nginx -t` 後 reload。
+6. Cloudflare 把這筆改成 **Proxied**，和主站一樣隱藏主機 IP，由 Cloudflare 的憑證對外。
+
+443 的 server block 也要把 `/.well-known/acme-challenge/` 交給 webroot，而且要放在 proxy 之前；
+否則續期的請求會被程式轉到 App Store。
+
+上線後在開發機檢查：
+
+```bash
+H=https://connect4-app.oraclelee.com
+curl -sS -o /dev/null -D - $H/.well-known/apple-app-site-association \
+    | grep -iE '^(HTTP|content-type|location|cache-control)'
+# 200、content-type: application/json，沒有 location
+curl -sS -A 'MyAgent-Bot/*' -o /dev/null -w '%{http_code}\n' $H/.well-known/apple-app-site-association
+# 隨便一個 User-Agent 也要 200（TN3155：要接受所有 User-Agent）
+for p in /r/ABC123 /open /; do curl -sS -o /dev/null -w "$p %{http_code} %{redirect_url}\n" "$H$p"; done
+# 每一行都是 302 https://apps.apple.com/app/id6816204087
+
+# 上面都對了才查 Apple 的 CDN；新網域可能要等到 24 小時
+curl -sS -D - https://app-site-association.cdn-apple.com/a/v1/connect4-app.oraclelee.com
+```
+
+- 已經在 app 打開後按右上角網域回到 Safari 的人，iOS 會記住「這個網域用 Safari 開」，按橫幅會到 App Store；
+  在備忘錄貼上連結並長按、改選用 app 打開，就會恢復（TN3155）。
+- App Store 不會把房號交給剛裝好的 app；裝好之後回 Safari 再按一次橫幅。

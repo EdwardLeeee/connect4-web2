@@ -58,13 +58,23 @@ OPENER = urllib.request.build_opener(NoRedirect)
 
 
 def request(
-    method: str, path: str, *, cookie: str | None = None, body: dict[str, Any] | None = None
+    method: str,
+    path: str,
+    *,
+    cookie: str | None = None,
+    body: dict[str, Any] | None = None,
+    host: str | None = None,
 ) -> tuple[int, dict[str, str], Any]:
-    """One HTTP request; cookies are handled by hand so each check chooses its own."""
+    """One HTTP request; cookies are handled by hand so each check chooses its own.
+
+    `host` sends another Host header, the way Nginx passes on the host a browser asked for.
+    """
     global last_response
     headers = {"Content-Type": "application/json"} if body is not None else {}
     if cookie:
         headers["Cookie"] = f"c4_session={cookie}"
+    if host:
+        headers["Host"] = host
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(BASE + path, data=data, method=method, headers=headers)
     try:
@@ -73,7 +83,7 @@ def request(
     except urllib.error.HTTPError as error:
         status, raw, got = error.code, error.read(), error.headers
     text = raw.decode("utf-8", "replace")
-    last_response = f"{method} {path} -> {status}: {text[:500]}"
+    last_response = f"{method} {host or ''}{path} -> {status}: {text[:500]}"
     try:
         payload: Any = json.loads(text)
     except ValueError:
@@ -112,24 +122,39 @@ def reply_table_entries() -> int:
     return struct.unpack_from("<I", header, 8)[0]
 
 
-def repo_apple_app_site_association() -> dict[str, Any]:
-    """The file as the repo defines it; well_known.py is plain Python, so no install needed."""
+def repo_well_known() -> Any:
+    """well_known.py as the repo defines it; it is plain Python, so no install needed."""
     path = ROOT / "backend" / "connect4_app" / "well_known.py"
     spec = importlib.util.spec_from_file_location("well_known", path)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.APPLE_APP_SITE_ASSOCIATION
+    return module
 
 
-def check_apple_app_site_association() -> None:
-    status, headers, body = request("GET", "/.well-known/apple-app-site-association")
+def check_association(expected: dict[str, Any], host: str | None = None) -> None:
+    status, headers, body = request("GET", "/.well-known/apple-app-site-association", host=host)
     check(status == 200, f"apple-app-site-association answered {status}; Apple needs 200")
     content_type = headers.get("content-type")
     check(content_type == "application/json", f"apple-app-site-association is {content_type}")
-    check(body == repo_apple_app_site_association(), f"unexpected association: {body}")
+    check(body == expected, f"unexpected association: {body}")
     app_ids = body["applinks"]["details"][0]["appIDs"]
-    print(f"apple-app-site-association: application/json, appIDs {app_ids}")
+    print(f"apple-app-site-association ({host or 'site'}): application/json, appIDs {app_ids}")
+
+
+def check_app_link_host() -> None:
+    """The banner's host: its own association file, and the App Store for everything else."""
+    well_known = repo_well_known()
+    host = well_known.APP_LINK_HOST
+    check_association(well_known.APP_LINK_SITE_ASSOCIATION, host)
+    for path in ("/", "/r/ABC123", "/open"):
+        status, headers, _ = request("GET", path, host=host)
+        check(status == 302, f"{host}{path} answered {status}, not a 302")
+        location = headers.get("location")
+        check(location == well_known.APP_STORE_URL, f"{host}{path} redirects to {location}")
+        check(headers.get("cache-control") == "no-store", f"{host}{path} may be cached")
+        check("set-cookie" not in headers, f"{host}{path} set a cookie")
+    print(f"{host}: / /r/ABC123 /open -> 302 {well_known.APP_STORE_URL}")
 
 
 def check_health(health: dict[str, Any]) -> None:
@@ -219,7 +244,8 @@ def run(image: str) -> None:
     check(status == 200 and '<div id="app">' in page, "GET / did not serve the frontend")
     status, _, page = request("GET", "/r/ABC123")
     check(status == 200 and '<div id="app">' in page, "an /r/ invite link did not load the site")
-    check_apple_app_site_association()
+    check_association(repo_well_known().APPLE_APP_SITE_ASSOCIATION)
+    check_app_link_host()
 
     status, headers, first = request("GET", "/api/session")
     cookie = session_cookie(headers)

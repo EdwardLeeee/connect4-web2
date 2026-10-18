@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 import connect4_app.app as app_module
 import httpx
@@ -16,7 +17,13 @@ from connect4_app.app import (
 )
 from connect4_app.manager import GameManager
 from connect4_app.sessions import SESSION_COOKIE
-from connect4_app.well_known import APPLE_APP_SITE_ASSOCIATION, IOS_APP_ID
+from connect4_app.well_known import (
+    APP_LINK_HOST,
+    APP_LINK_SITE_ASSOCIATION,
+    APP_STORE_URL,
+    APPLE_APP_SITE_ASSOCIATION,
+    IOS_APP_ID,
+)
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
@@ -606,3 +613,93 @@ async def test_invite_paths_still_load_the_website() -> None:
             response = await client.get(path, follow_redirects=False)
             assert response.status_code == 200, path
             assert '<div id="app"></div>' in response.text, path
+
+
+def app_link_client() -> TestClient:
+    return TestClient(app, base_url=f"https://{APP_LINK_HOST}", follow_redirects=False)
+
+
+def link_patterns(association: dict[str, Any]) -> list[dict[str, Any]]:
+    (details,) = association["applinks"]["details"]
+    assert details["appIDs"] == [IOS_APP_ID]
+    return [{k: v for k, v in c.items() if k != "comment"} for c in details["components"]]
+
+
+def test_the_app_link_host_serves_its_own_association(fresh_manager: GameManager) -> None:
+    response = app_link_client().get("/.well-known/apple-app-site-association")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    assert response.json() == APP_LINK_SITE_ASSOCIATION
+    assert "set-cookie" not in response.headers
+    # The banner links to an invite or to the app's home screen; nothing else opens the app.
+    assert link_patterns(APP_LINK_SITE_ASSOCIATION) == [{"/": "/r/??????"}, {"/": "/open"}]
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("GET", "/"),
+        ("GET", "/r/ABC123"),
+        ("HEAD", "/r/ABC123"),
+        ("GET", "/open"),
+        ("GET", "/open?from=banner"),
+        ("GET", "/api/session"),
+        ("PATCH", "/api/session"),
+        ("GET", "/api/health"),
+        ("GET", "/assets/index.js"),
+        ("GET", "/.well-known/something-else"),
+    ],
+)
+def test_the_app_link_host_sends_everything_else_to_the_app_store(
+    fresh_manager: GameManager, method: str, path: str
+) -> None:
+    body = {"nickname": "網站玩家", "locale": "zh-TW"} if method == "PATCH" else None
+    response = app_link_client().request(method, path, json=body)
+    assert response.status_code == 302
+    assert response.headers["location"] == APP_STORE_URL
+    assert response.headers["cache-control"] == "no-store"
+    assert "set-cookie" not in response.headers
+    assert fresh_manager.sessions.sessions == {}
+
+
+def test_the_app_link_host_answers_before_cors(fresh_manager: GameManager) -> None:
+    response = app_link_client().options(
+        "/api/session", headers={"Origin": IOS_ORIGIN, **PREFLIGHT}
+    )
+    assert response.status_code == 302
+    assert "access-control-allow-origin" not in response.headers
+
+
+def test_the_app_link_host_refuses_websockets(fresh_manager: GameManager) -> None:
+    with pytest.raises(WebSocketDisconnect) as refused:
+        with TestClient(app).websocket_connect("/ws", headers={"Host": APP_LINK_HOST}):
+            pass
+    assert refused.value.code == 1008
+    assert fresh_manager.sessions.sessions == {}
+
+
+@pytest.mark.parametrize(
+    "host", [APP_LINK_HOST.upper(), f"{APP_LINK_HOST}:443", f"{APP_LINK_HOST}."]
+)
+def test_the_app_link_host_ignores_case_port_and_a_trailing_dot(host: str) -> None:
+    response = TestClient(app, follow_redirects=False).get("/open", headers={"Host": host})
+    assert response.status_code == 302
+    assert response.headers["location"] == APP_STORE_URL
+
+
+@pytest.mark.parametrize(
+    "host", ["connect4.oraclelee.com", f"www.{APP_LINK_HOST}", f"{APP_LINK_HOST}.example.com"]
+)
+def test_other_hosts_still_get_the_game_site(fresh_manager: GameManager, host: str) -> None:
+    client = TestClient(app, follow_redirects=False)
+    association = client.get("/.well-known/apple-app-site-association", headers={"Host": host})
+    assert association.json() == APPLE_APP_SITE_ASSOCIATION
+    assert {"/": "/open"} not in link_patterns(association.json())
+
+    invite = client.get("/r/ABC123", headers={"Host": host})
+    assert invite.status_code == 200
+    assert '<div id="app"></div>' in invite.text
+
+    session = client.get("/api/session", headers={"Host": host})
+    assert session.status_code == 200
+    assert SESSION_COOKIE in session.headers["set-cookie"]
