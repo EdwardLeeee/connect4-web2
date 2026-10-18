@@ -6,14 +6,21 @@ from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.datastructures import Headers
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from . import __version__
 from .manager import GameManager
 from .sessions import SESSION_COOKIE, UNSET, Session
-from .well_known import APPLE_APP_SITE_ASSOCIATION
+from .well_known import (
+    APP_LINK_HOST,
+    APP_LINK_SITE_ASSOCIATION,
+    APP_STORE_URL,
+    APPLE_APP_SITE_ASSOCIATION,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 # WebSocket close codes are part of the client contract; do not renumber them.
@@ -25,6 +32,8 @@ DEFAULT_APP_ORIGINS = "capacitor://localhost,https://localhost"
 # selects APP_PROTOCOL, because a browser fails the connection if none is selected.
 APP_PROTOCOL = "connect4.v1"
 TOKEN_PROTOCOL_PREFIX = "connect4.token."
+ASSOCIATION_PATH = "/.well-known/apple-app-site-association"
+ASSOCIATION_HEADERS = {"Cache-Control": "public, max-age=3600"}
 
 
 def resolve_frontend_dist() -> Path:
@@ -46,6 +55,46 @@ ALLOWED_ORIGINS = parse_origins(os.getenv("CONNECT4_ALLOWED_ORIGINS", ""))
 # An empty value turns app mode off.
 APP_ORIGINS = parse_origins(os.getenv("CONNECT4_APP_ORIGINS", DEFAULT_APP_ORIGINS))
 
+
+def request_host(scope: Scope) -> str:
+    """The Host header without its port or a trailing dot, in lower case."""
+    host = Headers(scope=scope).get("host", "")
+    return host.partition(":")[0].rstrip(".").casefold()
+
+
+class AppLinkHost:
+    """Answer every request for APP_LINK_HOST, which serves no part of the game.
+
+    The host only carries universal links: its association file, and a redirect to the App
+    Store for a browser that opened the link without the app. Requests for any other host
+    pass through untouched.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] not in ("http", "websocket") or request_host(scope) != APP_LINK_HOST:
+            await self.app(scope, receive, send)
+            return
+        if scope["type"] == "websocket":
+            # Closing before accepting refuses the handshake, so no session is created.
+            await WebSocket(scope, receive, send).close(code=1008)
+            return
+        if scope["path"] == ASSOCIATION_PATH:
+            response: Response = JSONResponse(
+                APP_LINK_SITE_ASSOCIATION, headers=ASSOCIATION_HEADERS
+            )
+        else:
+            # 302, not 301: browsers keep a 301 for good, and the destination should stay
+            # changeable (Google Play, once there is an Android app). The URL is a constant,
+            # so the redirect can never point anywhere a request chooses.
+            response = RedirectResponse(
+                APP_STORE_URL, status_code=302, headers={"Cache-Control": "no-store"}
+            )
+        await response(scope, receive, send)
+
+
 app = FastAPI(title="Connect 4", version=__version__)
 # Only the app origins may read responses cross-origin. They authenticate with a bearer
 # token, never with the site cookie, so credentials stay off.
@@ -57,6 +106,8 @@ app.add_middleware(
     allow_credentials=False,
     max_age=600,
 )
+# Added last, so it runs first: APP_LINK_HOST's requests never reach CORS or the game.
+app.add_middleware(AppLinkHost)
 manager = GameManager()
 
 
@@ -232,11 +283,9 @@ if FRONTEND_DIST.is_dir():
 
 # Registered before the SPA fallback below, which would otherwise answer with index.html.
 # A file without an extension would be served as text/plain; Apple requires JSON.
-@app.get("/.well-known/apple-app-site-association", include_in_schema=False)
+@app.get(ASSOCIATION_PATH, include_in_schema=False)
 async def apple_app_site_association() -> JSONResponse:
-    return JSONResponse(
-        APPLE_APP_SITE_ASSOCIATION, headers={"Cache-Control": "public, max-age=3600"}
-    )
+    return JSONResponse(APPLE_APP_SITE_ASSOCIATION, headers=ASSOCIATION_HEADERS)
 
 
 @app.get("/{path:path}", include_in_schema=False)
