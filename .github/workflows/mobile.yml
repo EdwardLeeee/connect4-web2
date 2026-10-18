@@ -129,13 +129,16 @@ jobs:
           [ "$(value CFBundleDisplayName "${app}/th.lproj/InfoPlist.strings")" = "เรียงสี่" ] || fail "th name"
           plutil -lint "${app}/PrivacyInfo.xcprivacy"
           [ -f "${app}/public/index.html" ] || fail "web bundle missing"
-          # Invite links: the oraclelee-fourinarow:// scheme, and the associated domain that
-          # signing takes from App.entitlements (unsigned builds here cannot show it in the binary).
+          # Invite links: the oraclelee-fourinarow:// scheme, and the associated domains that
+          # signing takes from App.entitlements (unsigned builds here cannot show them in the binary):
+          # the website, and connect4-app.oraclelee.com for the Safari banner.
           [ "$(value CFBundleURLTypes.0.CFBundleURLSchemes.0 "${app}/Info.plist")" = oraclelee-fourinarow ] \
             || fail "URL scheme"
           entitlements=mobile/ios/App/App/App.entitlements
-          [ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.associated-domains:0' "${entitlements}")" \
-            = applinks:connect4.oraclelee.com ] || fail "associated domain"
+          domains="$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.associated-domains' "${entitlements}")"
+          for domain in connect4.oraclelee.com connect4-app.oraclelee.com; do
+            grep -qx " *applinks:${domain}" <<<"${domains}" || fail "associated domain ${domain}"
+          done
           for configuration in Debug Release; do
             xcodebuild -project mobile/ios/App/App.xcodeproj -target App -configuration "${configuration}" \
               -showBuildSettings 2>/dev/null | grep -q "CODE_SIGN_ENTITLEMENTS = App/App.entitlements" \
