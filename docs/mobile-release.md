@@ -67,19 +67,23 @@ pull request 動到 `mobile/**`、`design/app-icon/**`、`frontend/**`（測試�
   四個語系（英、繁中、簡中、泰）的名稱與隱私清單、邀請連結用的 URL scheme `oraclelee-fourinarow` 與
   `App.entitlements` 的 `applinks:connect4.oraclelee.com`，再建置一次不簽章的 Release 裝置版；另附模擬器截圖。
 - `ios-smoke`（流程在 `mobile-ios-smoke.yml`，Mobile 與 Mobile release 共用）：pull request 自動跑離線版與三種
-  裝置語言（非必要檢查，發版前看結果）；手動執行（Run workflow，勾選 smoke）三段都跑。連線版會連正式站，只有
+  裝置語言（非必要檢查，發版前看結果）；手動執行（Run workflow，勾選 smoke）全部都跑。連線版會連正式站，只有
   正式站已經是要測的版本才有意義，所以不在 PR 跑，改在 Mobile release 上傳前跑；不要排成定時執行。在 macOS
-  runner 的 iPhone 模擬器用 XCUITest（`mobile/ios/UITests/AppUITests.swift`）跑三段：
+  runner 的 iPhone 模擬器用 XCUITest（`mobile/ios/UITests/AppUITests.swift`）跑四段：
   - 連線版：全新安裝的預設暱稱（頭像不是「?」、玩家設定是「Player NNNN」或「玩家 NNNN」）、下完一局 AI（每手 30 秒內回應）、
     隱私權連結會開 Safari 且 app 停在原頁。
   - 離線版：網頁改用連不到的 `VITE_API_ORIGIN=https://offline.invalid` 重建、先移除 app 再裝：離線大廳文案、
     「立即對戰」可按、預設暱稱、離線改暱稱（頭像與 AI 對局立刻換成新名字）、下兩手後結束 app 再開會回到同一手
     且名字還在、接著下完一局並確認頭像還是新名字。
+  - 邀請連結：沿用離線版的網頁、先移除 app 再裝，用系統開啟 `oraclelee-fourinarow://r/房號`（等同別的 app
+    交來的連結），app 在前景、在背景、正在跟 AI 下棋、完全關閉四種情況都要進到該房號的邀請頁；跟 AI 下棋時
+    （包括關閉後重開恢復的那局）邀請頁要留在畫面上，按「不加入」回到同一手（邀請優先）。Universal Link
+    本身要簽章的 app 和實機才測得到。
   - 三種裝置語言：沿用離線版的網頁，把模擬器的語言依序設成英文、繁中、泰文並重開機，每種都先移除 app 再裝，
     確認第一次打開的畫面語言（「Play now」／「立即對戰」／「เล่นเลย」）、預設暱稱（Player／玩家／ผู้เล่น NNNN）
     與手機桌面名稱（Four In A Row／四子棋／เรียงสี่）。一種語言失敗其他仍會跑完。
   測試 target 不在 commit 的 Xcode 專案裡，由 `mobile/scripts/add-ui-test-target.rb`（固定 Ruby 3.3、
-  xcodeproj 1.28.1）在 runner 上臨時加入。截圖在 artifact `ios-smoke-screenshots`（`online/`、`offline/`、`lang-en/`、`lang-zh/`、`lang-th/`），
+  xcodeproj 1.28.1）在 runner 上臨時加入。截圖在 artifact `ios-smoke-screenshots`（`online/`、`offline/`、`invite/`、`lang-en/`、`lang-zh/`、`lang-th/`），
   每手耗時寫在 run 的 Summary。
 - `android-smoke`：觸發條件同 `ios-smoke`（PR 自動、手動勾 smoke），非必要檢查。網頁用
   `VITE_API_ORIGIN=https://offline.invalid` 建置 debug APK，在 API 36 模擬器上以 Playwright 連進 app 的 WebView

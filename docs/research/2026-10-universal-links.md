@@ -131,6 +131,10 @@ codesign -d --entitlements - --xml App.app | grep applinks:connect4.oraclelee.co
 2026-10-16 部署前的狀態：網站這個路徑回 `200 text/html`（SPA 的 index.html）；Apple CDN 回 404，標頭是
 `Apple-Failure-Reason: SWCERR00401 Bad JSON content`，同時帶 `Apple-Failure-Details: {"cause":"Connection failed"}`。
 
+2026-10-18 部署 3.3.3 之後：網站這個路徑回 `200 application/json`、沒有轉址；Apple CDN 回 200，
+`Apple-From` 是我們網站的這個路徑，內容就是上面的 AASA（`J89WNJYJ63.com.oraclelee.connect4`，比對 `/r/??????`
+和 `/?room=??????`）。Cloudflare 沒有擋 Apple 的 CDN。
+
 ### 限制
 
 - 以下幾點都沒有官方說明，只能用實機測試回答：LINE 的 openExternalBrowser 在 iOS 上是交給

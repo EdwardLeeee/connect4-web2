@@ -15,8 +15,8 @@ on:
     inputs:
       smoke:
         description: >-
-          iOS simulator smoke test: online (production server), offline (unreachable server) and a
-          fresh install in English, Chinese and Thai, plus the offline Android run. Pull requests run all but
+          iOS simulator smoke test: online (production server), offline (unreachable server), invite links
+          and a fresh install in English, Chinese and Thai, plus the offline Android run. Pull requests run all but
           the online part.
         type: boolean
         default: false

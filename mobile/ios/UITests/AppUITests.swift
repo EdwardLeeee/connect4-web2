@@ -140,6 +140,54 @@ final class AppUITests: XCTestCase {
         return moves
     }
 
+    /// Opens an invite link the way another app does: the system hands it to whichever app owns
+    /// the scheme. The website's "open in the app" button uses this scheme; a Universal Link takes
+    /// the same way into the web app (appUrlOpen) but needs a signed build on a real phone.
+    @available(iOS 16.4, *)
+    private func openInviteLink(_ code: String) {
+        XCUIDevice.shared.system.open(URL(string: "oraclelee-fourinarow://r/\(code)")!)
+        // iOS may ask before it opens another app; say yes, and note it in the log.
+        let open = XCUIApplication(bundleIdentifier: "com.apple.springboard").buttons["Open"]
+        if open.waitForExistence(timeout: 3) {
+            print("SMOKE invite: iOS asked before opening the app")
+            open.tap()
+        }
+    }
+
+    /// The invite page for `code`, with the app in front.
+    private func checkInvitePage(_ code: String, _ when: String) -> XCUIElement {
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30), "the app did not come to the front \(when)")
+        let web = app.webViews.firstMatch
+        XCTAssertTrue(web.waitForExistence(timeout: 60), "the web view never appeared \(when)")
+        let title = matching(web.staticTexts, "label CONTAINS %@", "朋友邀請你一起玩", "A friend invited you to play")
+            .firstMatch
+        XCTAssertTrue(title.waitForExistence(timeout: 30), "the invite page did not open \(when)")
+        let room = web.staticTexts.matching(NSPredicate(format: "label == %@", code)).firstMatch
+        XCTAssertTrue(room.waitForExistence(timeout: 10), "the invite page does not show room \(code) \(when)")
+        print("SMOKE invite: room \(code) \(when)")
+        shot("invite-\(code)")
+        return web
+    }
+
+    /// Invite first (2026-10-16): over an on-device AI game the invite page stays on screen, and
+    /// Not now returns to that game at the same move.
+    private func checkInviteOverGame(_ web: XCUIElement, _ code: String, _ move: String, _ when: String) {
+        Thread.sleep(forTimeInterval: 3)
+        XCTAssertTrue(
+            web.staticTexts.matching(NSPredicate(format: "label == %@", code)).firstMatch.exists,
+            "the invite page gave way to the AI game \(when)")
+        notNow(web)
+        let chip = web.staticTexts.matching(NSPredicate(format: "label == %@", move)).firstMatch
+        XCTAssertTrue(chip.waitForExistence(timeout: 30), "Not now did not return to the AI game at \(move) \(when)")
+        print("SMOKE invite: Not now returned to the AI game at \"\(move)\" \(when)")
+    }
+
+    private func notNow(_ web: XCUIElement) {
+        let button = matching(web.buttons, "label BEGINSWITH %@", "不加入", "Not now").firstMatch
+        XCTAssertTrue(button.waitForExistence(timeout: 10), "the invite page has no Not now button")
+        button.tap()
+    }
+
     func testOnlineGameAndPrivacyPolicy() throws {
         let web = launchWebView()
         let start = playNow(web)
@@ -206,6 +254,46 @@ final class AppUITests: XCTestCase {
 
         // The result screen's header still shows the renamed profile after the relaunch.
         checkAvatar(again, newName, "after relaunch")
+    }
+
+    /// Invite links (3.4.0) on the offline build: oraclelee-fourinarow://r/CODE lands on that room's
+    /// invite page with the app in front, in the background, over an AI game and closed. Each
+    /// link has its own code: the web app drops the same link twice within two seconds.
+    func testInviteLinksOpenTheInvitePage() throws {
+        guard #available(iOS 16.4, *) else {
+            XCTFail("XCUIDevice.system.open needs iOS 16.4")
+            return
+        }
+        let web = launchWebView()
+        _ = playNow(web)
+
+        openInviteLink("ABC234")
+        notNow(checkInvitePage("ABC234", "with the app in front"))
+        _ = playNow(web)
+
+        XCUIDevice.shared.press(.home)
+        let inFront = XCUIApplication.State.runningForeground.rawValue
+        XCTAssertTrue(waitUntil("state != \(inFront)", app, timeout: 10), "the app did not go to the background")
+        openInviteLink("DEF567")
+        notNow(checkInvitePage("DEF567", "from the background"))
+
+        // Two of our moves in an AI game, then a link over it.
+        playNow(web).tap()
+        play(web, "invite", maxMoves: 2)
+        let chip = web.staticTexts.matching(
+            NSPredicate(format: "label MATCHES %@", "^(第 [0-9]+ 手|Move [0-9]+)$")).firstMatch
+        XCTAssertTrue(chip.waitForExistence(timeout: 30), "no move counter during the game")
+        let move = chip.label
+        openInviteLink("GHJ789")
+        checkInviteOverGame(checkInvitePage("GHJ789", "over an AI game"), "GHJ789", move, "over an AI game")
+
+        // With the app closed: the link launches it, and the saved game is restored underneath.
+        app.terminate()
+        XCTAssertTrue(app.wait(for: .notRunning, timeout: 10), "the app did not close")
+        openInviteLink("KLM234")
+        checkInviteOverGame(
+            checkInvitePage("KLM234", "with the app closed"), "KLM234", move, "with the app closed")
+        shot("invite-result")
     }
 
     /// Run once per device language on a fresh install (see the Mobile workflow): the first screen,
