@@ -1,10 +1,13 @@
 import { roomCodeFrom } from "./invite";
-import { siteOrigin } from "./origin";
+import { APP_LINK_ORIGIN, siteOrigin } from "./origin";
 
 // Invite links the app opens itself (2026-10-16): the website's
-// https://…/r/CODE (Universal Links), the older https://…/?room=CODE, and
-// oraclelee-fourinarow://r/CODE from the website's "open in the app" button.
-// Anything else, or a code that is not one, is left alone.
+// https://…/r/CODE (Universal Links) and the older https://…/?room=CODE.
+// The website's "open in the app" banner (3.4.0) links to APP_LINK_ORIGIN's
+// /r/CODE from Safari and to oraclelee-fourinarow://r/CODE from in-app
+// browsers; from the lobby, its /open and oraclelee-fourinarow://open only
+// open the app, which stays where it was. Anything else, or a code that is
+// not one, is left alone.
 const SCHEME_LINK = /^oraclelee-fourinarow:\/\/r\/([^/?#]+)\/?(?:[?#].*)?$/i;
 const SITE_PATH = /^\/r\/([^/]+)\/?$/;
 
@@ -18,10 +21,14 @@ export function roomFromLink(link: string): string {
   } catch {
     return "";
   }
-  if (url.origin !== siteOrigin()) return "";
+  const site = url.origin === siteOrigin();
+  if (!site && url.origin !== APP_LINK_ORIGIN) return "";
   const path = SITE_PATH.exec(url.pathname);
   if (path) return roomCodeFrom(decode(path[1]));
-  return url.pathname === "/" ? roomCodeFrom(url.searchParams.get("room")) : "";
+  // The banner's subdomain has no /?room=CODE.
+  return site && url.pathname === "/"
+    ? roomCodeFrom(url.searchParams.get("room"))
+    : "";
 }
 
 function decode(part: string): string {

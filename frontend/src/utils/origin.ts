@@ -37,6 +37,14 @@ export function socketUrl(): string {
   return `${protocol}//${window.location.host}/ws`;
 }
 
+/**
+ * The subdomain behind the website's "open in the app" banner (3.4.0): an
+ * iPhone with the app installed hands its links, /r/CODE and /open, to the
+ * app, and its server sends everyone else to the App Store. The website and
+ * the app both use this one production origin.
+ */
+export const APP_LINK_ORIGIN = "https://connect4-app.oraclelee.com";
+
 /** The public website that invite links and QR codes send friends to. */
 export function siteOrigin(): string {
   return (
