@@ -290,7 +290,10 @@ p {
   border: 0;
   color: inherit;
   background: none;
-  font: inherit;
+  /* As drawn on the approved shots (spec R28 07). */
+  font-family: var(--font-ui);
+  font-size: 16px;
+  font-weight: 400;
 }
 
 .app-banner-icon {
