@@ -172,6 +172,18 @@ describe("an invite with no game waiting", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(router.currentRoute.value.fullPath).toBe("/");
   });
+
+  it("tells the website's app banner when the room cannot be joined (R28 08)", async () => {
+    const { button, host } = await mountInvite({ onDevice: false });
+    const { useGameStore } = await import("../src/stores/game");
+    const { useInviteGone } = await import("../src/composables/useInviteGone");
+    button("Join room").click();
+    await nextTick();
+    useGameStore().errorCode = "room_full";
+    await nextTick();
+    expect(host.querySelector(".invite-card.is-gone")).not.toBeNull();
+    expect(useInviteGone().value).toBe("LAN427");
+  });
 });
 
 describe("the nickname field on entry", () => {

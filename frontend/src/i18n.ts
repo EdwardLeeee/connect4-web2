@@ -180,6 +180,16 @@ const messages = {
     // 3.3.2 (Apple 2.1): the app says its own name and never "Connect 4";
     // the website keeps common/lobby/game. Every key the app replaces is
     // here in each language, even where the words stay the same.
+    // R28 B: the website's "open in the app" banner, on an iPhone only. It
+    // names the app as the stores do; English uses the home-screen name, the
+    // store's being too long at 320px.
+    banner: {
+      name: "四子棋 Super AI",
+      openInApp: "在 App 中打開",
+      opening: "開啟中…",
+      open: "打開",
+      close: "關閉",
+    },
     app: {
       brand: "四子棋",
       home: "四子棋首頁",
@@ -367,6 +377,13 @@ const messages = {
       // Same format as the server (docs/protocol.md 預設暱稱); {n} is 1000–9999.
       defaultNickname: "Player {n}",
     },
+    banner: {
+      name: "Four In A Row",
+      openInApp: "Open in the app",
+      opening: "Opening…",
+      open: "Open",
+      close: "Close",
+    },
     app: {
       brand: "Four In A Row",
       home: "Four In A Row home",
@@ -552,6 +569,13 @@ const messages = {
     session: {
       // Same format as the server (docs/protocol.md 預設暱稱); {n} is 1000–9999.
       defaultNickname: "ผู้เล่น {n}",
+    },
+    banner: {
+      name: "เรียงสี่",
+      openInApp: "เปิดในแอป",
+      opening: "กำลังเปิด…",
+      open: "เปิด",
+      close: "ปิด",
     },
     app: {
       brand: "เรียงสี่",

@@ -1,16 +1,24 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, watch, watchEffect } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
+import AppBanner from "./components/AppBanner.vue";
 import AppIcon from "./components/AppIcon.vue";
 import OtherTabScreen from "./components/OtherTabScreen.vue";
 import ProfileSheet from "./components/ProfileSheet.vue";
+import { useInviteGone } from "./composables/useInviteGone";
 import { useMedia } from "./composables/useMedia";
 import { useProfileSheet } from "./composables/useProfileSheet";
 import { shownKey } from "./appText";
 import { isNative, usesLocalAi } from "./native";
 import { useGameStore } from "./stores/game";
 import { activityRoute } from "./utils/activityRoute";
+import {
+  bannerDismissed,
+  bannerRoute,
+  bannerShown,
+  dismissBanner,
+} from "./utils/appBanner";
 import { listenForInviteLinks } from "./utils/deepLink";
 import { roomCodeFrom } from "./utils/invite";
 import { initial } from "./utils/presentation";
@@ -56,6 +64,29 @@ const view = computed(() => {
   if (store.game?.status === "waiting") return "waiting";
   return store.game ? "game" : "lobby";
 });
+
+// R28 B: "open in the app" on an iPhone's website (bannerShown has where).
+// ✕ keeps it closed in this browser.
+const bannerWay = bannerRoute(navigator.userAgent, {
+  native: app,
+  standalone: (navigator as { standalone?: boolean }).standalone === true,
+});
+const bannerClosed = ref(bannerDismissed());
+const inviteGone = useInviteGone();
+const banner = computed(() =>
+  bannerShown(bannerWay, {
+    closed: bannerClosed.value,
+    path: route.path,
+    view: view.value,
+    room: roomCodeFrom(route.query.room),
+    gone: inviteGone.value,
+  }),
+);
+
+function closeBanner() {
+  bannerClosed.value = true;
+  dismissBanner();
+}
 
 watch(
   () => store.hasActivity,
@@ -121,6 +152,12 @@ onUnmounted(() => {
       },
     ]"
   >
+    <AppBanner
+      v-if="banner"
+      :route="banner.route"
+      :room="banner.room"
+      @close="closeBanner"
+    />
     <header class="topbar">
       <RouterLink class="brand" to="/" :aria-label="t(shownKey('common.home'))">
         <span class="brand-mark" aria-hidden="true">

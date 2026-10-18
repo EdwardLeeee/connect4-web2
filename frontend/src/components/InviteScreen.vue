@@ -5,6 +5,7 @@
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
+import { useInviteGone } from "../composables/useInviteGone";
 import { isNative } from "../native";
 import { ProfileError, useGameStore } from "../stores/game";
 import AppIcon from "./AppIcon.vue";
@@ -21,6 +22,8 @@ const REASONS: Record<string, string> = {
 };
 const joining = ref(false);
 const failure = ref<string | null>(null);
+// R28: the website's app banner then opens the app without this room.
+const gone = useInviteGone();
 // The server, not the on-device game (which always shows online): joining
 // ends that game, so it must not happen while the room is out of reach.
 const online = computed(() => store.serverConnection === "online");
@@ -64,6 +67,7 @@ watch(
     joining.value = false;
     if (code in REASONS) {
       failure.value = REASONS[code];
+      gone.value = props.code;
       store.clearError();
     }
   },
