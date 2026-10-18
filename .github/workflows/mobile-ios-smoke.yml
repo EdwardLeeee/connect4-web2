@@ -102,7 +102,8 @@ jobs:
             | tee "${RUNNER_TEMP}/offline.log"
       # Invite links on the same offline build, from a clean install: the app's own scheme
       # (oraclelee-fourinarow://r/CODE) opens the invite page with the app in front, in the
-      # background, over an AI game and closed. Universal Links need a signed build on a real phone.
+      # background, over an AI game and closed, and oraclelee-fourinarow://open (the website lobby's
+      # banner) opens the app where it was. Universal Links need a signed build on a real phone.
       - name: "Offline: invite links open the invite page"
         if: ${{ !cancelled() && inputs.offline }}
         working-directory: mobile/ios/App
