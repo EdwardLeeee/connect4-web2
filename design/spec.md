@@ -487,13 +487,16 @@
       - 390、360 寬時，大廳最下面的「隨機配對」、邀請頁最下面的「不加入」常常要捲一下才看得到。稿上用灰字標出。
 - **08 按「打開」之後**（`R28-08-按下橫幅之後-1`–`5-…-mobile.png`，各附一個 GIF）
   - **Safari，以及 IG、LINE 以外的瀏覽器**：
-    - 連到專用子網域 `https://<app-link host>/…`（Universal Link）。子網域的名稱還在跟使用者確認，定了再補。
-    - 從邀請頁按，連結要帶房號；從大廳按，不帶房號。實際路徑和這個子網域的 apple-app-site-association 由 mobile 和 back 決定。
+    - 連到專用子網域 `connect4-app.oraclelee.com`（Universal Link；使用者 2026-10-19 在 AskUserQuestion 選定）：
+      - 邀請頁連 `https://connect4-app.oraclelee.com/r/房號`。
+      - 大廳連 `https://connect4-app.oraclelee.com/open`。
+      - back 的 apple-app-site-association 就配這兩條路徑。
+    - 上線時間：使用者另外選了「網址設好就上線」。網站的橫幅等這個網址上線、驗證過就發，不等 3.4.0 app 上架。
     - **有裝 app**（08-1、08-2）：
       - iPhone 直接打開 app，不跳視窗，也不用等。
       - 從邀請頁按，app 打開那個房間的邀請頁；從大廳按，只打開 app，app 停在它原本的畫面。
     - **沒裝 app**（08-3）：
-      - 專用網址立刻把人送到 App Store 的下載頁（id6816204087）。
+      - 這個網址用 302 立刻把人送到 App Store 的下載頁（id6816204087）。
       - 不會出現「網址無效」，也沒有「開啟中…」的等待。
   - **IG、LINE 的內建瀏覽器**：
     - 用 app 專屬網址：邀請頁是 `oraclelee-fourinarow://r/房號`，大廳是 `oraclelee-fourinarow://open`。
@@ -504,13 +507,13 @@
     - **沒裝 app**（08-5）：
       - 按下後，名字下面的小字換成「開啟中…」，「打開」變淡（不透明度 45%），按鈕寬度不變。
       - 大約 1–2.5 秒後還停在網頁，就打開 App Store。這段時間在 iPhone 實測時盡量縮短。
-      - 如果先跳出提示框，提示框一關、回到網頁的那一刻就立刻打開 App Store。
+      - 如果先跳出提示框，提示框一關、回到網頁的那一刻就立刻打開 App Store（實作上等約 300 ms 確認沒有切到 app）。
       - 網頁被切到背景（代表 app 打開了），就取消，不再跳 App Store。
       - 接受的風險：有裝 app 的人在詢問框按「取消」，或等太久沒按，也會被帶到 App Store（使用者 2026-10-19：「可以接受」）。
   - **房間已滿或不存在**（08-1 最後一格）：
     - 橫幅照常顯示。
-    - 按「打開」只打開 app、不帶房號：Safari 用大廳的連結，IG、LINE 用 `oraclelee-fourinarow://open`。
-  - **待確認**：1434d00 的 `deepLink.ts` 只認得 `oraclelee-fourinarow://r/房號`。`oraclelee-fourinarow://open` 要能打開 app，而且不能改變 app 的畫面，由 mobile 在 iPhone 實機確認。
+    - 按「打開」只打開 app、不帶房號：Safari 用 `https://connect4-app.oraclelee.com/open`，IG、LINE 用 `oraclelee-fourinarow://open`。
+  - **`oraclelee-fourinarow://open` 已驗證**：已在 iOS 模擬器驗證過（#129，22053f7）。app 在背景或關閉時打開這個網址，都會停在原本的 AI 局，不會出現邀請頁。iPhone 實機測試留在 TestFlight 清單。
   - **下載之後**：沒裝的人下載完，要回到聊天裡再點一次朋友的連結才會進房間，因為 app 不會自動記得房號。
 - **09 按 × 關掉，以及對局中**（`R28-09-關掉後與對局中-0-沒有橫幅和現在一樣-mobile.png`）
   - **按 ×**：
