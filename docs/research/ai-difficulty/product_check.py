@@ -48,6 +48,8 @@ def table_hits(directory: str) -> None:
     for path in sorted(Path(directory).glob("*.jsonl")):
         for line in path.read_text(encoding="utf-8").splitlines():
             game = json.loads(line)
+            if game["ai"] == "easy":
+                continue  # Easy never asks the solver.
             for moves in range(8, 14):
                 # The AI is to move after an even number of moves when it moves first.
                 if (moves % 2 == 0) != (game["aiSeat"] == 1) or len(game["history"]) <= moves:

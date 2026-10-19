@@ -1,12 +1,6 @@
-easy, after 9 moves: 38/355 in the table
-easy, after 11 moves: 22/321 in the table
-easy, after 13 moves: 25/301 in the table
-easy, AI first, after 8 moves: 0/384 in the table
-easy, AI first, after 10 moves: 0/373 in the table
-easy, AI first, after 12 moves: 0/354 in the table
 normal, after 9 moves: 10/389 in the table
 normal, after 11 moves: 8/387 in the table
 normal, after 13 moves: 3/376 in the table
-normal, AI first, after 8 moves: 0/392 in the table
-normal, AI first, after 10 moves: 0/384 in the table
-normal, AI first, after 12 moves: 0/379 in the table
+normal, AI first, after 8 moves: 3/392 in the table
+normal, AI first, after 10 moves: 3/384 in the table
+normal, AI first, after 12 moves: 4/379 in the table

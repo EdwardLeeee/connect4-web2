@@ -10,6 +10,12 @@
 //          the opponent an immediate win) | raw:<T> (softmax over raw scores)
 //          tac:<e> (always wins in one and blocks a win in one, else like eps)
 //          tacsafe:<e> (like tac, and the random move never hands over a win in one)
+//          near<rule>:<e>:<k> (always wins in one and blocks a win in one; otherwise with
+//          probability e a random move among the "near" ones, else best). Near moves:
+//            nearlit: a draw or a small loss, -k <= score <= 0 (never a win)
+//            nearabs: score >= -k (a win, a draw or a small loss)
+//            nearrel: score >= best score - k
+//          When no move is near, it plays the best move.
 // opponent: random | novice | casual | <any ai spec>
 // Prints one JSON line per game.
 import { readFileSync } from "node:fs";
@@ -88,7 +94,7 @@ function best(scores) {
 }
 
 function makePlayer(spec) {
-  const [kind, arg] = spec.split(":");
+  const [kind, arg, arg2] = spec.split(":");
   const x = Number(arg);
   if (kind === "random") return (ctx) => pick(legal(ctx.g), ctx.rand());
   if (kind === "novice" || kind === "casual") {
@@ -120,6 +126,27 @@ function makePlayer(spec) {
         return pick(safe.length ? safe : cols, ctx.rand());
       }
       return best(scoresFor(ctx.pos, ctx.history));
+    };
+  }
+  if (kind === "nearlit" || kind === "nearabs" || kind === "nearrel") {
+    const k = Number(arg2);
+    return (ctx) => {
+      const cols = legal(ctx.g);
+      const win = cols.find((c) => winsAt(ctx.g, c, ctx.me));
+      if (win !== undefined) return win;
+      const block = cols.find((c) => winsAt(ctx.g, c, 3 - ctx.me));
+      if (block !== undefined) return block;
+      const scores = scoresFor(ctx.pos, ctx.history);
+      if (ctx.rand() < x) {
+        const open = [...Array(W).keys()].filter((c) => scores[c] !== null);
+        const top = Math.max(...open.map((c) => scores[c]));
+        const near = open.filter((c) =>
+          kind === "nearlit" ? scores[c] >= -k && scores[c] <= 0
+          : kind === "nearabs" ? scores[c] >= -k
+          : scores[c] >= top - k);
+        if (near.length) return pick(near, ctx.rand());
+      }
+      return best(scores);
     };
   }
   if (kind === "eps" || kind === "epsafe") {
