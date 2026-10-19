@@ -26,3 +26,10 @@ jobs:
       - run: cargo build --locked --release --manifest-path native_solver/tools/reply-table/Cargo.toml
       - run: native_solver/tools/reply-table/target/release/reply-table "$RUNNER_TEMP/reply-table.bin"
       - run: cmp native_solver/data/reply-table.bin "$RUNNER_TEMP/reply-table.bin"
+      # After a generator change, commit this file in place of the old table.
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reply-table
+          path: ${{ runner.temp }}/reply-table.bin
+          if-no-files-found: ignore
