@@ -278,13 +278,15 @@ iOS／Android app 的 AI 對局一律在手機上計算，有沒有網路都一�
 - **同樣的下法**：Web Worker 裡的 `connect-four-ai-wasm`（與伺服器的 `connect-four-ai` 同為 1.0.0），
   加上同一份分數表與同樣的中央優先順序 `[3,2,4,1,5,0,6]`，每一手都是精確解，和伺服器選的欄完全相同。
   AI 同樣至少想 1 秒才落子。
-- **難度**：目前本機只有 Super AI，`game.ai.start` 的選項會被忽略，snapshot 的 `difficulty` 恆為 `"super"`。
-  簡單、普通與 AI 先手會在 app 3.5.0 加上，選欄由 `difficulty-parity.json` 鎖成和伺服器相同。
+- **難度**：`game.ai.start` 的選項、檢查與錯誤代碼都和伺服器相同（見「AI 局的選項」）。簡單、普通的選欄規則在
+  `frontend/src/local/difficulty.ts`，照 `difficulty.py` 移植；種子由手機用 `crypto.getRandomValues` 產生，只存在手機上。
 - **故障**：WASM 載入或求解失敗時，`status` 為 `error`，`result_reason` 為 `solver_unavailable`，不會改用
   其他下法；玩家用 `game.ai.retry` 重開。分數表載入或解析失敗時，Worker 在 console 留一行
   `[local-ai] reply table unavailable` 警告，之後每一手都改成現場計算：下法不變，只是比較慢。
-- **存檔**：進行中的對局（`history`、`series`、`revision`、是否故障）只存在手機上。app 重開後照
-  `history` 重建棋盤；如果輪到 AI，AI 會重新計算，下出同一手。離開對局就刪除存檔。
+- **存檔**：進行中的對局（`history`、`series`、`revision`、是否故障，以及難度、AI 的顏色、先手顏色與種子）只存在
+  手機上，格式是 `SavedGame` version 2；種子存成十進位字串，因為 JSON 數字放不下 64 位元。3.5.0 以前的 version 1
+  存檔照 Super AI、玩家執綠、先手讀取。app 重開後照 `history` 重建棋盤；如果輪到 AI，AI 會重新計算，下出同一手。
+  離開對局就刪除存檔。
 - **和伺服器上的狀態**：
   - 連得上伺服器時（包括剛斷線的短暫寬限內），本機的 `game.ai.start` 照最後一份伺服器 snapshot
     擋：在房間或對局中回 `already_in_game`（先檢查），搜尋配對中回 `already_searching`。
@@ -296,4 +298,5 @@ iOS／Android app 的 AI 對局一律在手機上計算，有沒有網路都一�
 - **一致性測試**：`tests/local_parity.py` 從 `domain.py`、`manager.py`、`difficulty.py` 與原生求解器錄下
   `frontend/tests/local/fixtures/`，`frontend/tests/local/` 用同一份資料驗證手機版。改了伺服器 AI 局的
   規則、訊息或錯誤代碼時，要執行 `.venv/bin/python tests/local_parity.py` 重新產生，並同步修改
-  `frontend/src/local/`；兩邊不一致時 `tests/test_local_parity.py` 會失敗。
+  `frontend/src/local/`；兩邊不一致時 `tests/test_local_parity.py` 會失敗。簡單、普通的強度常數也一樣：
+  `difficulty.py` 和 `frontend/src/local/constants.ts` 要一起改，再重新產生。

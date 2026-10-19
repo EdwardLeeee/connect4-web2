@@ -8,6 +8,7 @@ import {
   type AiEngine,
   LocalGame,
   type Outgoing,
+  type SavedGame,
 } from "../../src/local/localGame";
 import { fixture, sharedEngine } from "./wasm";
 
@@ -15,6 +16,8 @@ type Action = { type: string; payload: Record<string, unknown> };
 type Recording = {
   name: string;
   engine: "exact" | "failing";
+  /** Every game seed the server drew, in order, as decimal strings. */
+  seeds: string[];
   script: Action[];
   replies: Outgoing[][];
 };
@@ -72,8 +75,17 @@ describe("LocalGame speaks the server's AI protocol", () => {
   it.each(recordings.map((recording) => [recording.name, recording] as const))(
     "%s: every reply matches manager.py",
     async (_name, recording) => {
+      const seeds = recording.seeds.map(BigInt);
       const { game, messages } = harness(
         recording.engine === "exact" ? exactEngine : failingEngine,
+        {
+          newSeed: () => {
+            const seed = seeds.shift();
+            if (seed === undefined)
+              throw new Error("drew more seeds than the server");
+            return seed;
+          },
+        },
       );
       for (const [index, action] of recording.script.entries()) {
         game.handle(action.type, action.payload);
@@ -83,6 +95,7 @@ describe("LocalGame speaks the server's AI protocol", () => {
           `${action.type} #${index}`,
         ).toEqual(recording.replies[index]);
       }
+      expect(seeds).toEqual([]);
     },
   );
 
@@ -205,6 +218,110 @@ describe("LocalGame speaks the server's AI protocol", () => {
     expect(restored.messages.at(-1)).toMatchObject({
       payload: { game: { history: saved.history, status: "playing" } },
     });
+  });
+
+  it("saves the level, colours and seed, so a restored Easy AI repeats its move", async () => {
+    // Above 2**53, so the save must keep the seed as a string.
+    const seed = 2n ** 63n + 12345n;
+    const first = harness(exactEngine, { newSeed: () => seed });
+    first.game.handle("game.ai.start", {
+      difficulty: "easy",
+      ai_first: true,
+      player_color: "pink",
+    });
+    await settle();
+    for (const column of [0, 6, 0]) {
+      first.game.handle("game.move", { column });
+      await settle();
+    }
+    const saved = first.game.serialize()!;
+    const original = first.messages.at(-1) as Extract<
+      Outgoing,
+      { type: "state.snapshot" }
+    >;
+    expect(saved).toMatchObject({
+      version: 2,
+      difficulty: "easy",
+      aiColor: "green",
+      first: "green",
+      seed: String(seed),
+    });
+    expect(saved.history).toHaveLength(7);
+
+    // Saved after the player's third move, before the AI answered.
+    const restored = harness(exactEngine, {
+      newSeed: () => {
+        throw new Error("a restored game keeps its seed");
+      },
+    });
+    restored.game.restore(
+      JSON.parse(
+        JSON.stringify({ ...saved, history: saved.history.slice(0, 6) }),
+      ),
+    );
+    await settle();
+    expect(restored.messages.at(-1)).toMatchObject({
+      payload: {
+        game: {
+          difficulty: "easy",
+          you: "pink",
+          first: "green",
+          history: saved.history,
+          status: original.payload.game!.status,
+        },
+      },
+    });
+  });
+
+  it("reads a save from before 3.5.0 as the Super AI with the player green and first", async () => {
+    const { game, messages } = harness(exactEngine);
+    game.restore({
+      version: 1,
+      roomId: "local-x",
+      history: "4",
+      series: { you: 0, opponent: 0, draws: 0 },
+      revision: 2,
+      failed: false,
+    });
+    await settle();
+    expect(messages.at(-1)).toMatchObject({
+      payload: {
+        game: {
+          difficulty: "super",
+          you: "green",
+          first: "green",
+          history: "44",
+          status: "playing",
+          players: { pink: { nickname: "Super AI", is_ai: true } },
+        },
+      },
+    });
+    expect(game.serialize()).toMatchObject({ version: 2, difficulty: "super" });
+  });
+
+  it.each([
+    ["an unknown level", { difficulty: "hard" }],
+    ["an unknown colour", { aiColor: "blue" }],
+    ["a seed that is not a number", { seed: "x" }],
+    ["a newer version", { version: 3 }],
+  ])("drops a save with %s", async (_name, change) => {
+    const valid = {
+      version: 2,
+      roomId: "local-x",
+      history: "4",
+      series: { you: 0, opponent: 0, draws: 0 },
+      revision: 2,
+      failed: false,
+      difficulty: "normal",
+      aiColor: "pink",
+      first: "green",
+      seed: "7",
+    };
+    const { game, messages } = harness(exactEngine);
+    game.restore({ ...valid, ...change } as unknown as SavedGame);
+    await settle();
+    expect(game.serialize()).toBeNull();
+    expect(messages).toEqual([]);
   });
 
   it("restores a failed game as failed and ignores an unreadable save", async () => {

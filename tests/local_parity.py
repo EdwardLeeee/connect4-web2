@@ -182,16 +182,62 @@ PROTOCOL_SCRIPTS: dict[str, list[dict[str, Any]]] = {
         {"type": "game.ai.retry", "payload": {}},
         {"type": "game.leave", "payload": {}},
     ],
+    "options the server refuses": [
+        *[
+            {"type": "game.ai.start", "payload": payload}
+            for payload in [
+                {"difficulty": "hard"},
+                {"difficulty": None},
+                {"difficulty": ["easy"]},
+                {"difficulty": "easy", "ai_first": "yes"},
+                {"difficulty": "easy", "ai_first": 1},
+                {"difficulty": "easy", "player_color": "blue"},
+                {"difficulty": "super", "ai_first": True},
+                {"ai_first": True},
+                {"difficulty": "normal", "player_color": "pink", "unknown": 1},
+                {"difficulty": "hard"},
+                {},
+            ]
+        ],
+        {"type": "game.leave", "payload": {}},
+    ],
+    "an Easy game with the AI first, as pink": [
+        {
+            "type": "game.ai.start",
+            "payload": {"difficulty": "easy", "ai_first": True, "player_color": "pink"},
+        },
+        {"type": "game.ai.retry", "payload": {}},
+        *[{"type": "game.move", "payload": {"column": c}} for c in [3, 2, 4, 1, 5, 0, 6] * 3],
+        {"type": "game.rematch", "payload": {}},
+        *[{"type": "game.move", "payload": {"column": c}} for c in [3, 3, 2]],
+        {"type": "game.leave", "payload": {}},
+    ],
+    "a Normal game as pink, moving first": [
+        {"type": "game.ai.start", "payload": {"difficulty": "normal", "player_color": "pink"}},
+        *[{"type": "game.move", "payload": {"column": c}} for c in [3, 3, 2, 4, 1, 5, 0, 6] * 3],
+        {"type": "game.ai.retry", "payload": {}},
+        *[{"type": "game.move", "payload": {"column": c}} for c in [2, 2]],
+        {"type": "game.leave", "payload": {}},
+    ],
 }
 
 
-async def record(script: list[dict[str, Any]], solver: Any) -> list[list[dict[str, Any]]]:
+async def record(
+    script: list[dict[str, Any]], solver: Any, seeds: list[int]
+) -> list[list[dict[str, Any]]]:
+    """The replies to each action; `seeds` receives every game seed the manager draws."""
     # The failing-engine script logs the expected solver exception; keep the output quiet.
     logging.getLogger("connect4_app.manager").setLevel(logging.CRITICAL)
     sessions = SessionStore()
     session, _ = sessions.resolve(None)
     sessions.update(session, "Ada", "zh-TW", None)
-    manager = GameManager(sessions, solver, ai_min_think_seconds=0)
+    rng = random.Random(json.dumps(script))
+
+    def next_seed() -> int:
+        seeds.append(rng.getrandbits(64))
+        return seeds[-1]
+
+    manager = GameManager(sessions, solver, ai_min_think_seconds=0, seed_source=next_seed)
     socket = RecordingSocket()
     await manager.connect(session.id, socket)  # type: ignore[arg-type]
     socket.messages.clear()
@@ -206,26 +252,43 @@ async def record(script: list[dict[str, Any]], solver: Any) -> list[list[dict[st
     return replies
 
 
-def protocol_fixture() -> list[dict[str, Any]]:
-    fixtures = []
-    for name, script in PROTOCOL_SCRIPTS.items():
-        replies = asyncio.run(record(script, PerfectSolver()))
-        fixtures.append({"name": name, "engine": "exact", "script": script, "replies": replies})
-    failing = [
+FAILING_SCRIPTS: dict[str, list[dict[str, Any]]] = {
+    "the engine fails": [
         {"type": "game.ai.start", "payload": {}},
         {"type": "game.move", "payload": {"column": 3}},
         {"type": "game.move", "payload": {"column": 3}},
         {"type": "game.ai.retry", "payload": {}},
         {"type": "game.leave", "payload": {}},
-    ]
-    fixtures.append(
-        {
-            "name": "the engine fails",
-            "engine": "failing",
-            "script": failing,
-            "replies": asyncio.run(record(failing, FailingSolver())),
-        }
-    )
+    ],
+    # Easy's own picks need no engine; its best moves fail.
+    "the engine fails in an Easy game with the AI first": [
+        {"type": "game.ai.start", "payload": {"difficulty": "easy", "ai_first": True}},
+        *[{"type": "game.move", "payload": {"column": c}} for c in [3, 2, 4, 1]],
+        {"type": "game.ai.retry", "payload": {}},
+        {"type": "game.leave", "payload": {}},
+    ],
+}
+
+
+def protocol_fixture() -> list[dict[str, Any]]:
+    """Seeds are decimal strings: JSON numbers lose precision above 2**53."""
+    fixtures = []
+    for engine, scripts, solver in [
+        ("exact", PROTOCOL_SCRIPTS, PerfectSolver()),
+        ("failing", FAILING_SCRIPTS, FailingSolver()),
+    ]:
+        for name, script in scripts.items():
+            seeds: list[int] = []
+            replies = asyncio.run(record(script, solver, seeds))
+            fixtures.append(
+                {
+                    "name": name,
+                    "engine": engine,
+                    "seeds": [str(seed) for seed in seeds],
+                    "script": script,
+                    "replies": replies,
+                }
+            )
     return fixtures
 
 

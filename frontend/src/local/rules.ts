@@ -1,6 +1,12 @@
 // A line-by-line port of backend/connect4_app/domain.py for AI games, so the app can
 // play them offline. tests/local/rules.spec.ts replays fixtures recorded from domain.py.
-import type { Cell, Color, GameStatus, ResultReason } from "../types";
+import type {
+  Cell,
+  Color,
+  Difficulty,
+  GameStatus,
+  ResultReason,
+} from "../types";
 import { COLUMNS, ROWS } from "./constants";
 
 export interface CellRef {
@@ -20,8 +26,25 @@ export interface Series {
   draws: number;
 }
 
-/** The human is always green and moves first in AI games. */
-export interface AiGame {
+/** What a game.ai.start chose; manager.py _start_ai. */
+export interface AiOptions {
+  difficulty: Difficulty;
+  /** The AI's colour; the player has the other. */
+  aiColor: Color;
+  first: Color;
+  /** Fixes the Easy and Normal AIs' random moves (difficulty.ts). */
+  seed: bigint;
+}
+
+/** game.ai.start without options, and every game saved before 3.5.0. */
+export const SUPER_AI: AiOptions = {
+  difficulty: "super",
+  aiColor: "pink",
+  first: "green",
+  seed: 0n,
+};
+
+export interface AiGame extends AiOptions {
   board: Cell[][];
   history: string;
   first: Color;
@@ -70,12 +93,12 @@ export function winningCells(board: Cell[][], color: Color): CellRef[] {
   return [];
 }
 
-export function newGame(): AiGame {
+export function newGame(options: AiOptions = SUPER_AI): AiGame {
   return {
+    ...options,
     board: emptyBoard(),
     history: "",
-    first: "green",
-    turn: "green",
+    turn: options.first,
     status: "playing",
     winner: null,
     winCells: [],
@@ -89,7 +112,7 @@ export function newGame(): AiGame {
 export function drop(game: AiGame, color: Color, column: number): number {
   const allowed =
     game.status === "playing" ||
-    (game.status === "thinking" && color === "pink");
+    (game.status === "thinking" && color === game.aiColor);
   if (!allowed) throw new RuleError("game_not_playable");
   if (color !== game.turn) throw new RuleError("not_your_turn");
   if (!Number.isInteger(column) || column < 0 || column >= COLUMNS) {
@@ -113,8 +136,8 @@ export function drop(game: AiGame, color: Color, column: number): number {
     game.winner = color;
     game.winCells = cells;
     game.resultReason = "connect_four";
-    if (color === "green") game.series.you += 1;
-    else game.series.opponent += 1;
+    if (color === game.aiColor) game.series.opponent += 1;
+    else game.series.you += 1;
   } else if (game.history.length === ROWS * COLUMNS) {
     game.status = "finished";
     game.winner = null;
@@ -143,11 +166,13 @@ export function replay(
   history: string,
   series: Series,
   revision: number,
+  options: AiOptions = SUPER_AI,
 ): AiGame {
-  const game = newGame();
+  const game = newGame(options);
+  const second: Color = game.first === "green" ? "pink" : "green";
   game.series = { ...series };
   for (let index = 0; index < history.length; index++) {
-    const color: Color = index % 2 === 0 ? "green" : "pink";
+    const color = index % 2 === 0 ? game.first : second;
     drop(game, color, Number(history[index]) - 1);
   }
   // Replaying scored the finished game again; the saved series already counts it.
