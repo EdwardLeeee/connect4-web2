@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 import local_parity
+from connect4_app import difficulty
 from connect4_app.domain import COLUMNS, ROWS
 from connect4_app.manager import AI_MIN_THINK_SECONDS, AI_NICKNAMES
 from connect4_app.sessions import DEFAULT_NICKNAMES, LOCALES, default_nickname
@@ -37,8 +38,20 @@ def test_constants_match_the_server() -> None:
     assert ts_order and rust_order
     assert ts_order.group(1).replace(" ", "") == rust_order.group(1).replace(" ", "")
 
-    nickname = re.search(r'AI_NICKNAME = "([^"]+)"', CONSTANTS)
-    assert nickname and nickname.group(1) == AI_NICKNAMES["super"]
+    for level, nickname in AI_NICKNAMES.items():
+        assert re.search(rf'^  {level}: "{re.escape(nickname)}",$', CONSTANTS, re.M), level
+
+
+def test_difficulty_constants_match_the_server() -> None:
+    for name in ["EASY_RANDOM_PERCENT", "NORMAL_RANDOM_PERCENT"]:
+        assert ts_number(name) == getattr(difficulty, name), name
+    for name in ["EASY_RANDOM_IS_SAFE", "NORMAL_RANDOM_IS_SAFE"]:
+        safe = re.search(rf"export const {name} = (true|false);", CONSTANTS)
+        assert safe and (safe.group(1) == "true") is getattr(difficulty, name), name
+
+    port = (ROOT / "frontend" / "src" / "local" / "difficulty.ts").read_text(encoding="utf-8")
+    levels = re.search(r"DIFFICULTIES: readonly Difficulty\[\] = \[([^\]]+)\]", port)
+    assert levels and re.findall(r'"(\w+)"', levels.group(1)) == list(difficulty.DIFFICULTIES)
 
 
 def test_the_difficulty_fixture_exercises_every_rule() -> None:
