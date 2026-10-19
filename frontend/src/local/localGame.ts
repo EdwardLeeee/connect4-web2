@@ -94,8 +94,7 @@ function startOptions(
   if (
     !DIFFICULTIES.includes(difficulty as Difficulty) ||
     typeof aiFirst !== "boolean" ||
-    (playerColor !== "green" && playerColor !== "pink") ||
-    (difficulty === "super" && aiFirst)
+    (playerColor !== "green" && playerColor !== "pink")
   ) {
     throw new RuleError("invalid_payload");
   }

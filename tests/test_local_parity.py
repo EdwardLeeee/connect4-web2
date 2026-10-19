@@ -45,8 +45,9 @@ def test_constants_match_the_server() -> None:
 def test_difficulty_constants_match_the_server() -> None:
     for name in ["EASY_RANDOM_PERCENT", "NORMAL_RANDOM_PERCENT"]:
         assert ts_number(name) == getattr(difficulty, name), name
-    safe = re.search(r"export const NORMAL_RANDOM_IS_SAFE = (true|false);", CONSTANTS)
-    assert safe and (safe.group(1) == "true") is difficulty.NORMAL_RANDOM_IS_SAFE
+    for name in ["EASY_RANDOM_IS_SAFE", "NORMAL_RANDOM_IS_SAFE"]:
+        safe = re.search(rf"export const {name} = (true|false);", CONSTANTS)
+        assert safe and (safe.group(1) == "true") is getattr(difficulty, name), name
 
     port = (ROOT / "frontend" / "src" / "local" / "difficulty.ts").read_text(encoding="utf-8")
     levels = re.search(r"DIFFICULTIES: readonly Difficulty\[\] = \[([^\]]+)\]", port)

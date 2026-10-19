@@ -4,6 +4,7 @@
 import type { Difficulty } from "../types";
 import {
   COLUMNS,
+  EASY_RANDOM_IS_SAFE,
   EASY_RANDOM_PERCENT,
   NORMAL_RANDOM_IS_SAFE,
   NORMAL_RANDOM_PERCENT,
@@ -44,20 +45,20 @@ export function plannedMove(
   const legal = [...Array(COLUMNS).keys()].filter(
     (column) => stacks[column].length < ROWS,
   );
-  let percent = EASY_RANDOM_PERCENT;
-  if (difficulty === "normal") {
-    // Its own win first, then the opponent's.
-    for (const target of [player, 1 - player]) {
-      for (const column of legal) {
-        if (connectsFour(stacks, column, target)) return column;
-      }
+  // Its own win first, then the opponent's.
+  for (const target of [player, 1 - player]) {
+    for (const column of legal) {
+      if (connectsFour(stacks, column, target)) return column;
     }
-    percent = NORMAL_RANDOM_PERCENT;
   }
+  const [percent, safe] =
+    difficulty === "easy"
+      ? [EASY_RANDOM_PERCENT, EASY_RANDOM_IS_SAFE]
+      : [NORMAL_RANDOM_PERCENT, NORMAL_RANDOM_IS_SAFE];
   if (draw(seed, history, RANDOM_OR_BEST) % 100n >= BigInt(percent))
     return null;
   let candidates = legal;
-  if (difficulty === "normal" && NORMAL_RANDOM_IS_SAFE) {
+  if (safe) {
     const safe = legal.filter(
       (column) => !handsOverWin(stacks, column, player),
     );

@@ -192,8 +192,7 @@ PROTOCOL_SCRIPTS: dict[str, list[dict[str, Any]]] = {
                 {"difficulty": "easy", "ai_first": "yes"},
                 {"difficulty": "easy", "ai_first": 1},
                 {"difficulty": "easy", "player_color": "blue"},
-                {"difficulty": "super", "ai_first": True},
-                {"ai_first": True},
+                {"difficulty": "super", "ai_first": "true"},
                 {"difficulty": "normal", "player_color": "pink", "unknown": 1},
                 {"difficulty": "hard"},
                 {},
@@ -210,6 +209,11 @@ PROTOCOL_SCRIPTS: dict[str, list[dict[str, Any]]] = {
         *[{"type": "game.move", "payload": {"column": c}} for c in [3, 2, 4, 1, 5, 0, 6] * 3],
         {"type": "game.rematch", "payload": {}},
         *[{"type": "game.move", "payload": {"column": c}} for c in [3, 3, 2]],
+        {"type": "game.leave", "payload": {}},
+    ],
+    "a Super AI game with the AI first, as pink": [
+        {"type": "game.ai.start", "payload": {"ai_first": True, "player_color": "pink"}},
+        *[{"type": "game.move", "payload": {"column": c}} for c in [3, 2, 4, 1, 5, 6]],
         {"type": "game.leave", "payload": {}},
     ],
     "a Normal game as pink, moving first": [
@@ -260,9 +264,9 @@ FAILING_SCRIPTS: dict[str, list[dict[str, Any]]] = {
         {"type": "game.ai.retry", "payload": {}},
         {"type": "game.leave", "payload": {}},
     ],
-    # Easy's own picks need no engine; its best moves fail.
-    "the engine fails in an Easy game with the AI first": [
-        {"type": "game.ai.start", "payload": {"difficulty": "easy", "ai_first": True}},
+    # Normal's own picks need no engine; its best moves fail.
+    "the engine fails in a Normal game with the AI first": [
+        {"type": "game.ai.start", "payload": {"difficulty": "normal", "ai_first": True}},
         *[{"type": "game.move", "payload": {"column": c}} for c in [3, 2, 4, 1]],
         {"type": "game.ai.retry", "payload": {}},
         {"type": "game.leave", "payload": {}},
