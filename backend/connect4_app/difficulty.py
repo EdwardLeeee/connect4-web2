@@ -4,10 +4,9 @@ Every level plays the exact best move (`PerfectSolver.best_move`) unless `planne
 picks a column without the solver:
 
 - Super never does.
-- Easy plays a random legal column on `EASY_RANDOM_PERCENT` of its moves.
-- Normal always takes a win in one and blocks the opponent's win in one. On
-  `NORMAL_RANDOM_PERCENT` of its other moves it plays at random, avoiding columns that hand
-  the opponent a win in one when `NORMAL_RANDOM_IS_SAFE` is set.
+- Easy and Normal always take a win in one, and otherwise block the opponent's win in one.
+- On their `*_RANDOM_PERCENT` of the other moves they play a random column; with
+  `*_RANDOM_IS_SAFE` the random column never hands the opponent a win in one.
 
 These are deliberate levels, not fallbacks: whether a move is random is drawn before any
 solving, and when the best move is needed and the solver fails, the game reports
@@ -22,8 +21,9 @@ from __future__ import annotations
 from .domain import COLUMNS, ROWS, Difficulty
 
 DIFFICULTIES: tuple[Difficulty, ...] = ("easy", "normal", "super")
-# Placeholders until the user picks the strengths.
-EASY_RANDOM_PERCENT = 60
+# The user's picks of 2026-10-19 for Easy; Normal's percentage is a placeholder until picked.
+EASY_RANDOM_PERCENT = 100
+EASY_RANDOM_IS_SAFE = False
 NORMAL_RANDOM_PERCENT = 90
 NORMAL_RANDOM_IS_SAFE = True
 
@@ -56,18 +56,19 @@ def planned_move(difficulty: Difficulty, seed: int, history: str) -> int | None:
     stacks = stones(history)
     player = len(history) % 2
     legal = [column for column in range(COLUMNS) if len(stacks[column]) < ROWS]
-    percent = EASY_RANDOM_PERCENT
-    if difficulty == "normal":
-        # Its own win first, then the opponent's.
-        for target in (player, 1 - player):
-            for column in legal:
-                if connects_four(stacks, column, target):
-                    return column
-        percent = NORMAL_RANDOM_PERCENT
+    # Its own win first, then the opponent's.
+    for target in (player, 1 - player):
+        for column in legal:
+            if connects_four(stacks, column, target):
+                return column
+    if difficulty == "easy":
+        percent, safe = EASY_RANDOM_PERCENT, EASY_RANDOM_IS_SAFE
+    else:
+        percent, safe = NORMAL_RANDOM_PERCENT, NORMAL_RANDOM_IS_SAFE
     if draw(seed, history, RANDOM_OR_BEST) % 100 >= percent:
         return None
     candidates = legal
-    if difficulty == "normal" and NORMAL_RANDOM_IS_SAFE:
+    if safe:
         candidates = [
             column for column in legal if not hands_over_win(stacks, column, player)
         ] or legal

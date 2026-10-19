@@ -214,11 +214,11 @@ AI_MOVE_CLIENT = textwrap.dedent(
             while len(game["history"]) < 2:
                 game = next_snapshot(ws)["game"]
 
-            # An Easy game where the AI moves first and the player takes pink.
+            # A Super AI game where the AI moves first and the player takes pink.
             ws.send(json.dumps({"type": "game.leave", "payload": {}}))
             while next_snapshot(ws)["game"] is not None:
                 pass
-            options = {"difficulty": "easy", "ai_first": True, "player_color": "pink"}
+            options = {"difficulty": "super", "ai_first": True, "player_color": "pink"}
             ws.send(json.dumps({"type": "game.ai.start", "payload": options}))
             opening = next_snapshot(ws)["game"]
             reply = opening
@@ -233,6 +233,7 @@ AI_MOVE_CLIENT = textwrap.dedent(
         "expected": expected,
         "opening": {key: opening[key] for key in keys},
         "reply": {key: reply[key] for key in keys},
+        "first_move": str(_solver.best_move("") + 1),
         "last": last,
     }))
     """
@@ -250,20 +251,21 @@ def check_ai_move(cookie: str) -> None:
     )
     print(f"ai move: {outcome['history']} (expected {outcome['expected']})")
     opening = {
-        "difficulty": "easy",
+        "difficulty": "super",
         "status": "thinking",
         "you": "pink",
         "first": "green",
         "turn": "green",
         "history": "",
     }
-    check(outcome["opening"] == opening, f"Easy game with the AI first opened as {outcome}")
+    check(outcome["opening"] == opening, f"Super AI game with the AI first opened as {outcome}")
     reply = outcome["reply"]
     check(
-        (reply["status"], reply["turn"], len(reply["history"])) == ("playing", "pink", 1),
-        f"the Easy AI's first move left {outcome}",
+        (reply["status"], reply["turn"], reply["history"])
+        == ("playing", "pink", outcome["first_move"]),
+        f"the Super AI's first move left {outcome}",
     )
-    print(f"easy ai first: {reply['history']}")
+    print(f"super ai first: {reply['history']}")
 
 
 def run(image: str) -> None:

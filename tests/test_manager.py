@@ -733,8 +733,7 @@ async def test_games_between_players_have_no_difficulty() -> None:
         {"difficulty": "easy", "ai_first": 1},
         {"difficulty": "easy", "player_color": "blue"},
         {"difficulty": "easy", "player_color": None},
-        {"difficulty": "super", "ai_first": True},
-        {"ai_first": True},
+        {"difficulty": "super", "ai_first": "true"},
     ],
 )
 async def test_ai_start_rejects_options_it_does_not_know(payload: dict[str, Any]) -> None:
@@ -758,6 +757,8 @@ async def test_ai_start_rejects_options_it_does_not_know(payload: dict[str, Any]
             "thinking",
         ),
         ({"difficulty": "super", "player_color": "pink"}, "pink", "pink", "playing"),
+        ({"difficulty": "super", "ai_first": True}, "green", "pink", "thinking"),
+        ({"ai_first": True, "player_color": "pink"}, "pink", "green", "thinking"),
     ],
 )
 async def test_the_level_order_and_colour_are_the_players_choice(
@@ -766,11 +767,12 @@ async def test_the_level_order_and_colour_are_the_players_choice(
     manager, player, _ = await start_level(payload)
     view = manager.snapshot(player)["game"]
     ai = "pink" if you == "green" else "green"
-    assert view["difficulty"] == payload["difficulty"]
+    difficulty = payload.get("difficulty", "super")
+    assert view["difficulty"] == difficulty
     assert (view["you"], view["first"], view["turn"], view["status"]) == (you, first, first, status)
     assert view["history"] == ""
     assert view["players"][ai]["is_ai"] is True
-    assert view["players"][ai]["nickname"] == AI_NICKNAMES[payload["difficulty"]]
+    assert view["players"][ai]["nickname"] == AI_NICKNAMES[difficulty]
     assert view["players"][you]["nickname"] == "Ada"
     if status == "thinking":
         await next(iter(manager.ai_tasks.values()))
@@ -819,10 +821,10 @@ async def test_the_same_seed_replays_the_same_moves() -> None:
 @pytest.mark.parametrize("restart", ["game.ai.retry", "game.rematch"])
 async def test_a_restart_keeps_the_level_and_order_with_a_new_seed(restart: str) -> None:
     # The first seed needs the solver for the opening move, the second picks it at random.
-    best_first = seed_where("easy", "", random_move=False)
-    random_first = seed_where("easy", "", random_move=True)
+    best_first = seed_where("normal", "", random_move=False)
+    random_first = seed_where("normal", "", random_move=True)
     manager, player, _ = await start_level(
-        {"difficulty": "easy", "ai_first": True},
+        {"difficulty": "normal", "ai_first": True},
         solver=FailingSolver(),
         seeds=(best_first, random_first),
     )
@@ -834,7 +836,7 @@ async def test_a_restart_keeps_the_level_and_order_with_a_new_seed(restart: str)
     await manager.handle(player, {"type": restart, "payload": {}})
     view = manager.snapshot(player)["game"]
     assert (view["difficulty"], view["first"], view["status"], view["history"]) == (
-        "easy",
+        "normal",
         "pink",
         "thinking",
         "",
@@ -843,7 +845,7 @@ async def test_a_restart_keeps_the_level_and_order_with_a_new_seed(restart: str)
     game = manager._game_for(player)
     assert game is not None
     assert game.seed == random_first
-    assert game.history == str(planned_move("easy", random_first, "") + 1)  # type: ignore[operator]
+    assert game.history == str(planned_move("normal", random_first, "") + 1)  # type: ignore[operator]
     assert game.status == "playing"
 
 

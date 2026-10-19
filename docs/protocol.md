@@ -137,10 +137,10 @@ iOS／Android app 把網頁打包在 app 裡（Capacitor），頁面來源是 `c
 | 欄位 | 值 | 預設 | 說明 |
 |---|---|---|---|
 | `difficulty` | `"easy"`、`"normal"`、`"super"` | `"super"` | 難度，見下方「AI 難度」 |
-| `ai_first` | `true`、`false` | `false` | `true` 時 AI 先手；`super` 不接受 `true`，玩家對 Super AI 一律先手 |
+| `ai_first` | `true`、`false` | `false` | `true` 時 AI 先手；三個難度都可以（Super AI 先手時玩家理論上必輸） |
 | `player_color` | `"green"`、`"pink"` | `"green"` | 玩家的棋子顏色，AI 執另一色；和先後手無關 |
 
-- 值不在表內（包括 `null`、字串的 `"true"`、數字 `1`），或 `super` 配 `ai_first: true`，回 `invalid_payload`，不開局。
+- 值不在表內（包括 `null`、字串的 `"true"`、數字 `1`）時回 `invalid_payload`，不開局。
   其他不認得的欄位會被忽略。
 - AI 先手時，開局的 snapshot 就是 `status: "thinking"`、`history: ""`、`turn` 是 AI 的顏色；AI 同樣至少想 1 秒才下第一手。
   這段期間玩家送 `game.move` 會收到 `game_not_playable`。
@@ -149,10 +149,12 @@ iOS／Android app 把網頁打包在 app 裡（Capacitor），頁面來源是 `c
 ### AI 難度
 
 - `super`：每一手都是精確解，同分時照中央優先 `[3,2,4,1,5,0,6]` 選欄。
-- `normal`：自己一步能連成四就下那一欄；否則對手下一步能連成四，就擋那一欄（都從左邊的欄找起）。
-  其他時候，90% 的手隨機挑一欄，但避開「下了之後對手下一步就能連成四」的欄（每一欄都會時才不避開）；剩下 10% 下精確解。
-- `easy`：60% 的手從所有能下的欄隨機挑一欄，剩下 40% 下精確解。
-- 百分比是暫定值，量測見 `docs/research/2026-10-ai-difficulty.md`，規則在 `backend/connect4_app/difficulty.py`。
+- `easy` 與 `normal` 都先看一步內的輸贏：自己一步能連成四就下那一欄；否則對手下一步能連成四，就擋那一欄
+  （都從左邊的欄找起）。其他時候：
+  - `easy`：每一手都從所有能下的欄隨機挑一欄。
+  - `normal`：90% 的手隨機挑一欄，但避開「下了之後對手下一步就能連成四」的欄（每一欄都會時才不避開）；剩下 10% 下精確解。
+- `easy` 是使用者 2026-10-19 選定的規則；`normal` 的百分比是暫定值。量測見 `docs/research/2026-10-ai-difficulty.md`，
+  規則在 `backend/connect4_app/difficulty.py`。
 - 「這一手隨機或下精確解」在求解之前就決定；需要精確解而求解器故障時，任何難度都回報 `solver_unavailable`，
   不會改成隨機。
 - 隨機只由每局的 64 位元種子和 `history` 決定：伺服器在開局與每次重開時產生新種子，不送給用戶端。

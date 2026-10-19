@@ -47,7 +47,7 @@ def test_the_difficulty_fixture_exercises_every_rule() -> None:
     for rule in ["win", "block", "best", "random, avoiding a column", "random"]:
         assert seen[rule] >= 3, (rule, seen)
     easy = [move["column"] for move in fixture["moves"] if move["difficulty"] == "easy"]
-    assert None in easy and set(range(7)) <= set(easy)
+    assert set(range(7)) <= set(easy)
 
 
 def test_the_wasm_engine_is_the_native_engine_version() -> None:

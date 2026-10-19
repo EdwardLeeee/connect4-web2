@@ -153,8 +153,6 @@ class GameManager:
             raise ValueError("unknown AI options")
         if player_color not in ("green", "pink"):
             raise ValueError("unknown colour")
-        if difficulty == "super" and ai_first:
-            raise ValueError("the player always moves first against the Super AI")
         ai_color: Color = "pink" if player_color == "green" else "green"
         seats: dict[Color, str] = {"green": AI_ID, "pink": AI_ID}
         seats[player_color] = session_id
