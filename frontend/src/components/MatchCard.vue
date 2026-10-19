@@ -2,7 +2,12 @@
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import type { Color, GameState } from "../types";
-import type { RoomMode } from "../utils/presentation";
+import {
+  aiLevel,
+  opponentOf,
+  playerName,
+  type RoomMode,
+} from "../utils/presentation";
 
 const props = defineProps<{
   game: GameState;
@@ -15,6 +20,10 @@ const props = defineProps<{
 const { t } = useI18n();
 
 const colours: Color[] = ["green", "pink"];
+// R29 06-A: 挑戰 簡單 AI above the desktop card.
+const aiName = computed(() =>
+  playerName(props.game, opponentOf(props.game.you), t),
+);
 
 const players = computed(() =>
   colours.map((colour) => {
@@ -27,7 +36,9 @@ const players = computed(() =>
     const away = player ? !player.connected : false;
     let meta = seat;
     if (isMe) meta = `${t("game.you")} · ${seat}`;
-    else if (player?.is_ai) meta = `${seat} · ${t("game.solver")}`;
+    else if (player?.is_ai) {
+      meta = `${seat} · ${t(`game.level.${aiLevel(props.game)}`)}`;
+    }
     let tag: "turn" | "away" | "online" | null = null;
     if (current && isMe && props.online) tag = "turn";
     else if (away) tag = "away";
@@ -35,7 +46,7 @@ const players = computed(() =>
     const ring = props.rings[colour];
     return {
       colour,
-      name: player?.nickname ?? "",
+      name: playerName(props.game, colour, t),
       meta,
       isMe,
       current,
@@ -51,7 +62,9 @@ const players = computed(() =>
 <template>
   <div class="card match-card">
     <p class="mode-label">
-      <template v-if="mode === 'ai'">{{ t("game.modeAi") }}</template>
+      <template v-if="mode === 'ai'">{{
+        t("game.modeAi", { name: aiName })
+      }}</template>
       <template v-else-if="mode === 'private'">
         {{ t("game.modePrivate") }} <b class="code">{{ code }}</b>
       </template>

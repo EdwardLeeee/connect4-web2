@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, nextTick, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import { shownKey } from "../appText";
+import AiPicker from "../components/AiPicker.vue";
 import AppIcon from "../components/AppIcon.vue";
 import ClauseText from "../components/ClauseText.vue";
 import InviteScreen from "../components/InviteScreen.vue";
 import MiniBoardDemo from "../components/MiniBoardDemo.vue";
-import { usesLocalAi } from "../native";
+import { aiChoiceMemory, usesLocalAi } from "../native";
 import { useGameStore } from "../stores/game";
+import { DEFAULT_CHOICE, startPayload, type AiChoice } from "../utils/aiChoice";
 import { roomCodeFrom } from "../utils/invite";
 
 const store = useGameStore();
@@ -30,6 +32,33 @@ const localAi = usesLocalAi();
 const appOffline = computed(
   () => localAi && store.shownConnection === "offline",
 );
+
+// R29 01: 立即對戰 opens the AI sheet. It opens on the choice last started
+// with (04), read when the lobby shows, so it does not jump once open.
+const aiChoice = ref<AiChoice>({ ...DEFAULT_CHOICE });
+const kept = aiChoiceMemory.load().then((choice) => (aiChoice.value = choice));
+const pickerOpen = ref(false);
+const playButton = ref<HTMLButtonElement | null>(null);
+// The website cannot start offline; the app plays on the device (3.2.0).
+const canStartAi = computed(() => !offline.value || localAi);
+
+async function openPicker() {
+  await kept;
+  pickerOpen.value = true;
+}
+
+function closePicker() {
+  pickerOpen.value = false;
+  void nextTick(() => playButton.value?.focus());
+}
+
+// Only 開始對戰 keeps the choice; 取消 leaves the last one as it was.
+function startAi(choice: AiChoice) {
+  aiChoice.value = choice;
+  void aiChoiceMemory.keep(choice);
+  pickerOpen.value = false;
+  store.send("game.ai.start", startPayload(choice));
+}
 
 function togglePanel(panel: "friends" | "matchmaking") {
   expandedPanel.value = expandedPanel.value === panel ? null : panel;
@@ -54,6 +83,13 @@ function onRoomCodeInput() {
 <template>
   <InviteScreen v-if="invitedCode" :code="invitedCode" />
   <section v-else class="lobby">
+    <AiPicker
+      v-if="pickerOpen"
+      :choice="aiChoice"
+      :can-start="canStartAi"
+      @start="startAi"
+      @close="closePicker"
+    />
     <div
       v-if="store.shownConnection === 'offline'"
       class="notice-banner"
@@ -75,10 +111,11 @@ function onRoomCodeInput() {
         </div>
         <MiniBoardDemo />
         <button
+          ref="playButton"
           class="btn primary big with-arrow"
           type="button"
-          :disabled="offline && !localAi"
-          @click="store.send('game.ai.start')"
+          :disabled="!canStartAi"
+          @click="openPicker"
         >
           <span>{{ t("lobby.aiAction") }}</span>
           <AppIcon name="arrow" />

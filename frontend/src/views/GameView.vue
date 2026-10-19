@@ -20,6 +20,7 @@ import {
   lastMove,
   movesSince,
   opponentOf,
+  playerName,
   resultPanel,
   statusHead,
   withToken,
@@ -33,8 +34,8 @@ const { t } = useI18n();
 const online = computed(() => store.shownConnection === "online");
 const mode = computed<RoomMode>(() => store.room?.mode ?? "ai");
 const opponent = computed<Color>(() => opponentOf(store.game?.you ?? "green"));
-const opponentName = computed(
-  () => store.game?.players[opponent.value]?.nickname ?? "",
+const opponentName = computed(() =>
+  store.game ? playerName(store.game, opponent.value, t) : "",
 );
 const last = computed(() => (store.game ? lastMove(store.game) : null));
 
@@ -276,7 +277,7 @@ function onAction(action: ResultAction) {
           <strong>{{
             store.game.you === store.game.first
               ? t("game.you")
-              : (store.game.players[store.game.first]?.nickname ?? "")
+              : playerName(store.game, store.game.first, t)
           }}</strong>
         </div>
         <div>

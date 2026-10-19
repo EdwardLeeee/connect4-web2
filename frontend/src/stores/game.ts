@@ -824,8 +824,11 @@ export const useGameStore = defineStore("game", {
       return true;
     },
 
-    /** Starts an AI game on the device instead of on the server. */
-    async startLocal() {
+    /**
+     * Starts an AI game on the device instead of on the server, with
+     * game.ai.start's options (R29: level, who starts, colour).
+     */
+    async startLocal(payload: Record<string, unknown> = {}) {
       if (this.source === "local") return;
       const server = this.serverSnapshot;
       if (server?.room || server?.game) {
@@ -851,7 +854,7 @@ export const useGameStore = defineStore("game", {
       if (giveUpSearch) this.abandonedSearch = true;
       this.source = "local";
       this.localEpoch += 1;
-      local.handle("game.ai.start");
+      local.handle("game.ai.start", payload);
     },
 
     /** Resumes the on-device game the app was closed during. */
@@ -938,7 +941,7 @@ export const useGameStore = defineStore("game", {
         return;
       }
       if (type === "game.ai.start" && usesLocalAi()) {
-        void this.startLocal();
+        void this.startLocal(payload);
         return;
       }
       if (this.socket?.readyState === WebSocket.OPEN) {

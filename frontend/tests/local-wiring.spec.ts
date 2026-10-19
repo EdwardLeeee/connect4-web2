@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { pageSnapshot } from "../e2e/states";
 import { CENTRE_FIRST, ROWS } from "../src/local/constants";
+import { LocalGame } from "../src/local/localGame";
 import { useGameStore } from "../src/stores/game";
 import { FakeWebSocket } from "./fakeSocket";
 
@@ -295,6 +296,50 @@ describe("AI games on the website", () => {
     expect(latest().sent).toEqual(["game.ai.start"]);
     expect(store.source).toBe("server");
     expect(store.local).toBeNull();
+  });
+
+  it("send the sheet's options to the server (R29)", async () => {
+    native.app = false;
+    const store = await inTheLobby();
+    const options = {
+      difficulty: "easy",
+      ai_first: true,
+      player_color: "pink",
+    };
+    store.send("game.ai.start", options);
+    await settle();
+    expect(latest().messages).toEqual([
+      { type: "game.ai.start", payload: options },
+    ]);
+  });
+});
+
+describe("the sheet's options in the app (R29)", () => {
+  it("go to the game on the device, as the server would get them", async () => {
+    const handle = vi.spyOn(LocalGame.prototype, "handle");
+    const store = await inTheLobby();
+    const options = {
+      difficulty: "normal",
+      ai_first: true,
+      player_color: "pink",
+    };
+    store.send("game.ai.start", options);
+    await store.localLoading;
+    await settle();
+    expect(handle).toHaveBeenCalledWith("game.ai.start", options);
+    expect(latest().sent).toEqual([]);
+    handle.mockRestore();
+    // Normal moves first as green, so it thinks at once (R29 09).
+    expect(store.source).toBe("local");
+    expect(store.game).toMatchObject({
+      difficulty: "normal",
+      you: "pink",
+      first: "green",
+      turn: "green",
+      status: "thinking",
+      history: "",
+    });
+    expect(store.game!.players.green).toMatchObject({ is_ai: true });
   });
 });
 

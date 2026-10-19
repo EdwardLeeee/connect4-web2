@@ -1,7 +1,7 @@
 // What the play screen shows for a snapshot: the status chip above the board
 // (design/spec.md §4) and the result panel (P07–P18). Pure, so each page ID
 // can be checked without rendering.
-import type { Cell, Color, GameState } from "../types";
+import type { Cell, Color, Difficulty, GameState } from "../types";
 import { gameOutcome } from "./outcome";
 
 export type RoomMode = "ai" | "private" | "matchmaking";
@@ -43,6 +43,25 @@ export interface HeadInput {
 
 export function opponentOf(colour: Color): Color {
   return colour === "green" ? "pink" : "green";
+}
+
+/** The AI's level; a snapshot from before 3.5.0 has none and was Super AI. */
+export function aiLevel(game: GameState): Difficulty {
+  return game.difficulty ?? "super";
+}
+
+/**
+ * A player's name as shown (R29 06-A): the AI by its level in this language
+ * (the server's nickname is English), anyone else by their nickname.
+ */
+export function playerName(
+  game: GameState,
+  colour: Color,
+  t: (key: string) => string,
+): string {
+  const player = game.players[colour];
+  if (!player) return "";
+  return player.is_ai ? t(`game.aiName.${aiLevel(game)}`) : player.nickname;
 }
 
 export function statusHead(input: HeadInput): HeadModel | null {
@@ -232,7 +251,7 @@ export function resultPanel(
         emblem: "flag",
         title:
           mode === "ai"
-            ? { key: "game.loseAi" }
+            ? { key: "game.loseAi", args: name }
             : { key: "game.lose", args: name },
         sub:
           mode === "ai"

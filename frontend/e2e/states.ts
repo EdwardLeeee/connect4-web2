@@ -1,7 +1,14 @@
 // Snapshots for the design/spec.md page IDs, ported from
 // design/mockups/round2/states.js into the protocol shape (docs/protocol.md).
 import type { Locale } from "../src/locales";
-import type { Cell, GameState, Player, Snapshot } from "../src/types";
+import type {
+  Cell,
+  Color,
+  Difficulty,
+  GameState,
+  Player,
+  Snapshot,
+} from "../src/types";
 
 export const SERVER_TIME = 1_790_000_000;
 
@@ -387,4 +394,55 @@ function pageIn(id: PageId, locale: Locale): Snapshot {
         }),
       );
   }
+}
+
+// The server's AI nicknames (manager.py); the page shows its own words (R29 06-A).
+const AI_NICKNAMES: Record<Difficulty, string> = {
+  easy: "Easy AI",
+  normal: "Normal AI",
+  super: "Super AI",
+};
+const other = (colour: Color): Color => (colour === "green" ? "pink" : "green");
+
+/**
+ * An AI page (P03, P05, P08…) as round 29 plays it, after its drafts' play():
+ * at `difficulty`, with you `you` and the AI first or not. Pink swaps the
+ * board's colours, so the history still fits. `opening` empties the board
+ * for the AI's first move ("thinking") or shows it in the centre ("moved").
+ */
+export function aiVariant(
+  snapshot: Snapshot,
+  options: {
+    difficulty: Difficulty;
+    you?: Color;
+    aiFirst?: boolean;
+    opening?: "thinking" | "moved";
+  },
+): Snapshot {
+  const game = structuredClone(snapshot.game!);
+  const you = options.you ?? "green";
+  const aiSeat = other(you);
+  const human = game.players[game.you]!;
+  const machine = game.players[other(game.you)]!;
+  game.difficulty = options.difficulty;
+  game.players = {
+    [you]: human,
+    [aiSeat]: { ...machine, nickname: AI_NICKNAMES[options.difficulty] },
+  };
+  if (you !== game.you) {
+    const swap = (cell: Cell) => (cell ? other(cell) : cell);
+    game.board = game.board.map((row) => row.map(swap));
+    game.turn = other(game.turn);
+    if (game.winner) game.winner = other(game.winner);
+    game.you = you;
+  }
+  game.first = options.aiFirst ? aiSeat : you;
+  if (options.opening) {
+    game.board = BOARDS.EMPTY.map((row) => [...row]);
+    game.status = options.opening === "thinking" ? "thinking" : "playing";
+    game.turn = options.opening === "thinking" ? aiSeat : you;
+    game.history = options.opening === "thinking" ? "" : "4";
+    if (options.opening === "moved") game.board[5][3] = aiSeat;
+  }
+  return { ...snapshot, game };
 }
