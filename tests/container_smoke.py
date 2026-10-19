@@ -213,10 +213,28 @@ AI_MOVE_CLIENT = textwrap.dedent(
             ws.send(json.dumps({"type": "game.move", "payload": {"column": HUMAN_COLUMN}}))
             while len(game["history"]) < 2:
                 game = next_snapshot(ws)["game"]
+
+            # An Easy game where the AI moves first and the player takes pink.
+            ws.send(json.dumps({"type": "game.leave", "payload": {}}))
+            while next_snapshot(ws)["game"] is not None:
+                pass
+            options = {"difficulty": "easy", "ai_first": True, "player_color": "pink"}
+            ws.send(json.dumps({"type": "game.ai.start", "payload": options}))
+            opening = next_snapshot(ws)["game"]
+            reply = opening
+            while not reply["history"]:
+                reply = next_snapshot(ws)["game"]
     except Exception as error:
         print(json.dumps({"error": repr(error), "last": last}))
         sys.exit(1)
-    print(json.dumps({"history": game["history"], "expected": expected, "last": last}))
+    keys = ("difficulty", "status", "you", "first", "turn", "history")
+    print(json.dumps({
+        "history": game["history"],
+        "expected": expected,
+        "opening": {key: opening[key] for key in keys},
+        "reply": {key: reply[key] for key in keys},
+        "last": last,
+    }))
     """
 )
 
@@ -231,6 +249,21 @@ def check_ai_move(cookie: str) -> None:
         f"AI answered {outcome['history']}, the solver says {outcome['expected']}: {outcome}",
     )
     print(f"ai move: {outcome['history']} (expected {outcome['expected']})")
+    opening = {
+        "difficulty": "easy",
+        "status": "thinking",
+        "you": "pink",
+        "first": "green",
+        "turn": "green",
+        "history": "",
+    }
+    check(outcome["opening"] == opening, f"Easy game with the AI first opened as {outcome}")
+    reply = outcome["reply"]
+    check(
+        (reply["status"], reply["turn"], len(reply["history"])) == ("playing", "pink", 1),
+        f"the Easy AI's first move left {outcome}",
+    )
+    print(f"easy ai first: {reply['history']}")
 
 
 def run(image: str) -> None:

@@ -1,5 +1,5 @@
 import pytest
-from connect4_app.domain import Game, GameRuleError, empty_board, winning_cells
+from connect4_app.domain import AI_ID, Game, GameRuleError, empty_board, winning_cells
 
 
 def make_game() -> Game:
@@ -97,3 +97,17 @@ def test_forfeit_scores_the_winner_once() -> None:
     assert game.winner == "pink"
     assert game.scores == {"pink-session": 1}
     assert game.revision == revision
+
+
+def test_only_the_ai_seat_moves_while_the_ai_thinks() -> None:
+    game = Game(
+        room_id="room",
+        mode="ai",
+        seats={"green": AI_ID, "pink": "pink-session"},
+        status="thinking",
+    )
+    assert game.ai_color == "green"
+    with pytest.raises(GameRuleError, match="game_not_playable"):
+        game.drop("pink", 0)
+    game.drop("green", 3)
+    assert game.history == "4"

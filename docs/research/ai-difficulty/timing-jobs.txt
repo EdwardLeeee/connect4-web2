@@ -1,0 +1,17 @@
+# timing ai opponent ai_seat games seed  (one at a time, see run.sh)
+fresh eps:0.6 casual 1 60 901
+warm eps:0.6 casual 1 60 951
+fresh eps:0.6 casual 2 60 902
+warm eps:0.6 casual 2 60 952
+fresh tac:0.7 casual 1 60 901
+warm tac:0.7 casual 1 60 951
+fresh tac:0.7 casual 2 60 902
+warm tac:0.7 casual 2 60 952
+fresh tac:0.8 casual 1 60 901
+warm tac:0.8 casual 1 60 951
+fresh tac:0.8 casual 2 60 902
+warm tac:0.8 casual 2 60 952
+fresh tacsafe:0.9 casual 1 60 901
+warm tacsafe:0.9 casual 1 60 951
+fresh tacsafe:0.9 casual 2 60 902
+warm tacsafe:0.9 casual 2 60 952

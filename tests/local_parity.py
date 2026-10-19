@@ -15,12 +15,23 @@ import json
 import logging
 import random
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
 from connect4_app import _solver  # noqa: E402
+from connect4_app.difficulty import (  # noqa: E402
+    MASK,
+    RANDOM_OR_BEST,
+    WHICH_COLUMN,
+    connects_four,
+    draw,
+    hands_over_win,
+    planned_move,
+    stones,
+)
 from connect4_app.domain import Game, GameRuleError  # noqa: E402
 from connect4_app.manager import GameManager  # noqa: E402
 from connect4_app.sessions import SessionStore  # noqa: E402
@@ -254,11 +265,72 @@ def ai_fixture() -> list[dict[str, Any]]:
     return fixtures
 
 
+def difficulty_fixture() -> dict[str, Any]:
+    """Draws, and the Easy and Normal AIs' own picks (null: the exact best move).
+
+    Seeds and draws are decimal strings: JSON numbers lose precision above 2**53.
+    """
+    rng = random.Random(20261019)
+    histories = ["", "4", "121212", "12121", "4337466"]
+    while len(histories) < 240:
+        game = Game(room_id="r", mode="ai", seats={"green": HUMAN, "pink": AI}, status="playing")
+        length = rng.randrange(41)
+        while game.status == "playing" and len(game.history) < length:
+            legal = [column for column in range(7) if game.board[0][column] is None]
+            game.drop(game.turn, rng.choice(legal))
+        if game.status == "playing" and game.history not in histories:
+            histories.append(game.history)
+
+    seeds = [0, 1, MASK] + [rng.getrandbits(64) for _ in range(5)]
+    draws = [
+        {
+            "seed": str(seed),
+            "history": history,
+            "salt": salt,
+            "value": str(draw(seed, history, salt)),
+        }
+        for seed in seeds
+        for history in ("", "4", "4453", "44444455555")
+        for salt in (RANDOM_OR_BEST, WHICH_COLUMN)
+    ]
+    moves = []
+    for difficulty in ("easy", "normal", "super"):
+        for history in histories if difficulty != "super" else histories[:20]:
+            seed = rng.getrandbits(64)
+            column = planned_move(difficulty, seed, history)
+            moves.append(
+                {"difficulty": difficulty, "seed": str(seed), "history": history, "column": column}
+            )
+    return {"draws": draws, "moves": moves}
+
+
+def difficulty_coverage(fixture: dict[str, Any]) -> Counter[str]:
+    """Which of Normal's rules the recorded positions exercise."""
+    seen: Counter[str] = Counter()
+    for move in fixture["moves"]:
+        if move["difficulty"] != "normal":
+            continue
+        stacks, player = stones(move["history"]), len(move["history"]) % 2
+        legal = [column for column in range(7) if len(stacks[column]) < 6]
+        if any(connects_four(stacks, column, player) for column in legal):
+            seen["win"] += 1
+        elif any(connects_four(stacks, column, 1 - player) for column in legal):
+            seen["block"] += 1
+        elif move["column"] is None:
+            seen["best"] += 1
+        elif any(hands_over_win(stacks, column, player) for column in legal):
+            seen["random, avoiding a column"] += 1
+        else:
+            seen["random"] += 1
+    return seen
+
+
 def build() -> dict[str, Any]:
     return {
         "rules-parity.json": rules_fixture(),
         "protocol-parity.json": protocol_fixture(),
         "ai-parity.json": ai_fixture(),
+        "difficulty-parity.json": difficulty_fixture(),
     }
 
 

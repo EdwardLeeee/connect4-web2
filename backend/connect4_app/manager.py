@@ -5,22 +5,31 @@ import logging
 import secrets
 import time
 from collections import deque
+from collections.abc import Callable
 from contextlib import suppress
 from typing import Any
 
 from fastapi import WebSocket
 
-from .domain import Color, Game, GameRuleError
+from .difficulty import DIFFICULTIES, planned_move
+from .domain import AI_ID, Color, Difficulty, Game, GameRuleError
 from .sessions import SessionStore
 from .solver import PerfectSolver
 
 ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 RECONNECT_SECONDS = 30
 AI_MIN_THINK_SECONDS = 1.0
-AI_ID = "__perfect_ai__"
+# Clients show their own localised names; these are what older clients display.
+AI_NICKNAMES: dict[Difficulty, str] = {
+    "easy": "Easy AI",
+    "normal": "Normal AI",
+    "super": "Super AI",
+}
 # The frontend stops reconnecting on this close code; do not renumber it.
 CLOSE_REPLACED = 4001
 logger = logging.getLogger(__name__)
+# What _run_ai needs: the room, the position, the level and the game's seed.
+AiTurn = tuple[str, str, Difficulty, int]
 
 
 class GameManager:
@@ -31,11 +40,13 @@ class GameManager:
         *,
         reconnect_seconds: int = RECONNECT_SECONDS,
         ai_min_think_seconds: float = AI_MIN_THINK_SECONDS,
+        seed_source: Callable[[], int] = lambda: secrets.randbits(64),
     ) -> None:
         self.sessions = sessions or SessionStore()
         self.solver = solver or PerfectSolver()
         self.reconnect_seconds = reconnect_seconds
         self.ai_min_think_seconds = ai_min_think_seconds
+        self.seed_source = seed_source
         self.rooms: dict[str, Game] = {}
         self.room_for: dict[str, str] = {}
         self.connections: dict[str, WebSocket] = {}
@@ -134,23 +145,37 @@ class GameManager:
     async def _request_state(self, session_id: str, _payload: dict[str, Any]) -> None:
         await self.send_snapshot(session_id)
 
-    async def _start_ai(self, session_id: str, _payload: dict[str, Any]) -> None:
+    async def _start_ai(self, session_id: str, payload: dict[str, Any]) -> None:
+        difficulty = payload.get("difficulty", "super")
+        ai_first = payload.get("ai_first", False)
+        player_color = payload.get("player_color", "green")
+        if difficulty not in DIFFICULTIES or not isinstance(ai_first, bool):
+            raise ValueError("unknown AI options")
+        if player_color not in ("green", "pink"):
+            raise ValueError("unknown colour")
+        if difficulty == "super" and ai_first:
+            raise ValueError("the player always moves first against the Super AI")
+        ai_color: Color = "pink" if player_color == "green" else "green"
+        seats: dict[Color, str] = {"green": AI_ID, "pink": AI_ID}
+        seats[player_color] = session_id
         async with self.lock:
             self._require_available(session_id)
-            game = self._new_game(
-                mode="ai",
-                seats={"green": session_id, "pink": AI_ID},
-                status="playing",
-            )
+            game = self._new_game(mode="ai", seats=seats, status="playing")
+            game.difficulty = difficulty
+            game.seed = self.seed_source()
+            game.first = game.turn = ai_color if ai_first else player_color
+            ai_turn = self._ai_turn(game)
         await self.broadcast(game.room_id)
+        self._schedule_ai(ai_turn)
 
     async def _retry_ai(self, session_id: str, _payload: dict[str, Any]) -> None:
         async with self.lock:
             game = self._require_game(session_id)
             if game.mode != "ai" or game.status not in {"finished", "error"}:
                 raise GameRuleError("rematch_unavailable")
-            game.reset()
+            ai_turn = self._restart_ai(game)
         await self.broadcast(game.room_id)
+        self._schedule_ai(ai_turn)
 
     async def _create_private(self, session_id: str, _payload: dict[str, Any]) -> None:
         async with self.lock:
@@ -235,30 +260,47 @@ class GameManager:
         await self.send_snapshot(session_id)
 
     async def _move(self, session_id: str, payload: dict[str, Any]) -> None:
-        schedule_ai: tuple[str, str] | None = None
         async with self.lock:
             game = self._require_game(session_id)
             color = game.color_for(session_id)
             if color is None:
                 raise GameRuleError("not_a_player")
             game.drop(color, int(payload["column"]))
-            if game.mode == "ai" and game.status == "playing" and game.turn == "pink":
-                game.status = "thinking"
-                game.revision += 1
-                schedule_ai = (game.room_id, game.history)
+            ai_turn = self._ai_turn(game)
         await self.broadcast(game.room_id)
-        if schedule_ai:
-            room_id, history = schedule_ai
-            task = asyncio.create_task(self._run_ai(room_id, history))
-            self.ai_tasks[room_id] = task
+        self._schedule_ai(ai_turn)
 
-    async def _run_ai(self, room_id: str, history: str) -> None:
+    def _ai_turn(self, game: Game) -> AiTurn | None:
+        """Starts the AI thinking when the next move is its own; call with the lock held."""
+        if game.mode != "ai" or game.status != "playing" or game.turn != game.ai_color:
+            return None
+        game.status = "thinking"
+        game.revision += 1
+        return game.room_id, game.history, game.difficulty or "super", game.seed
+
+    def _schedule_ai(self, ai_turn: AiTurn | None) -> None:
+        if ai_turn:
+            self.ai_tasks[ai_turn[0]] = asyncio.create_task(self._run_ai(*ai_turn))
+
+    def _restart_ai(self, game: Game) -> AiTurn | None:
+        """Starts an AI game over with the same level, colours and first mover."""
+        game.reset()
+        game.seed = self.seed_source()
+        return self._ai_turn(game)
+
+    def _choose_column(self, difficulty: Difficulty, seed: int, history: str) -> int:
+        # The level decides first whether this move is its own pick; only the exact best move
+        # needs the solver, and a solver failure is never replaced by a pick.
+        column = planned_move(difficulty, seed, history)
+        return self.solver.best_move(history) if column is None else column
+
+    async def _run_ai(self, room_id: str, history: str, difficulty: Difficulty, seed: int) -> None:
         # Guard on the position rather than the revision: reconnects bump the revision while
         # the AI thinks, and only this task can change the position until it finishes.
         loop = asyncio.get_running_loop()
         started = loop.time()
         try:
-            column = await asyncio.to_thread(self.solver.best_move, history)
+            column = await asyncio.to_thread(self._choose_column, difficulty, seed, history)
         except Exception:
             logger.exception("Perfect solver failed for room %s", room_id)
             async with self.lock:
@@ -280,18 +322,19 @@ class GameManager:
             game = self.rooms.get(room_id)
             if not game or game.history != history or game.status != "thinking":
                 return
-            game.drop("pink", column)
+            game.drop(game.turn, column)
             if game.status == "thinking":
                 game.status = "playing"
         await self.broadcast(room_id)
 
     async def _rematch(self, session_id: str, _payload: dict[str, Any]) -> None:
+        ai_turn: AiTurn | None = None
         async with self.lock:
             game = self._require_game(session_id)
             if not self._rematch_available(game):
                 raise GameRuleError("rematch_unavailable")
             if game.mode == "ai":
-                game.reset()
+                ai_turn = self._restart_ai(game)
             else:
                 game.rematch_votes.add(session_id)
                 game.revision += 1
@@ -299,6 +342,7 @@ class GameManager:
                     # Colours stay with their players; the previous second mover starts.
                     game.reset(alternate_first=True)
         await self.broadcast(game.room_id)
+        self._schedule_ai(ai_turn)
 
     async def _leave_game(self, session_id: str, _payload: dict[str, Any]) -> None:
         other_sessions: list[str] = []
@@ -411,7 +455,7 @@ class GameManager:
         for seat_color, occupant in game.seats.items():
             if occupant == AI_ID:
                 players[seat_color] = {
-                    "nickname": "Super AI",
+                    "nickname": AI_NICKNAMES[game.difficulty or "super"],
                     "connected": True,
                     "is_ai": True,
                     "grace_deadline": None,
@@ -446,6 +490,7 @@ class GameManager:
         }
         base["game"] = {
             "revision": game.revision,
+            "difficulty": game.difficulty,
             "status": game.status,
             "board": game.board,
             "history": game.history,

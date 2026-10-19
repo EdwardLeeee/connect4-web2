@@ -9,7 +9,11 @@ COLUMNS = 7
 Color = Literal["green", "pink"]
 Mode = Literal["ai", "private", "matchmaking"]
 Status = Literal["waiting", "playing", "thinking", "paused", "finished", "error"]
+Difficulty = Literal["easy", "normal", "super"]
 Cell = Color | None
+
+# The seat holder for the AI in AI games.
+AI_ID = "__perfect_ai__"
 
 
 class GameRuleError(ValueError):
@@ -62,6 +66,9 @@ class Game:
     grace_deadlines: dict[str, float] = field(default_factory=dict)
     scores: dict[str, int] = field(default_factory=dict)
     draws: int = 0
+    # AI games only: the level, and the seed that fixes the Easy and Normal AIs' random moves.
+    difficulty: Difficulty | None = None
+    seed: int = 0
 
     def color_for(self, session_id: str) -> Color | None:
         for color, occupant in self.seats.items():
@@ -69,9 +76,13 @@ class Game:
                 return color
         return None
 
+    @property
+    def ai_color(self) -> Color | None:
+        return self.color_for(AI_ID)
+
     def drop(self, color: Color, column: int) -> int:
         allowed = self.status == "playing" or (
-            self.status == "thinking" and self.mode == "ai" and color == "pink"
+            self.status == "thinking" and self.seats.get(color) == AI_ID
         )
         if not allowed:
             raise GameRuleError("game_not_playable")

@@ -120,15 +120,43 @@ iOS／Android app 把網頁打包在 app 裡（Capacitor），頁面來源是 `c
 
 | type | payload | 說明 |
 |---|---|---|
-| `game.ai.start` | `{}` | 開一局對 Super AI 的棋，玩家執綠、先手 |
-| `game.ai.retry` | `{}` | AI 局結束或求解器故障後，重開一局（不換色） |
+| `game.ai.start` | `{"difficulty"?, "ai_first"?, "player_color"?}` | 開一局 AI 局，見下方「AI 局的選項」；`{}` 是對 Super AI、玩家執綠、先手 |
+| `game.ai.retry` | `{}` | AI 局結束或求解器故障後，重開一局（難度、顏色、先後手都不變） |
 | `room.create` | `{}` | 建立私人房，建立者執綠 |
 | `room.join` | `{"code": string}` | 以 6 碼房號加入私人房 |
 | `queue.join` / `queue.leave` | `{}` | 加入或離開隨機配對 |
 | `game.move` | `{"column": 0–6}` | 落子 |
-| `game.rematch` | `{}` | 投票再來一局；真人局雙方都投票後以原座位與顏色重開，先手換成上一局的後手；AI 局立即重開 |
+| `game.rematch` | `{}` | 投票再來一局；真人局雙方都投票後以原座位與顏色重開，先手換成上一局的後手；AI 局立即重開，和 `game.ai.retry` 相同 |
 | `game.leave` | `{}` | 離開房間；對局尚未結束時視為判負，`result_reason` 為 `left` |
 | `state.request` | `{}` | 要求重送 snapshot |
+
+### AI 局的選項
+
+`game.ai.start` 的 payload 欄位都是選配，沒送就用預設值；3.5.0 以前的用戶端送 `{}`，行為不變。
+
+| 欄位 | 值 | 預設 | 說明 |
+|---|---|---|---|
+| `difficulty` | `"easy"`、`"normal"`、`"super"` | `"super"` | 難度，見下方「AI 難度」 |
+| `ai_first` | `true`、`false` | `false` | `true` 時 AI 先手；`super` 不接受 `true`，玩家對 Super AI 一律先手 |
+| `player_color` | `"green"`、`"pink"` | `"green"` | 玩家的棋子顏色，AI 執另一色；和先後手無關 |
+
+- 值不在表內（包括 `null`、字串的 `"true"`、數字 `1`），或 `super` 配 `ai_first: true`，回 `invalid_payload`，不開局。
+  其他不認得的欄位會被忽略。
+- AI 先手時，開局的 snapshot 就是 `status: "thinking"`、`history: ""`、`turn` 是 AI 的顏色；AI 同樣至少想 1 秒才下第一手。
+  這段期間玩家送 `game.move` 會收到 `game_not_playable`。
+- 重開（`game.ai.retry`、`game.rematch`）保留難度、顏色與先後手；AI 先手時，重開後同樣直接進入 `thinking`。
+
+### AI 難度
+
+- `super`：每一手都是精確解，同分時照中央優先 `[3,2,4,1,5,0,6]` 選欄。
+- `normal`：自己一步能連成四就下那一欄；否則對手下一步能連成四，就擋那一欄（都從左邊的欄找起）。
+  其他時候，90% 的手隨機挑一欄，但避開「下了之後對手下一步就能連成四」的欄（每一欄都會時才不避開）；剩下 10% 下精確解。
+- `easy`：60% 的手從所有能下的欄隨機挑一欄，剩下 40% 下精確解。
+- 百分比是暫定值，量測見 `docs/research/2026-10-ai-difficulty.md`，規則在 `backend/connect4_app/difficulty.py`。
+- 「這一手隨機或下精確解」在求解之前就決定；需要精確解而求解器故障時，任何難度都回報 `solver_unavailable`，
+  不會改成隨機。
+- 隨機只由每局的 64 位元種子和 `history` 決定：伺服器在開局與每次重開時產生新種子，不送給用戶端。
+  所以同一局斷線重連，AI 的下一手不變。
 
 ## 伺服器 → 用戶端
 
@@ -151,6 +179,7 @@ iOS／Android app 把網頁打包在 app 裡（Capacitor），頁面來源是 `c
   room: { id: string; code: string | null; mode: "ai" | "private" | "matchmaking" } | null;
   game: {
     revision: number;             // 對局狀態每變一次就 +1
+    difficulty: "easy" | "normal" | "super" | null;   // AI 局的難度；真人局為 null
     status: "waiting" | "playing" | "thinking" | "paused" | "finished" | "error";
     board: ("green" | "pink" | null)[][];   // 6 列 × 7 欄，board[0] 是最上面一列
     history: string;              // 落子序列，"1"–"7" 代表第 1 到第 7 欄；第 i 手（從 0 起算）i 為偶數是 first
@@ -161,7 +190,7 @@ iOS／Android app 把網頁打包在 app 裡（Capacitor），頁面來源是 `c
     winning_cells: { row: number; column: number }[];
     result_reason: "connect_four" | "draw" | "forfeit" | "left" | "solver_unavailable" | null;
     players: Partial<Record<"green" | "pink", {
-      nickname: string;
+      nickname: string;           // AI 依難度為 "Easy AI"、"Normal AI"、"Super AI"；用戶端可依 difficulty 顯示在地化名稱
       connected: boolean;
       is_ai: boolean;
       grace_deadline: number | null;   // 見下方「斷線倒數」
@@ -180,7 +209,8 @@ iOS／Android app 把網頁打包在 app 裡（Capacitor），頁面來源是 `c
 - `first` 是這一局的先手顏色，不要假設綠方先手。
   - 新房間的第一局由 `green` 先手。
   - 真人局再來一局時，座位與顏色不變，先手換成上一局的後手；所以真人局下一局的先手，就是 `first` 的另一色。
-  - AI 局恆為 `green`，玩家執綠、先手，重新開始也不變。
+  - AI 局由 `game.ai.start` 的選項決定（見「AI 局的選項」）：預設玩家執綠、先手；玩家可以執粉，也可以讓 AI 先手，
+    所以 AI 局的 `first` 可能是 `pink`，`you` 也可能是 `pink`。重新開始時都不變。
 - `history` 的長度就是手數。第 i 手（從 0 起算）i 為偶數是 `first`，奇數是另一色。
 - 最後一個字元就是上一手的欄位，該欄最上面一顆棋子就是上一手。
 
@@ -226,7 +256,8 @@ iOS／Android app 把網頁打包在 app 裡（Capacitor），頁面來源是 `c
 
 - 單一 uvicorn worker；房間、配對與 session 都存在記憶體裡，程序重啟就會全部清空。
 - 求解器沒有啟發式或計時備援。故障時 `status` 為 `error`，`result_reason` 為 `solver_unavailable`。
-- AI 局在玩家落子後進入 `thinking`，至少維持 1 秒才落子；求解超過 1 秒時不再額外等待。
+  簡單、普通的隨機步是刻意設計的難度，不是備援，見「AI 難度」。
+- AI 局輪到 AI 時（玩家落子後，或 AI 先手的開局）進入 `thinking`，至少維持 1 秒才落子；求解超過 1 秒時不再額外等待。
   這只影響時間，不影響下法；求解器故障會立即回報 `error`，不等待。
 - AI 在已下 9、11、13 手時，改查預先算好的精確分數表（`native_solver/data/reply-table.bin`），其他時候現場求解；兩者給出的分數與選的欄完全相同，下法不變。表無法載入或查不到時一律現場求解。
 - 伺服器只負責網站的 AI 局與所有真人局。app 的 AI 局在手機上進行，伺服器不會收到，也不接受
@@ -245,6 +276,8 @@ iOS／Android app 的 AI 對局一律在手機上計算，有沒有網路都一�
 - **同樣的下法**：Web Worker 裡的 `connect-four-ai-wasm`（與伺服器的 `connect-four-ai` 同為 1.0.0），
   加上同一份分數表與同樣的中央優先順序 `[3,2,4,1,5,0,6]`，每一手都是精確解，和伺服器選的欄完全相同。
   AI 同樣至少想 1 秒才落子。
+- **難度**：目前本機只有 Super AI，`game.ai.start` 的選項會被忽略，snapshot 的 `difficulty` 恆為 `"super"`。
+  簡單、普通與 AI 先手會在 app 3.5.0 加上，選欄由 `difficulty-parity.json` 鎖成和伺服器相同。
 - **故障**：WASM 載入或求解失敗時，`status` 為 `error`，`result_reason` 為 `solver_unavailable`，不會改用
   其他下法；玩家用 `game.ai.retry` 重開。分數表載入或解析失敗時，Worker 在 console 留一行
   `[local-ai] reply table unavailable` 警告，之後每一手都改成現場計算：下法不變，只是比較慢。
@@ -258,7 +291,7 @@ iOS／Android app 的 AI 對局一律在手機上計算，有沒有網路都一�
     直到伺服器回的是沒有排隊、沒有房間的大廳為止。本機局在重連前就結束了也一樣。
   - 需要這樣做，是因為搜尋中的人在 30 秒內重連時，伺服器會在連線當下就配對（見「配對中斷線」），
     重連後的第一份 snapshot 可能已經是真人局；這時送出的 `game.leave` 會讓對手以 `left` 獲勝。
-- **一致性測試**：`tests/local_parity.py` 從 `domain.py`、`manager.py` 與原生求解器錄下
+- **一致性測試**：`tests/local_parity.py` 從 `domain.py`、`manager.py`、`difficulty.py` 與原生求解器錄下
   `frontend/tests/local/fixtures/`，`frontend/tests/local/` 用同一份資料驗證手機版。改了伺服器 AI 局的
   規則、訊息或錯誤代碼時，要執行 `.venv/bin/python tests/local_parity.py` 重新產生，並同步修改
   `frontend/src/local/`；兩邊不一致時 `tests/test_local_parity.py` 會失敗。

@@ -3,8 +3,9 @@ import time
 from typing import Any
 
 import pytest
+from connect4_app.difficulty import planned_move
 from connect4_app.domain import Game
-from connect4_app.manager import AI_MIN_THINK_SECONDS, CLOSE_REPLACED, GameManager
+from connect4_app.manager import AI_MIN_THINK_SECONDS, AI_NICKNAMES, CLOSE_REPLACED, GameManager
 from connect4_app.sessions import SessionStore
 from connect4_app.solver import PerfectSolver
 
@@ -28,6 +29,11 @@ class FakeSocket:
 class CentreSolver:
     def best_move(self, _history: str) -> int:
         return 3
+
+
+class FailingSolver:
+    def best_move(self, _history: str) -> int:
+        raise RuntimeError("solver offline")
 
 
 def add_session(store: SessionStore, nickname: str) -> str:
@@ -664,3 +670,207 @@ async def test_opponent_sees_a_default_nickname_in_the_new_language_on_the_next_
     await play(manager, game, [3])
     latest = sockets[seats["pink"]].messages[-1]["payload"]
     assert latest["game"]["players"]["green"]["nickname"] == "Player 4821"
+
+
+async def start_level(
+    payload: dict[str, Any],
+    *,
+    solver: Any = None,
+    seeds: tuple[int, ...] = (1,),
+    ai_min_think_seconds: float = 0,
+) -> tuple[GameManager, str, FakeSocket]:
+    sessions = SessionStore()
+    player = add_session(sessions, "Ada")
+    manager = GameManager(
+        sessions,
+        solver or CentreSolver(),
+        ai_min_think_seconds=ai_min_think_seconds,
+        seed_source=iter(seeds).__next__,
+    )
+    socket = FakeSocket()
+    await manager.connect(player, socket)  # type: ignore[arg-type]
+    await manager.handle(player, {"type": "game.ai.start", "payload": payload})
+    return manager, player, socket
+
+
+def seed_where(difficulty: str, history: str, *, random_move: bool) -> int:
+    return next(
+        seed
+        for seed in range(1000)
+        if (planned_move(difficulty, seed, history) is not None) is random_move  # type: ignore[arg-type]
+    )
+
+
+@pytest.mark.asyncio
+async def test_an_empty_ai_start_is_the_super_ai_with_the_player_first() -> None:
+    manager, player, _ = await start_ai()
+    view = manager.snapshot(player)["game"]
+    assert view["difficulty"] == "super"
+    assert (view["you"], view["first"], view["turn"], view["status"]) == (
+        "green",
+        "green",
+        "green",
+        "playing",
+    )
+    assert view["players"]["pink"]["nickname"] == "Super AI"
+    assert 0 <= manager._game_for(player).seed < 2**64  # type: ignore[union-attr]
+
+
+@pytest.mark.asyncio
+async def test_games_between_players_have_no_difficulty() -> None:
+    manager, _, seats, _ = await matched_pair()
+    assert manager.snapshot(seats["green"])["game"]["difficulty"] is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"difficulty": "hard"},
+        {"difficulty": None},
+        {"difficulty": ["easy"]},
+        {"difficulty": "easy", "ai_first": "yes"},
+        {"difficulty": "easy", "ai_first": 1},
+        {"difficulty": "easy", "player_color": "blue"},
+        {"difficulty": "easy", "player_color": None},
+        {"difficulty": "super", "ai_first": True},
+        {"ai_first": True},
+    ],
+)
+async def test_ai_start_rejects_options_it_does_not_know(payload: dict[str, Any]) -> None:
+    manager, _, socket = await start_level(payload)
+    assert socket.messages[-1] == {"type": "error", "payload": {"code": "invalid_payload"}}
+    assert manager.rooms == {}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("payload", "you", "first", "status"),
+    [
+        ({"difficulty": "easy", "ai_first": False}, "green", "green", "playing"),
+        ({"difficulty": "easy", "ai_first": True}, "green", "pink", "thinking"),
+        ({"difficulty": "normal", "ai_first": True}, "green", "pink", "thinking"),
+        ({"difficulty": "normal", "player_color": "pink"}, "pink", "pink", "playing"),
+        (
+            {"difficulty": "easy", "ai_first": True, "player_color": "pink"},
+            "pink",
+            "green",
+            "thinking",
+        ),
+        ({"difficulty": "super", "player_color": "pink"}, "pink", "pink", "playing"),
+    ],
+)
+async def test_the_level_order_and_colour_are_the_players_choice(
+    payload: dict[str, Any], you: str, first: str, status: str
+) -> None:
+    manager, player, _ = await start_level(payload)
+    view = manager.snapshot(player)["game"]
+    ai = "pink" if you == "green" else "green"
+    assert view["difficulty"] == payload["difficulty"]
+    assert (view["you"], view["first"], view["turn"], view["status"]) == (you, first, first, status)
+    assert view["history"] == ""
+    assert view["players"][ai]["is_ai"] is True
+    assert view["players"][ai]["nickname"] == AI_NICKNAMES[payload["difficulty"]]
+    assert view["players"][you]["nickname"] == "Ada"
+    if status == "thinking":
+        await next(iter(manager.ai_tasks.values()))
+    else:
+        await manager.handle(player, {"type": "game.move", "payload": {"column": 2}})
+        await next(iter(manager.ai_tasks.values()))
+    game = manager._game_for(player)
+    assert game is not None
+    assert game.status == "playing"
+    assert game.turn == you
+    assert len(game.history) == (1 if status == "thinking" else 2)
+
+
+@pytest.mark.asyncio
+async def test_the_player_cannot_move_while_the_ai_thinks_about_its_first_move() -> None:
+    manager, player, socket = await start_level(
+        {"difficulty": "easy", "ai_first": True}, ai_min_think_seconds=0.2
+    )
+    await manager.handle(player, {"type": "game.move", "payload": {"column": 3}})
+    assert socket.messages[-1] == {"type": "error", "payload": {"code": "game_not_playable"}}
+
+    await next(iter(manager.ai_tasks.values()))
+    game = manager._game_for(player)
+    assert game is not None
+    assert len(game.history) == 1
+
+
+@pytest.mark.asyncio
+async def test_the_same_seed_replays_the_same_moves() -> None:
+    histories = []
+    for _ in range(2):
+        manager, player, _ = await start_level({"difficulty": "easy"}, seeds=(5,))
+        game = manager._game_for(player)
+        assert game is not None
+        for column in [0, 0, 6]:
+            await manager.handle(player, {"type": "game.move", "payload": {"column": column}})
+            await next(iter(manager.ai_tasks.values()))
+            position = game.history[:-1]
+            pick = planned_move("easy", 5, position)
+            assert game.history[-1] == str((3 if pick is None else pick) + 1)
+        histories.append(game.history)
+    assert histories[0] == histories[1]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("restart", ["game.ai.retry", "game.rematch"])
+async def test_a_restart_keeps_the_level_and_order_with_a_new_seed(restart: str) -> None:
+    # The first seed needs the solver for the opening move, the second picks it at random.
+    best_first = seed_where("easy", "", random_move=False)
+    random_first = seed_where("easy", "", random_move=True)
+    manager, player, _ = await start_level(
+        {"difficulty": "easy", "ai_first": True},
+        solver=FailingSolver(),
+        seeds=(best_first, random_first),
+    )
+    await next(iter(manager.ai_tasks.values()))
+    view = manager.snapshot(player)["game"]
+    assert view["status"] == "error"
+    assert view["result_reason"] == "solver_unavailable"
+
+    await manager.handle(player, {"type": restart, "payload": {}})
+    view = manager.snapshot(player)["game"]
+    assert (view["difficulty"], view["first"], view["status"], view["history"]) == (
+        "easy",
+        "pink",
+        "thinking",
+        "",
+    )
+    await next(iter(manager.ai_tasks.values()))
+    game = manager._game_for(player)
+    assert game is not None
+    assert game.seed == random_first
+    assert game.history == str(planned_move("easy", random_first, "") + 1)  # type: ignore[operator]
+    assert game.status == "playing"
+
+
+@pytest.mark.asyncio
+async def test_leaving_before_the_ais_first_move_cancels_it() -> None:
+    manager, player, socket = await start_level(
+        {"difficulty": "normal", "ai_first": True}, ai_min_think_seconds=0.3
+    )
+    task = next(iter(manager.ai_tasks.values()))
+    await manager.handle(player, {"type": "game.leave", "payload": {}})
+    await asyncio.gather(task, return_exceptions=True)
+
+    assert task.cancelled()
+    assert not manager.rooms
+    assert all(message["type"] != "error" for message in socket.messages)
+
+
+@pytest.mark.asyncio
+async def test_the_ais_first_move_survives_a_disconnect() -> None:
+    manager, player, socket = await start_level(
+        {"difficulty": "normal", "ai_first": True}, ai_min_think_seconds=0.2
+    )
+    await manager.disconnect(player, socket)  # type: ignore[arg-type]
+    await next(iter(manager.ai_tasks.values()))
+
+    replacement = FakeSocket()
+    await manager.connect(player, replacement)  # type: ignore[arg-type]
+    view = replacement.messages[-1]["payload"]["game"]
+    assert len(view["history"]) == 1
+    assert view["status"] == "playing"

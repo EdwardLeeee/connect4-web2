@@ -7,6 +7,7 @@ export type GameStatus =
   "waiting" | "playing" | "thinking" | "paused" | "finished" | "error";
 export type ResultReason =
   "connect_four" | "draw" | "forfeit" | "left" | "solver_unavailable";
+export type Difficulty = "easy" | "normal" | "super";
 
 export interface Player {
   nickname: string;
@@ -18,6 +19,8 @@ export interface Player {
 
 export interface GameState {
   revision: number;
+  /** The AI's level in AI games, null in games between players; absent before 3.5.0. */
+  difficulty?: Difficulty | null;
   status: GameStatus;
   board: Cell[][];
   /** Moves as columns "1"–"7"; even indices belong to `first`. */
