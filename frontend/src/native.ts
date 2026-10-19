@@ -4,6 +4,7 @@ import { Capacitor } from "@capacitor/core";
 import { Preferences } from "@capacitor/preferences";
 import { Share } from "@capacitor/share";
 import { isLocale, type Locale } from "./locales";
+import { keptChoice, readChoice, type AiChoice } from "./utils/aiChoice";
 
 export function isNative(): boolean {
   return Capacitor.isNativePlatform();
@@ -149,6 +150,19 @@ export const profileMemory = {
   },
   async setRestorePending(pending: boolean): Promise<void> {
     await write(RESTORE_PENDING_KEY, pending ? "1" : null);
+  },
+};
+
+// R29 04: the AI sheet opens on the level, order and colour last started
+// with, kept like the profile above.
+const AI_CHOICE_KEY = "ai-choice";
+
+export const aiChoiceMemory = {
+  async load(): Promise<AiChoice> {
+    return readChoice(await read(AI_CHOICE_KEY));
+  },
+  async keep(choice: AiChoice): Promise<void> {
+    await write(AI_CHOICE_KEY, keptChoice(choice));
   },
 };
 

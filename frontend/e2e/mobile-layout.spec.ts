@@ -2,7 +2,7 @@ import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { dropDuration } from "../src/composables/useDropQueue";
 import type { Locale } from "../src/locales";
 import type { Snapshot } from "../src/types";
-import { pageSnapshot, SERVER_TIME, type PageId } from "./states";
+import { aiVariant, pageSnapshot, SERVER_TIME, type PageId } from "./states";
 
 // Layout numbers come from design/spec.md §3 and §10 (approved 2026-09-24).
 const ASSET_VERSION = "v=20260924";
@@ -611,6 +611,9 @@ async function asApp(page: Page, { keepLocalGame = false } = {}) {
         "export const tokenStore = { get: async () => null, set: async () => {} };",
         localGameStore,
         "export const profileMemory = { lastSession: async () => null, rememberSession: async () => {}, pendingProfile: async () => null, setPendingProfile: async () => {}, restorePending: async () => false, setRestorePending: async () => {} };",
+        // The phone's own storage, apart from the website's connect4.ai-choice.
+        'import { keptChoice, readChoice } from "/src/utils/aiChoice.ts";',
+        "export const aiChoiceMemory = { load: async () => readChoice(localStorage.getItem('test.ai-choice')), keep: async (choice) => localStorage.setItem('test.ai-choice', keptChoice(choice)) };",
         'export const nativeShare = async (share) => { window.__nativeShared = share; return "shared"; };',
       ].join("\n"),
     }),
@@ -2089,6 +2092,15 @@ test("finished games show the approved outcome for each case", async ({
   }
 });
 
+/** 立即對戰 opens the AI sheet (R29 01); 開始對戰 starts what it shows. */
+async function startAi(page: Page) {
+  await page.getByRole("button", { name: "立即對戰" }).click();
+  await page
+    .locator(".ai-picker")
+    .getByRole("button", { name: "開始對戰" })
+    .click();
+}
+
 // 3.2.0: the app plays the AI on the device. The dev server's e2e flag stands
 // in for the app (native.ts usesLocalAi); the real worker, WASM engine and
 // reply table run in the browser.
@@ -2117,7 +2129,7 @@ test("the app plays the AI on the device, with or without a connection", async (
     onMessage: (message) => sent.push(message.type),
   });
   await page.goto("/");
-  await page.getByRole("button", { name: "立即對戰" }).click();
+  await startAi(page);
   const board = page.locator(".board");
   const tokens = page.locator(".grid .token:not(.ghost)");
   await expect(board).toHaveClass(/is-interactive/, { timeout: 20_000 });
@@ -2150,7 +2162,7 @@ test("an AI game left open resumes after relaunching with no network", async ({
   let down = false;
   await mockApp(page, snapshotFor("L01"), { refuseReconnects: () => down });
   await page.goto("/");
-  await page.getByRole("button", { name: "立即對戰" }).click();
+  await startAi(page);
   const board = page.locator(".board");
   const tokens = page.locator(".grid .token:not(.ghost)");
   await expect(board).toHaveClass(/is-interactive/, { timeout: 20_000 });
@@ -2349,7 +2361,7 @@ test("a new app install names itself at once, offline too", async ({
   await page.locator(".profile-sheet button[type=button]").click();
 
   // The on-device game shows that name on the match card (round 24 C).
-  await page.getByRole("button", { name: "立即對戰" }).click();
+  await startAi(page);
   await expect(page.locator(".player.is-me strong")).toHaveText(name, {
     timeout: 20_000,
   });
@@ -3013,7 +3025,7 @@ test("the website never loads the app's link plugin", async ({
 
 /** An AI game on the device, one move in and the player's turn again. */
 async function aiGameUnderway(page: Page, testInfo: TestInfo) {
-  await page.getByRole("button", { name: "立即對戰" }).click();
+  await startAi(page);
   const board = page.locator(".board");
   await expect(board).toHaveClass(/is-interactive/, { timeout: 20_000 });
   await play(page, testInfo, 3);
@@ -3308,4 +3320,360 @@ test("no banner on Android or a desktop", async ({ page }, testInfo) => {
   await expect(page.locator(".lobby")).toBeVisible();
   await page.waitForTimeout(300);
   await expect(banner(page)).toHaveCount(0);
+});
+
+// ================= the AI sheet and levels (R29, 3.5.0) =================
+
+const picker = (page: Page) => page.locator(".ai-picker");
+
+/** The sheet's three picks, as their labels read. */
+function picked(page: Page) {
+  return picker(page).evaluate((sheet) =>
+    [...sheet.querySelectorAll("input:checked")].map(
+      (input) =>
+        input.closest("label")!.querySelector("b")?.textContent ??
+        input.closest("label")!.textContent!.trim(),
+    ),
+  );
+}
+
+async function pick(page: Page, label: string) {
+  await picker(page).locator("label").filter({ hasText: label }).click();
+}
+
+async function openPicker(page: Page) {
+  await page.getByRole("button", { name: "立即對戰" }).click();
+  await expect(picker(page)).toBeVisible();
+}
+
+const startMessages = (sent: { type: string; payload: unknown }[]) =>
+  sent.filter((message) => message.type === "game.ai.start");
+
+test("立即對戰 opens the AI sheet on Super AI, you first, green (R29 01-B)", async ({
+  page,
+}, testInfo) => {
+  const sent: { type: string; payload: unknown }[] = [];
+  await mockApp(page, snapshotFor("L01"), {
+    onMessage: (message) => sent.push(message),
+  });
+  await page.goto("/");
+  await openPicker(page);
+  const sheet = picker(page);
+  await expect(sheet).toHaveAttribute("role", "dialog");
+  await expect(sheet.locator("h2")).toHaveText("選擇難度");
+  expect(await picked(page)).toEqual(["Super AI", "你先下", "綠色"]);
+  await expect(sheet.locator(".picker-warn")).toHaveCount(0);
+  expect(startMessages(sent)).toEqual([]);
+
+  // A sheet on the bottom edge up to 900px, a centred dialog above.
+  const box = (await sheet.boundingBox())!;
+  const viewport = page.viewportSize()!;
+  if (viewport.width > 900) {
+    expect(Math.round(box.width)).toBe(460);
+    expect(Math.abs(box.x + box.width / 2 - viewport.width / 2)).toBeLessThan(
+      1,
+    );
+    expect(Math.abs(box.y + box.height / 2 - viewport.height / 2)).toBeLessThan(
+      1,
+    );
+  } else {
+    expect(Math.round(box.width)).toBe(Math.min(460, viewport.width));
+    expect(Math.abs(box.y + box.height - viewport.height)).toBeLessThan(1);
+  }
+  await expectTouchSafe(page, ".ai-picker label, .ai-picker .btn");
+  expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
+  await expect(page).toHaveScreenshot(`${testInfo.project.name}-ai-picker.png`);
+
+  await sheet.getByRole("button", { name: "開始對戰" }).click();
+  await expect(sheet).toHaveCount(0);
+  expect(startMessages(sent)).toEqual([
+    {
+      type: "game.ai.start",
+      payload: { difficulty: "super", ai_first: false, player_color: "green" },
+    },
+  ]);
+});
+
+test("Super AI with AI 先下 warns that it is very hard to beat (R29 05-A)", async ({
+  page,
+}, testInfo) => {
+  await mockApp(page, snapshotFor("L01"));
+  await page.goto("/");
+  await openPicker(page);
+  const warning = picker(page).locator(".picker-warn");
+  await pick(page, "AI 先下");
+  await expect(warning).toHaveText("Super AI 先下時很難贏");
+  await pick(page, "粉紅色");
+  expect(await picked(page)).toEqual(["Super AI", "AI 先下", "粉紅色"]);
+  await expectTouchSafe(page, ".ai-picker label, .ai-picker .btn");
+  await expect(page).toHaveScreenshot(
+    `${testInfo.project.name}-ai-picker-remind.png`,
+  );
+  await pick(page, "普通");
+  await expect(warning).toHaveCount(0);
+  await pick(page, "Super AI");
+  await expect(warning).toBeVisible();
+  await pick(page, "你先下");
+  await expect(warning).toHaveCount(0);
+});
+
+test("the sheet opens on the last start in this browser; 取消 keeps it (R29 04)", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    !["galaxy-s26-ultra", "desktop-1440x900"].includes(testInfo.project.name),
+    "A phone and a desktop.",
+  );
+  const sent: { type: string; payload: unknown }[] = [];
+  await mockApp(page, snapshotFor("L01"), {
+    onMessage: (message) => sent.push(message),
+  });
+  await page.goto("/");
+  await openPicker(page);
+  await pick(page, "簡單");
+  await pick(page, "AI 先下");
+  await pick(page, "粉紅色");
+  await picker(page).getByRole("button", { name: "開始對戰" }).click();
+  expect(startMessages(sent).map((message) => message.payload)).toEqual([
+    { difficulty: "easy", ai_first: true, player_color: "pink" },
+  ]);
+  const kept = ["簡單", "AI 先下", "粉紅色"];
+  await openPicker(page);
+  expect(await picked(page)).toEqual(kept);
+
+  // 取消, the scrim and Esc close it and keep the last start.
+  const play = page.getByRole("button", { name: "立即對戰" });
+  for (const close of [
+    () => picker(page).getByRole("button", { name: "取消" }).click(),
+    () => page.locator(".picker-scrim").click({ position: { x: 4, y: 4 } }),
+    () => page.keyboard.press("Escape"),
+  ]) {
+    await pick(page, "普通");
+    await pick(page, "你先下");
+    await close();
+    await expect(picker(page)).toHaveCount(0);
+    await expect(play).toBeFocused();
+    await openPicker(page);
+    expect(await picked(page)).toEqual(kept);
+  }
+  expect(startMessages(sent)).toHaveLength(1);
+
+  // Kept in this browser, so a reload opens on it too.
+  await page.reload();
+  await openPicker(page);
+  expect(await picked(page)).toEqual(kept);
+  expect(
+    await page.evaluate(() => localStorage.getItem("connect4.ai-choice")),
+  ).toBe(JSON.stringify({ difficulty: "easy", aiFirst: true, colour: "pink" }));
+});
+
+test("the AI sheet fits 360 and 320 in every language, reminder and all", async ({
+  page,
+}, testInfo) => {
+  narrowOnly(testInfo);
+  for (const locale of ["zh-TW", "en", "th"] as const) {
+    for (const size of NARROW) {
+      const where = `${locale} ${size.width}`;
+      const tab = await page.context().newPage();
+      await tab.setViewportSize(size);
+      await mockApp(tab, snapshotFor("L01", locale));
+      await tab.goto("/");
+      await tab.locator(".ai-card .btn.primary").click();
+      // AI 先下 with Super AI: the tallest the sheet gets (05-A).
+      await picker(tab).locator(".picker-seg label").nth(1).click();
+      await expect(picker(tab).locator(".picker-warn"), where).toBeVisible();
+      const fit = await picker(tab).evaluate((sheet) => {
+        const bottom = (selector: string) =>
+          sheet.querySelector(selector)!.getBoundingClientRect().bottom;
+        const cut = [
+          ...sheet.querySelectorAll(
+            ".picker-level b, .picker-level small, .picker-seg label, .picker-warn, .btn",
+          ),
+        ]
+          .filter((element) => element.scrollWidth > element.clientWidth + 1)
+          .map((element) => element.textContent!.trim());
+        return {
+          scrolls: sheet.scrollHeight > sheet.clientHeight + 1,
+          start: bottom(".btn.primary"),
+          cancel: bottom(".btn.ghost"),
+          height: innerHeight,
+          cut,
+        };
+      });
+      expect(fit.scrolls, where).toBe(false);
+      // ceo 2026-10-19: 開始對戰 and 取消 on the first screen, English 320 too.
+      expect(fit.start, where).toBeLessThanOrEqual(fit.height);
+      expect(fit.cancel, where).toBeLessThanOrEqual(fit.height);
+      expect(fit.cut, where).toEqual([]);
+      await expectTouchSafe(tab, ".ai-picker label, .ai-picker .btn");
+      expect(await horizontalOverflow(tab), where).toBeLessThanOrEqual(1);
+      await tab.close();
+    }
+  }
+});
+
+test("a short landscape phone scrolls the sheet to 開始對戰", async ({
+  page,
+}, testInfo) => {
+  test.skip(kind(testInfo) !== "landscape", "The landscape phone only.");
+  const sent: { type: string; payload: unknown }[] = [];
+  await mockApp(page, snapshotFor("L01"), {
+    onMessage: (message) => sent.push(message),
+  });
+  await page.goto("/");
+  await openPicker(page);
+  expect(
+    await picker(page).evaluate(
+      (sheet) => sheet.scrollHeight > sheet.clientHeight,
+    ),
+  ).toBe(true);
+  await picker(page).getByRole("button", { name: "開始對戰" }).click();
+  expect(startMessages(sent)).toHaveLength(1);
+});
+
+test("the website cannot start while offline, even with the sheet open", async ({
+  page,
+}) => {
+  const sent: { type: string; payload: unknown }[] = [];
+  const app = await mockApp(page, snapshotFor("L01"), {
+    refuseReconnects: true,
+    onMessage: (message) => sent.push(message),
+  });
+  await page.goto("/");
+  await openPicker(page);
+  const start = picker(page).getByRole("button", { name: "開始對戰" });
+  await expect(start).toBeEnabled();
+  await app.sockets[0].close({ code: 1011 });
+  await expect(page.locator(".notice-banner")).toHaveText(
+    "連線恢復前無法開始對局。",
+  );
+  await expect(start).toBeDisabled();
+  await picker(page).getByRole("button", { name: "取消" }).click();
+  await expect(page.locator(".ai-card .btn.primary")).toBeDisabled();
+  expect(startMessages(sent)).toEqual([]);
+});
+
+test("the app keeps the choice on the phone and plays it on the device", async ({
+  page,
+}, testInfo) => {
+  await playOnDevice(page, testInfo);
+  await asApp(page);
+  await mockApp(page, snapshotFor("L01"));
+  await page.goto("/");
+  await openPicker(page);
+  await pick(page, "普通");
+  await pick(page, "AI 先下");
+  await pick(page, "粉紅色");
+  await picker(page).getByRole("button", { name: "開始對戰" }).click();
+  // Normal, as green, opens; then it is your turn as pink (R29 09).
+  const tokens = page.locator(".grid .token:not(.ghost)");
+  await expect(tokens).toHaveCount(1, { timeout: 20_000 });
+  await expect(tokens.first()).toHaveClass(/green/);
+  await expect(page.locator(".player.is-me .player-token")).toHaveClass(/pink/);
+  await expect(
+    page.locator(".match-card .player:not(.is-me) strong"),
+  ).toHaveText("普通 AI");
+  expect(
+    await page.evaluate(() => [
+      localStorage.getItem("test.ai-choice"),
+      localStorage.getItem("connect4.ai-choice"),
+    ]),
+  ).toEqual([
+    JSON.stringify({ difficulty: "normal", aiFirst: true, colour: "pink" }),
+    null,
+  ]);
+});
+
+test("you pink against Normal: your turn and the AI's in their colours (R29 07)", async ({
+  page,
+}, testInfo) => {
+  const yourTurn = aiVariant(snapshotFor("P03"), {
+    difficulty: "normal",
+    you: "pink",
+  });
+  const app = await mockApp(page, yourTurn);
+  await page.goto("/play");
+  const colours = await tokenColours(page);
+  const chip = page.locator(".board-head:visible .turn-status");
+  const me = page.locator(".match-card .player.is-me");
+  const ai = page.locator(".match-card .player:not(.is-me)");
+  await expect(chip).toContainText("輪到你了");
+  await expect(chip).toHaveCSS("background-color", colours.pink);
+  await expect(me).toHaveCSS("background-color", colours.pinkSoft);
+  await expect(me).toHaveClass(/right/);
+  await expect(ai.locator("strong")).toHaveText("普通 AI");
+  await expect(ai.locator("small")).toHaveText("後手 · 普通");
+  if (kind(testInfo) === "desktop") {
+    await expect(page.locator(".mode-label")).toHaveText("挑戰 普通 AI");
+  }
+
+  // The AI is green: its thinking chip is mint-soft, its row not marked.
+  const thinking = aiVariant(snapshotFor("P05"), {
+    difficulty: "normal",
+    you: "pink",
+  });
+  app.send(thinking);
+  await expect(chip).toContainText("AI 正在思考");
+  await expect(chip).toHaveCSS("background-color", colours.mintSoft);
+  await expect(page.locator(".player.is-current")).toHaveCount(0);
+  await expect(page).toHaveScreenshot(
+    `${testInfo.project.name}-game-pink-think.png`,
+  );
+});
+
+test("the AI opens the game when it starts (R29 09)", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    !["galaxy-s26-ultra", "desktop-1440x900"].includes(testInfo.project.name),
+    "A phone and a desktop.",
+  );
+  const opening = { difficulty: "super", aiFirst: true } as const;
+  const app = await mockApp(
+    page,
+    aiVariant(snapshotFor("P05"), { ...opening, opening: "thinking" }),
+  );
+  await page.goto("/play");
+  const colours = await tokenColours(page);
+  const chip = page.locator(".board-head:visible .turn-status");
+  await expect(chip).toContainText("AI 正在思考");
+  await expect(chip).toHaveCSS("background-color", colours.pinkSoft);
+  await expect(page.locator(".board-head:visible")).toContainText("第 1 手");
+  await expect(page.locator(".match-card .player small")).toHaveText([
+    "你 · 後手",
+    "先手 · Super AI",
+  ]);
+  await expect(page.locator(".info-card strong").first()).toHaveText(
+    "Super AI",
+  );
+  await expect(page.locator(".grid .token:not(.ghost)")).toHaveCount(0);
+
+  app.send(aiVariant(snapshotFor("P03"), { ...opening, opening: "moved" }));
+  await expect(chip).toContainText("輪到你了");
+  await expect(page.locator(".board-head:visible")).toContainText("第 2 手");
+  await expect(page.locator(".grid .token.pink:not(.ghost)")).toHaveCount(1);
+});
+
+test("再次挑戰 asks the server for the same game again (R29 08-B)", async ({
+  page,
+}, testInfo) => {
+  test.skip(kind(testInfo) !== "desktop", "The same on every size.");
+  const sent: { type: string; payload: unknown }[] = [];
+  await mockApp(
+    page,
+    aiVariant(snapshotFor("P08"), {
+      difficulty: "easy",
+      you: "pink",
+      aiFirst: true,
+    }),
+    { onMessage: (message) => sent.push(message) },
+  );
+  await page.goto("/play");
+  const card = page.locator(".result-card");
+  await expect(card.locator("h2")).toHaveText("簡單 AI 拿下這局");
+  await card.getByRole("button", { name: "再次挑戰" }).click();
+  // The server keeps the level, colours and order (game.ai.retry).
+  await expect
+    .poll(() => sent.filter((message) => message.type.startsWith("game.")))
+    .toEqual([{ type: "game.ai.retry", payload: {} }]);
 });

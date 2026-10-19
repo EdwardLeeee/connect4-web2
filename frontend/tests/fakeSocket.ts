@@ -11,6 +11,8 @@ export class FakeWebSocket {
   static instances: FakeWebSocket[] = [];
   readyState = FakeWebSocket.CONNECTING;
   sent: string[] = [];
+  /** The same messages, payloads included. */
+  messages: { type: string; payload: unknown }[] = [];
   private listeners = new Map<string, Listener[]>();
 
   constructor(readonly url: string) {
@@ -22,7 +24,9 @@ export class FakeWebSocket {
   }
 
   send(data: string) {
-    this.sent.push(JSON.parse(data).type);
+    const message = JSON.parse(data);
+    this.sent.push(message.type);
+    this.messages.push(message);
   }
 
   // A dead socket never confirms the close.

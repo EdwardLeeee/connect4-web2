@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from "pinia";
 import { createApp, nextTick, type App } from "vue";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { BOARDS, pageSnapshot } from "../e2e/states";
+import { aiVariant, BOARDS, pageSnapshot } from "../e2e/states";
 import { dropDuration } from "../src/composables/useDropQueue";
 import { i18n } from "../src/i18n";
 import { useGameStore } from "../src/stores/game";
@@ -253,5 +253,86 @@ describe("your move drops as you let go (A1)", () => {
     await nextTick();
     expect(token(3, 4)).toBeNull();
     expect(store.canMove).toBe(true);
+  });
+});
+
+describe("an AI game at a level, in your colour (R29 06-A, 07, 09)", () => {
+  async function show(snapshot: Snapshot, locale: "zh-TW" | "en" | "th") {
+    setActivePinia(createPinia());
+    const store = useGameStore();
+    store.snapshot = snapshot;
+    store.connection = "online";
+    const host = document.createElement("div");
+    document.body.append(host);
+    i18n.global.locale.value = locale;
+    app = createApp(GameView);
+    app.use(i18n);
+    app.mount(host);
+    await nextTick();
+    const text = (selector: string) =>
+      [...host.querySelectorAll(selector)].map((e) => e.textContent!.trim());
+    return { host, text };
+  }
+
+  it("names the AI by its level, with you pink and first", async () => {
+    const { host, text } = await show(
+      aiVariant(pageSnapshot("P03", "zh-TW"), {
+        difficulty: "normal",
+        you: "pink",
+      }),
+      "zh-TW",
+    );
+    expect(text(".mode-label")).toEqual(["挑戰 普通 AI"]);
+    expect(text(".match-card .player strong")).toEqual(["普通 AI", "曜宇"]);
+    expect(text(".match-card .player small")).toEqual([
+      "後手 · 普通",
+      "你 · 先手",
+    ]);
+    expect(host.querySelector(".game")!.classList).toContain("you-pink");
+    expect(text(".turn-status")[0]).toContain("輪到你了");
+  });
+
+  it("opens with the AI thinking when it starts (09)", async () => {
+    const { host, text } = await show(
+      aiVariant(pageSnapshot("P05", "zh-TW"), {
+        difficulty: "easy",
+        you: "pink",
+        aiFirst: true,
+        opening: "thinking",
+      }),
+      "zh-TW",
+    );
+    expect(host.querySelector(".board-head")!.classList).toContain("thinking");
+    expect(text(".turn-status")[0]).toContain("AI 正在思考");
+    expect(text(".board-head")[0]).toContain("第 1 手");
+    expect(text(".match-card .player small")).toEqual([
+      "先手 · 簡單",
+      "你 · 後手",
+    ]);
+    expect(text(".info-card strong")[0]).toBe("簡單 AI");
+    expect(host.querySelectorAll(".board .token").length).toBe(0);
+  });
+
+  it("names it in English and Thai", async () => {
+    const english = await show(
+      aiVariant(pageSnapshot("P03", "en"), { difficulty: "easy" }),
+      "en",
+    );
+    expect(english.text(".mode-label")).toEqual(["vs Easy AI"]);
+    expect(english.text(".match-card .player small")[1]).toBe("Second · Easy");
+    app!.unmount();
+    document.body.replaceChildren();
+    const thai = await show(
+      aiVariant(pageSnapshot("P03", "th"), { difficulty: "normal" }),
+      "th",
+    );
+    expect(thai.text(".match-card .player strong")[1]).toBe("AI\u00A0ปกติ");
+    expect(thai.text(".mode-label")).toEqual(["ท้าดวล\u00A0AI\u00A0ปกติ"]);
+  });
+
+  it("keeps Super AI for a server from before 3.5.0", async () => {
+    const { text } = await show(pageSnapshot("P03", "zh-TW"), "zh-TW");
+    expect(text(".mode-label")).toEqual(["挑戰 Super AI"]);
+    expect(text(".match-card .player small")[1]).toBe("後手 · Super AI");
   });
 });

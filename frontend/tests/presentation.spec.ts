@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { pageSnapshot, type PageId } from "../e2e/states";
+import { aiVariant, pageSnapshot, type PageId } from "../e2e/states";
+import { i18n } from "../src/i18n";
 import type { Cell, Color, GameState } from "../src/types";
 import {
+  aiLevel,
   clauses,
   initial,
   lastMove,
   movesSince,
   opponentOf,
+  playerName,
   resultPanel,
   statusHead,
   type RoomMode,
@@ -210,5 +213,61 @@ describe("the avatar's letter", () => {
     ["", ""],
   ])("%s shows %s", (nickname, letter) => {
     expect(initial(nickname)).toBe(letter);
+  });
+});
+
+describe("the AI's name follows its level (R29 06-A)", () => {
+  const t = (key: string) => i18n.global.t(key);
+  const at = (
+    locale: "zh-TW" | "en" | "th",
+    difficulty?: "easy" | "normal",
+  ) => {
+    i18n.global.locale.value = locale;
+    const snapshot = pageSnapshot("P03", locale);
+    return (difficulty ? aiVariant(snapshot, { difficulty }) : snapshot)
+      .game as GameState;
+  };
+
+  it.each([
+    ["zh-TW", "easy", "簡單 AI"],
+    ["zh-TW", "normal", "普通 AI"],
+    ["en", "easy", "Easy AI"],
+    ["en", "normal", "Normal AI"],
+    ["th", "easy", "AI\u00A0ง่าย"],
+    ["th", "normal", "AI\u00A0ปกติ"],
+  ] as const)("in %s, %s is %s", (locale, level, name) => {
+    const game = at(locale, level);
+    // The server says "Easy AI" whatever the language.
+    expect(game.players.pink!.nickname).toBe(
+      `${level[0].toUpperCase()}${level.slice(1)} AI`,
+    );
+    expect(aiLevel(game)).toBe(level);
+    expect(playerName(game, "pink", t)).toBe(name);
+  });
+
+  it("reads a game from before 3.5.0, without a level, as Super AI", () => {
+    const game = at("zh-TW");
+    expect(game.difficulty).toBeUndefined();
+    expect(aiLevel(game)).toBe("super");
+    expect(playerName(game, "pink", t)).toBe("Super AI");
+    expect(aiLevel({ ...game, difficulty: null })).toBe("super");
+  });
+
+  it("names a person by their nickname", () => {
+    const game = at("zh-TW", "easy");
+    expect(playerName(game, "green", t)).toBe("曜宇");
+    const friend = pageSnapshot("P04", "zh-TW").game as GameState;
+    expect(playerName(friend, "green", t)).toBe("玩家 4821");
+  });
+
+  it("puts the name in the AI's win (08)", () => {
+    expect(resultPanel(page("P08").game, "ai", "簡單 AI")?.title).toEqual({
+      key: "game.loseAi",
+      args: { name: "簡單 AI" },
+    });
+    i18n.global.locale.value = "zh-TW";
+    expect(i18n.global.t("game.loseAi", { name: "簡單 AI" })).toBe(
+      "簡單 AI 拿下這局",
+    );
   });
 });

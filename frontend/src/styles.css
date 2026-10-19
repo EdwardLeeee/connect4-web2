@@ -3491,15 +3491,221 @@ input.has-error:focus {
 }
 
 /* A person's turn takes their soft colour on the chip and on their row of the
-   match card (round 20, 03). The AI's turn is "thinking" and stays as it is. */
+   match card (round 20, 03). The AI's "thinking" chip takes the AI's soft
+   colour too (R29 07): pink-soft above, mint-soft when you are pink. */
 .you-green .theirs .turn-status,
 .you-green .player.is-current:not(.is-me) {
   background: var(--pink-soft);
 }
 
 .you-pink .theirs .turn-status,
+.you-pink .thinking .turn-status,
 .you-pink .player.is-current:not(.is-me) {
   background: var(--mint-soft);
+}
+
+/* ================= R29 01: the AI sheet after 立即對戰 =================
+   A sheet on the bottom edge up to 900px, a centred dialog above (tablets
+   follow the width). It shows at once, as the profile sheet does. */
+.picker-scrim {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  display: grid;
+  align-items: end;
+  justify-items: center;
+  background: var(--scrim);
+}
+
+.ai-picker {
+  --picker-gap: 12px;
+  width: min(460px, 100%);
+  max-height: 100%;
+  overflow: auto;
+  padding: 22px 20px calc(20px + var(--sab));
+  display: grid;
+  gap: var(--picker-gap);
+  border: var(--bw) solid var(--ink);
+  border-bottom: 0;
+  border-radius: 24px 24px 0 0;
+  background: var(--paper);
+  box-shadow: var(--sh-card);
+}
+
+.ai-picker:focus {
+  outline: none;
+}
+
+.ai-picker h2 {
+  font-size: var(--fs-22);
+}
+
+.picker-levels {
+  display: grid;
+  gap: var(--picker-gap);
+}
+
+.picker-level {
+  position: relative;
+  min-height: 56px;
+  padding: 8px 14px;
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  align-items: center;
+  column-gap: 10px;
+  border: var(--bw-thin) solid var(--ink);
+  border-radius: 16px;
+  background: var(--white);
+  cursor: pointer;
+}
+
+.picker-level.is-on,
+.picker-seg .is-on {
+  background: var(--sun-soft);
+}
+
+.picker-dot {
+  width: 22px;
+  height: 22px;
+  border: var(--bw-thin) solid var(--ink);
+  border-radius: 50%;
+  background: var(--white);
+}
+
+.is-on > .picker-dot {
+  background: var(--ink);
+  box-shadow: inset 0 0 0 4px var(--white);
+}
+
+.picker-level b {
+  font-size: var(--fs-17);
+  font-weight: 800;
+}
+
+.picker-level small {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: var(--fs-13);
+  font-weight: 700;
+}
+
+.picker-row {
+  display: grid;
+  gap: 5px;
+}
+
+.picker-label {
+  color: var(--muted);
+  font-size: var(--fs-13);
+  font-weight: 800;
+}
+
+.picker-seg {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  overflow: hidden;
+  border: var(--bw-thin) solid var(--ink);
+  border-radius: 14px;
+  background: var(--white);
+}
+
+.picker-seg label {
+  position: relative;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: var(--fs-15);
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.picker-seg label + label {
+  border-left: var(--bw-thin) solid var(--ink);
+}
+
+/* The colour's own token, with its colour-blind pattern (R29 07). */
+.picker-seg .token.picker-swatch {
+  --pattern-w: 2px;
+  width: 20px;
+  height: 20px;
+  border-width: 2px;
+}
+
+.picker-level:has(:focus-visible),
+.picker-seg label:has(:focus-visible) {
+  z-index: 1;
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.picker-seg label:has(:focus-visible) {
+  outline-offset: -5px;
+}
+
+/* 05-A: Super AI with AI 先下. */
+.picker-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: var(--fs-13);
+  font-weight: 800;
+}
+
+.picker-warn::before {
+  box-sizing: border-box;
+  flex: 0 0 18px;
+  height: 18px;
+  margin-top: 1px;
+  border: var(--bw-thin) solid var(--ink);
+  border-radius: 50%;
+  background: var(--sun);
+  content: "!";
+  font-size: 12px;
+  line-height: 15px;
+  text-align: center;
+}
+
+.ai-picker .btn {
+  width: 100%;
+}
+
+@media (min-width: 901px) {
+  .picker-scrim {
+    align-items: center;
+  }
+
+  .ai-picker {
+    padding-bottom: 22px;
+    border-bottom: var(--bw) solid var(--ink);
+    border-radius: 24px;
+  }
+}
+
+/* Short screens (320×640): 開始對戰 and 取消 stay on the first screen. */
+@media (max-height: 700px) {
+  .ai-picker {
+    --picker-gap: 8px;
+    padding-top: 16px;
+  }
+
+  .ai-picker h2 {
+    font-size: var(--fs-19);
+  }
+
+  .picker-level {
+    min-height: 50px;
+    padding: 5px 12px;
+  }
+
+  .picker-row {
+    gap: 3px;
+  }
 }
 
 /* ================= round 7 endings (design/spec.md §0; A03 C5, A11 F5, A12 T5) =================
