@@ -25,5 +25,5 @@ export const AI_NICKNAMES: Readonly<Record<Difficulty, string>> = {
  */
 export const EASY_RANDOM_PERCENT = 100;
 export const EASY_RANDOM_IS_SAFE = false;
-export const NORMAL_RANDOM_PERCENT = 90;
+export const NORMAL_RANDOM_PERCENT = 50;
 export const NORMAL_RANDOM_IS_SAFE = true;
