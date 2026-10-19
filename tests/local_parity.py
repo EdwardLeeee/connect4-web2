@@ -272,7 +272,9 @@ def difficulty_fixture() -> dict[str, Any]:
     """
     rng = random.Random(20261019)
     histories = ["", "4", "121212", "12121", "4337466"]
-    while len(histories) < 240:
+    # Quiet positions where exactly one column would hand the opponent a win.
+    histories += ["2114462", "3236211", "3552372", "4112442", "4344311", "5356356", "6447716"]
+    while len(histories) < 320:
         game = Game(room_id="r", mode="ai", seats={"green": HUMAN, "pink": AI}, status="playing")
         length = rng.randrange(41)
         while game.status == "playing" and len(game.history) < length:

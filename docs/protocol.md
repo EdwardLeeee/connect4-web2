@@ -152,9 +152,9 @@ iOS／Android app 把網頁打包在 app 裡（Capacitor），頁面來源是 `c
 - `easy` 與 `normal` 都先看一步內的輸贏：自己一步能連成四就下那一欄；否則對手下一步能連成四，就擋那一欄
   （都從左邊的欄找起）。其他時候：
   - `easy`：每一手都從所有能下的欄隨機挑一欄。
-  - `normal`：90% 的手隨機挑一欄，但避開「下了之後對手下一步就能連成四」的欄（每一欄都會時才不避開）；剩下 10% 下精確解。
-- `easy` 是使用者 2026-10-19 選定的規則；`normal` 的百分比是暫定值。量測見 `docs/research/2026-10-ai-difficulty.md`，
-  規則在 `backend/connect4_app/difficulty.py`。
+  - `normal`：50% 的手隨機挑一欄，但避開「下了之後對手下一步就能連成四」的欄（每一欄都會時才不避開）；另外 50% 下精確解。
+- 兩條規則都是使用者 2026-10-19 選定的。量測見 `docs/research/2026-10-ai-difficulty.md`，規則在
+  `backend/connect4_app/difficulty.py`。
 - 「這一手隨機或下精確解」在求解之前就決定；需要精確解而求解器故障時，任何難度都回報 `solver_unavailable`，
   不會改成隨機。
 - 隨機只由每局的 64 位元種子和 `history` 決定：伺服器在開局與每次重開時產生新種子，不送給用戶端。

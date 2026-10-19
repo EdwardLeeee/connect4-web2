@@ -21,10 +21,10 @@ from __future__ import annotations
 from .domain import COLUMNS, ROWS, Difficulty
 
 DIFFICULTIES: tuple[Difficulty, ...] = ("easy", "normal", "super")
-# The user's picks of 2026-10-19 for Easy; Normal's percentage is a placeholder until picked.
+# The user's picks of 2026-10-19 (docs/research/2026-10-ai-difficulty.md).
 EASY_RANDOM_PERCENT = 100
 EASY_RANDOM_IS_SAFE = False
-NORMAL_RANDOM_PERCENT = 90
+NORMAL_RANDOM_PERCENT = 50
 NORMAL_RANDOM_IS_SAFE = True
 
 # The salts of the two draws a move can make.
