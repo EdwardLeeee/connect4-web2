@@ -1,6 +1,7 @@
 //! The Super AI reply table: exact move scores for every position the deterministic AI can
-//! face after 9, 11 and 13 moves, precomputed by `tools/reply-table` so those moves need no
-//! search. A lookup returns the same exact scores as solving, so play is unchanged.
+//! face after 9, 11 and 13 moves when it moves second, and after 8, 10 and 12 moves when it
+//! moves first, precomputed by `tools/reply-table` so those moves need no search. A lookup
+//! returns the same exact scores as solving, so play is unchanged.
 //!
 //! File format (all integers little-endian), read by the server and later by the app:
 //!

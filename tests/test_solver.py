@@ -3,10 +3,12 @@ import random
 
 import pytest
 from connect4_app import _solver
-from connect4_app.domain import Game
+from connect4_app.domain import Color, Game
 
 CENTRE_FIRST = [3, 2, 4, 1, 5, 0, 6]
 TABLE_MOVES = {9, 11, 13}
+# The moves after which the table answers a Super AI that moves first.
+AI_FIRST_TABLE_MOVES = {8, 10, 12}
 
 
 def centre_first(scores: list[int | None]) -> int:
@@ -34,19 +36,20 @@ def test_native_solver_rejects_invalid_history(history: str) -> None:
 
 
 def test_reply_table_is_embedded() -> None:
-    assert _solver.reply_table_info() == (True, 52_721)
+    assert _solver.reply_table_info() == (True, 66_540)
 
 
-def hands_the_ai_a_win(game: Game, column: int) -> bool:
+def hands_the_ai_a_win(game: Game, column: int, human: Color = "green") -> bool:
+    ai: Color = "pink" if human == "green" else "green"
     after = copy.deepcopy(game)
-    after.drop("green", column)
+    after.drop(human, column)
     if after.status != "playing":
         return False
     for reply in range(7):
         if after.board[0][reply] is None:
             trial = copy.deepcopy(after)
-            trial.drop("pink", reply)
-            if trial.winner == "pink":
+            trial.drop(ai, reply)
+            if trial.winner == ai:
                 return True
     return False
 
@@ -71,6 +74,28 @@ def test_reply_table_matches_live_solving_in_ai_games() -> None:
             move = _solver.best_move(history)
             assert move == centre_first(live), history
             game.drop("pink", move)
+    assert all(count >= 5 for count in checked.values()), checked
+
+
+def test_reply_table_matches_live_solving_when_the_ai_moves_first() -> None:
+    rng = random.Random(20261019)
+    checked = {moves: 0 for moves in AI_FIRST_TABLE_MOVES}
+    for _ in range(12):
+        game = Game(room_id="r", mode="ai", seats={"green": "ai", "pink": "h"}, status="playing")
+        while game.status == "playing":
+            history = game.history
+            live = _solver.score_moves(history)
+            if len(history) in AI_FIRST_TABLE_MOVES:
+                assert _solver.reply_table_scores(history) == live, history
+                checked[len(history)] += 1
+            move = _solver.best_move(history)
+            assert move == centre_first(live), history
+            game.drop("green", move)
+            if game.status != "playing":
+                break
+            legal = [column for column in range(7) if game.board[0][column] is None]
+            safe = [column for column in legal if not hands_the_ai_a_win(game, column, "pink")]
+            game.drop("pink", rng.choice(safe or legal))
     assert all(count >= 5 for count in checked.values()), checked
 
 
