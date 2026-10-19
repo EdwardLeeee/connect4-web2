@@ -213,20 +213,15 @@ final class AppUITests: XCTestCase {
     }
 
     /// Not now, found by its place rather than its words, which differ over an AI game (06-B): the
-    /// second button under the nickname field, after Join. In the app the field takes the focus and
-    /// the keyboard comes up over the page; a tap while the page is still scrolling up lands on the
-    /// keyboard (run 39141008718), so the keyboard is put away first.
+    /// second button under the nickname field, after Join. The app leaves the field unfocused (#131):
+    /// when it took the focus, the keyboard came up over the page and a tap while the page was still
+    /// scrolling up landed on the keyboard (run 39141008718), so a keyboard here is a failure.
     private func notNow(_ web: XCUIElement) {
         let field = web.textFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 10), "the invite page has no nickname field")
-        let keyboard = app.keyboards.firstMatch
-        if keyboard.waitForExistence(timeout: 3) {
-            let done = app.buttons["Done"]
-            XCTAssertTrue(done.exists, "the keyboard has no Done button")
-            done.tap()
-            XCTAssertTrue(waitUntil("exists == false", keyboard, timeout: 10), "the keyboard stayed up")
-            Thread.sleep(forTimeInterval: 0.5)
-        }
+        XCTAssertFalse(
+            app.keyboards.firstMatch.waitForExistence(timeout: 3), "the keyboard came up on the invite page by itself")
+        print("SMOKE invite: the keyboard stayed down")
         let below = web.buttons.allElementsBoundByIndex
             .filter { $0.exists && $0.frame.minY > field.frame.maxY }
             .sorted { $0.frame.minY < $1.frame.minY }
