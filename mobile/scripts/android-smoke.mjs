@@ -148,6 +148,7 @@ if (mode === "offline") {
   // 3.5.0: Play now opens the AI sheet (Super AI, you first, green); Start starts it.
   await page.locator(".ai-card button.btn.primary").click();
   await page.locator(".ai-picker .btn.primary").click();
+  await page.locator(".ai-picker").waitFor({ state: "detached", timeout: 10_000 });
   await expectInMatchCard(page, NEW_NAME, "after renaming offline");
   await playMoves(page, "offline", 2);
   // The chip can exist twice while the view transitions; read the visible one.

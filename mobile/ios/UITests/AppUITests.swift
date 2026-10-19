@@ -48,6 +48,7 @@ final class AppUITests: XCTestCase {
         playNow.tap()
         let begin = matching(web.buttons, "label == %@", "開始對戰", "Start", "เริ่มเลย").firstMatch
         XCTAssertTrue(begin.waitForExistence(timeout: 10), "Play now did not open the AI sheet")
+        XCTAssertTrue(waitUntil("isEnabled == true", begin, timeout: 10), "Start stayed disabled")
         begin.tap()
     }
 
