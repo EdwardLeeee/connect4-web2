@@ -261,6 +261,97 @@ p {
   gap: 12px;
 }
 
+/* R28 B: the website's "open in the app" banner on an iPhone. First in .app,
+   edge to edge over its padding, right under the browser's own bars; the page
+   keeps its top spacing under it, so everything moves down and nothing else
+   changes. */
+.app-banner {
+  flex: none;
+  min-height: 68px;
+  margin: calc(env(safe-area-inset-top) - var(--sat)) calc(-1 * var(--sxr))
+    calc(var(--sat) - env(safe-area-inset-top)) calc(-1 * var(--sxl));
+  padding: 0 var(--sxr) 0 env(safe-area-inset-left);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  background: var(--white);
+  border-bottom: var(--bw-thin) solid var(--ink);
+}
+
+.app-banner-close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  color: inherit;
+  background: none;
+  /* As drawn on the approved shots (spec R28 07). */
+  font-family: var(--font-ui);
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.app-banner-icon {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: var(--bw-thin) solid var(--ink);
+  border-radius: 11px;
+}
+
+.app-banner-copy {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.app-banner-name {
+  overflow: hidden;
+  font-size: var(--fs-15);
+  font-weight: 800;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.app-banner-text {
+  color: var(--muted);
+  font-size: var(--fs-13);
+  font-weight: 700;
+}
+
+.app-banner-open {
+  flex: none;
+  min-height: 44px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  border: var(--bw-thin) solid var(--ink);
+  border-radius: 999px;
+  color: var(--ink);
+  background: var(--mint);
+  box-shadow: 2px 2px 0 var(--ink);
+  font-size: var(--fs-15);
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.app-banner-open:active {
+  box-shadow: none;
+  transform: translate(2px, 2px);
+}
+
+/* 開啟中…: an in-app browser waits for the app. */
+.app-banner-open.is-busy {
+  opacity: 0.45;
+}
+
 .brand {
   display: inline-flex;
   align-items: center;
@@ -1785,6 +1876,12 @@ input.is-focused {
     padding-left: max(20px, env(safe-area-inset-left));
   }
 
+  /* The app banner stays edge to edge over the lobby's wider padding. */
+  .view-lobby .app-banner {
+    margin-right: calc(-1 * max(20px, env(safe-area-inset-right)));
+    margin-left: calc(-1 * max(20px, env(safe-area-inset-left)));
+  }
+
   .lobby {
     padding: 16px 0;
   }
@@ -2351,6 +2448,11 @@ input.is-focused {
     --sat: max(8px, env(safe-area-inset-top));
     --sab: max(8px, env(safe-area-inset-bottom));
     --sx: 16px;
+  }
+
+  /* R28 drew portrait only; here the top bar floats over the page's top. */
+  .app-banner {
+    display: none;
   }
 
   .topbar {

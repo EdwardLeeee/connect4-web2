@@ -3100,3 +3100,212 @@ test("joining from an invite ends the AI game and opens the friend's room", asyn
     await page.evaluate(() => localStorage.getItem("test.local-game")),
   ).toBeNull();
 });
+
+// ================= the website's app banner (R28 B, 3.4.0) =================
+
+const IPHONE =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko)";
+const IPHONE_SAFARI = `${IPHONE} Version/18.6 Mobile/15E148 Safari/604.1`;
+const IPHONE_INSTAGRAM = `${IPHONE} Mobile/15E148 Instagram 400.0.0.27.81 (iPhone15,3; iOS 18_6; zh_TW; zh-Hant; scale=3.00; 1290x2796; 811355427)`;
+const APP_STORE = "https://apps.apple.com/app/id6816204087";
+
+const banner = (page: Page) => page.locator(".app-banner");
+const bannerOpen = (page: Page) => page.locator(".app-banner-open");
+
+test.describe("on an iPhone's Safari", () => {
+  test.use({ userAgent: IPHONE_SAFARI });
+
+  test("the banner opens the app from the lobby and the invite page, and ✕ keeps it closed", async ({
+    page,
+  }, testInfo) => {
+    test.skip(kind(testInfo) !== "phone", "An iPhone in portrait.");
+    await mockApp(page, snapshotFor("L01"));
+    await page.goto("/");
+    await expect(page.locator(".lobby")).toBeVisible();
+
+    // R28 07-B: edge to edge at the very top, above the page's own top bar.
+    const box = (await banner(page).boundingBox())!;
+    expect(box.x).toBe(0);
+    expect(box.y).toBe(0);
+    expect(box.width).toBe(page.viewportSize()!.width);
+    expect(Math.round(box.height)).toBe(68);
+    const topbar = (await page.locator(".topbar").boundingBox())!;
+    expect(topbar.y).toBeGreaterThanOrEqual(box.y + box.height);
+    await expect(banner(page).locator(".app-banner-name")).toHaveText(
+      "四子棋 Super AI",
+    );
+    await expect(bannerOpen(page)).toHaveText("打開");
+    // Safari: a plain link on the subdomain, the lobby's without a room.
+    await expect(bannerOpen(page)).toHaveAttribute(
+      "href",
+      "https://connect4-app.oraclelee.com/open",
+    );
+    await expectTouchSafe(page, ".app-banner-close, .app-banner-open");
+    expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
+    if (testInfo.project.name.startsWith("iphone-")) {
+      await expect(page).toHaveScreenshot(
+        `${testInfo.project.name}-banner-lobby.png`,
+      );
+    }
+
+    await page.goto("/r/LAN427");
+    await expect(inviteCode(page)).toHaveText("LAN427");
+    await expect(bannerOpen(page)).toHaveAttribute(
+      "href",
+      "https://connect4-app.oraclelee.com/r/LAN427",
+    );
+    if (testInfo.project.name.startsWith("iphone-")) {
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await expect(page).toHaveScreenshot(
+        `${testInfo.project.name}-banner-invite.png`,
+      );
+    }
+
+    // ✕: gone, also after a reload.
+    await page.getByRole("button", { name: "關閉" }).click();
+    await expect(banner(page)).toHaveCount(0);
+    await page.reload();
+    await expect(inviteCode(page)).toHaveText("LAN427");
+    await page.waitForTimeout(300);
+    await expect(banner(page)).toHaveCount(0);
+  });
+
+  for (const locale of ["en", "th"] as const) {
+    test(`the banner fits a 320px iPhone in ${locale}`, async ({
+      page,
+    }, testInfo) => {
+      test.skip(
+        !["galaxy-s26-ultra", "iphone-16e-17e"].includes(testInfo.project.name),
+        "Once per engine.",
+      );
+      await page.setViewportSize({ width: 320, height: 640 });
+      await mockApp(page, snapshotFor("L12", locale));
+      for (const path of ["/", "/r/LAN427"]) {
+        await page.goto(path);
+        await expect(banner(page)).toBeVisible();
+        // R28 07-B at 320: every word on one line, nothing cut off.
+        const words = await banner(page).evaluate((element) =>
+          [
+            ...element.querySelectorAll(
+              ".app-banner-name, .app-banner-text, .app-banner-open",
+            ),
+          ].map((part) => {
+            const range = document.createRange();
+            range.selectNodeContents(part);
+            const lines = new Set(
+              [...range.getClientRects()]
+                .filter((rect) => rect.width > 1)
+                .map((rect) => Math.round(rect.bottom)),
+            ).size;
+            return {
+              text: part.textContent,
+              lines,
+              cut: part.scrollWidth > part.clientWidth + 1,
+            };
+          }),
+        );
+        for (const word of words) {
+          expect(word, JSON.stringify(word)).toMatchObject({
+            lines: 1,
+            cut: false,
+          });
+        }
+        await expectTouchSafe(page, ".app-banner-close, .app-banner-open");
+        expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
+      }
+    });
+  }
+
+  test("the banner stays off during a game", async ({ page }, testInfo) => {
+    test.skip(kind(testInfo) !== "phone", "An iPhone in portrait.");
+    await mockApp(page, snapshotFor("P03"));
+    await page.goto("/play");
+    await expect(page.locator(".board")).toBeVisible();
+    await page.waitForTimeout(300);
+    await expect(banner(page)).toHaveCount(0);
+  });
+
+  test("after a room turns out full, the banner only opens the app", async ({
+    page,
+  }, testInfo) => {
+    test.skip(kind(testInfo) !== "phone", "An iPhone in portrait.");
+    const app = await mockApp(page, snapshotFor("L13"), {
+      onMessage: (message) => {
+        if (message.type === "room.join") {
+          app.sockets
+            .at(-1)!
+            .send(
+              JSON.stringify({ type: "error", payload: { code: "room_full" } }),
+            );
+        }
+      },
+    });
+    await page.goto("/r/LAN427");
+    await expect(bannerOpen(page)).toHaveAttribute(
+      "href",
+      "https://connect4-app.oraclelee.com/r/LAN427",
+    );
+    await page.getByRole("button", { name: "加入房間" }).click();
+    await expect(page.locator(".invite-card.is-gone")).toBeVisible();
+    await expect(bannerOpen(page)).toHaveAttribute(
+      "href",
+      "https://connect4-app.oraclelee.com/open",
+    );
+  });
+
+  test("the app shows no banner", async ({ page }, testInfo) => {
+    test.skip(kind(testInfo) !== "phone", "An iPhone in portrait.");
+    await asApp(page);
+    await mockApp(page, snapshotFor("L01"));
+    await page.goto("/");
+    await expect(page.locator(".lobby")).toBeVisible();
+    await page.waitForTimeout(300);
+    await expect(banner(page)).toHaveCount(0);
+  });
+});
+
+test.describe("in an iPhone app's own browser", () => {
+  test.use({ userAgent: IPHONE_INSTAGRAM });
+
+  test("the banner tries the app's scheme, then the App Store", async ({
+    page,
+  }, testInfo) => {
+    test.skip(kind(testInfo) !== "phone", "An iPhone in portrait.");
+    await mockApp(page, snapshotFor("L12"));
+    await page.route(`${APP_STORE}**`, (route) =>
+      route.fulfill({
+        contentType: "text/html",
+        body: "<title>App Store</title>",
+      }),
+    );
+    await page.goto("/r/LAN427");
+    await expect(bannerOpen(page)).toHaveAttribute(
+      "href",
+      "oraclelee-fourinarow://r/LAN427",
+    );
+    // No app here: the browser cannot follow the scheme, so the page drops it.
+    await page.evaluate(() =>
+      document.addEventListener("click", (event) => event.preventDefault()),
+    );
+    await bannerOpen(page).click();
+    await expect(banner(page).locator(".app-banner-text")).toHaveText(
+      "開啟中…",
+    );
+    await expect(bannerOpen(page)).toHaveClass(/is-busy/);
+    await page.waitForTimeout(1500);
+    await expect(page).toHaveURL(/\/\?room=LAN427$/);
+    await expect(page).toHaveURL(APP_STORE, { timeout: 5000 });
+  });
+});
+
+test("no banner on Android or a desktop", async ({ page }, testInfo) => {
+  test.skip(
+    !["galaxy-s26-ultra", "desktop-1366x768"].includes(testInfo.project.name),
+    "Their own user agents, once each.",
+  );
+  await mockApp(page, snapshotFor("L01"));
+  await page.goto("/");
+  await expect(page.locator(".lobby")).toBeVisible();
+  await page.waitForTimeout(300);
+  await expect(banner(page)).toHaveCount(0);
+});
