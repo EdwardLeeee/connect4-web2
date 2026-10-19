@@ -145,7 +145,9 @@ if (mode === "offline") {
   if ((await avatar(page)) !== "S") throw new Error("the avatar did not change after renaming");
   log('offline: avatar "S" after renaming offline');
 
+  // 3.5.0: Play now opens the AI sheet (Super AI, you first, green); Start starts it.
   await page.locator(".ai-card button.btn.primary").click();
+  await page.locator(".ai-picker .btn.primary").click();
   await expectInMatchCard(page, NEW_NAME, "after renaming offline");
   await playMoves(page, "offline", 2);
   // The chip can exist twice while the view transitions; read the visible one.

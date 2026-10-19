@@ -42,6 +42,15 @@ final class AppUITests: XCTestCase {
         return start
     }
 
+    /// 3.5.0: Play now opens the AI sheet, on Super AI, you first and green the first time; its
+    /// Start begins that game.
+    private func startGame(_ web: XCUIElement, _ playNow: XCUIElement) {
+        playNow.tap()
+        let begin = matching(web.buttons, "label == %@", "開始對戰", "Start", "เริ่มเลย").firstMatch
+        XCTAssertTrue(begin.waitForExistence(timeout: 10), "Play now did not open the AI sheet")
+        begin.tap()
+    }
+
     /// The header avatar shows the nickname's first character, or "?" when there is none; the
     /// profile sheet shows the whole default nickname ("玩家 NNNN" / "Player NNNN").
     private func checkDefaultNickname(_ web: XCUIElement, _ tag: String) {
@@ -233,7 +242,7 @@ final class AppUITests: XCTestCase {
         let start = playNow(web)
         shot("online-lobby")
         checkDefaultNickname(web, "online")
-        start.tap()
+        startGame(web, start)
 
         let moves = play(web, "online")
         XCTAssertGreaterThanOrEqual(moves, 4, "a finished game needs at least 4 of our moves")
@@ -269,7 +278,7 @@ final class AppUITests: XCTestCase {
         // 3.3.1: the nickname changes offline at once, in the header and in the AI game.
         let newName = "Smoke Tester"
         rename(web, to: newName)
-        start.tap()
+        startGame(web, start)
         checkMatchCard(web, newName, "after renaming offline")
 
         // Two of our moves, then leave the app while the game is in progress.
@@ -318,7 +327,7 @@ final class AppUITests: XCTestCase {
         notNow(checkInvitePage("DEF567", "from the background"))
 
         // Two of our moves in an AI game, then a link over it.
-        playNow(web).tap()
+        startGame(web, playNow(web))
         play(web, "invite", maxMoves: 2)
         let chip = web.staticTexts.matching(
             NSPredicate(format: "label MATCHES %@", "^(第 [0-9]+ 手|Move [0-9]+)$")).firstMatch
