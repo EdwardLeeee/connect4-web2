@@ -25,3 +25,7 @@ fresh nearlit:0.1:2 casual 1 60 1201
 warm nearlit:0.1:2 casual 1 60 1251
 fresh nearlit:0.1:2 casual 2 60 1202
 warm nearlit:0.1:2 casual 2 60 1252
+fresh tacsafe:0.5 casual 1 60 1201
+warm tacsafe:0.5 casual 1 60 1251
+fresh tacsafe:0.5 casual 2 60 1202
+warm tacsafe:0.5 casual 2 60 1252

@@ -218,3 +218,10 @@ tacsafe:0.8 novice 1 200 1409
 tacsafe:0.8 novice 2 200 1410
 tacsafe:0.8 casual 1 200 1411
 tacsafe:0.8 casual 2 200 1412
+# round 9: the picked Normal, 200 more games per cell, and against the picked Easy
+tacsafe:0.5 novice 1 200 1501
+tacsafe:0.5 novice 2 200 1502
+tacsafe:0.5 casual 1 200 1503
+tacsafe:0.5 casual 2 200 1504
+tac:1 tacsafe:0.5 1 200 1505
+tac:1 tacsafe:0.5 2 200 1506
