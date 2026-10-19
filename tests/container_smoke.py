@@ -213,10 +213,29 @@ AI_MOVE_CLIENT = textwrap.dedent(
             ws.send(json.dumps({"type": "game.move", "payload": {"column": HUMAN_COLUMN}}))
             while len(game["history"]) < 2:
                 game = next_snapshot(ws)["game"]
+
+            # A Super AI game where the AI moves first and the player takes pink.
+            ws.send(json.dumps({"type": "game.leave", "payload": {}}))
+            while next_snapshot(ws)["game"] is not None:
+                pass
+            options = {"difficulty": "super", "ai_first": True, "player_color": "pink"}
+            ws.send(json.dumps({"type": "game.ai.start", "payload": options}))
+            opening = next_snapshot(ws)["game"]
+            reply = opening
+            while not reply["history"]:
+                reply = next_snapshot(ws)["game"]
     except Exception as error:
         print(json.dumps({"error": repr(error), "last": last}))
         sys.exit(1)
-    print(json.dumps({"history": game["history"], "expected": expected, "last": last}))
+    keys = ("difficulty", "status", "you", "first", "turn", "history")
+    print(json.dumps({
+        "history": game["history"],
+        "expected": expected,
+        "opening": {key: opening[key] for key in keys},
+        "reply": {key: reply[key] for key in keys},
+        "first_move": str(_solver.best_move("") + 1),
+        "last": last,
+    }))
     """
 )
 
@@ -231,6 +250,22 @@ def check_ai_move(cookie: str) -> None:
         f"AI answered {outcome['history']}, the solver says {outcome['expected']}: {outcome}",
     )
     print(f"ai move: {outcome['history']} (expected {outcome['expected']})")
+    opening = {
+        "difficulty": "super",
+        "status": "thinking",
+        "you": "pink",
+        "first": "green",
+        "turn": "green",
+        "history": "",
+    }
+    check(outcome["opening"] == opening, f"Super AI game with the AI first opened as {outcome}")
+    reply = outcome["reply"]
+    check(
+        (reply["status"], reply["turn"], reply["history"])
+        == ("playing", "pink", outcome["first_move"]),
+        f"the Super AI's first move left {outcome}",
+    )
+    print(f"super ai first: {reply['history']}")
 
 
 def run(image: str) -> None:

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import local_parity
 from connect4_app.domain import COLUMNS, ROWS
-from connect4_app.manager import AI_MIN_THINK_SECONDS
+from connect4_app.manager import AI_MIN_THINK_SECONDS, AI_NICKNAMES
 from connect4_app.sessions import DEFAULT_NICKNAMES, LOCALES, default_nickname
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,9 +37,17 @@ def test_constants_match_the_server() -> None:
     assert ts_order and rust_order
     assert ts_order.group(1).replace(" ", "") == rust_order.group(1).replace(" ", "")
 
-    manager = (ROOT / "backend" / "connect4_app" / "manager.py").read_text(encoding="utf-8")
     nickname = re.search(r'AI_NICKNAME = "([^"]+)"', CONSTANTS)
-    assert nickname and f'"nickname": "{nickname.group(1)}"' in manager
+    assert nickname and nickname.group(1) == AI_NICKNAMES["super"]
+
+
+def test_the_difficulty_fixture_exercises_every_rule() -> None:
+    fixture = json.loads((local_parity.FIXTURES / "difficulty-parity.json").read_text("utf-8"))
+    seen = local_parity.difficulty_coverage(fixture)
+    for rule in ["win", "block", "best", "random, avoiding a column", "random"]:
+        assert seen[rule] >= 3, (rule, seen)
+    easy = [move["column"] for move in fixture["moves"] if move["difficulty"] == "easy"]
+    assert set(range(7)) <= set(easy)
 
 
 def test_the_wasm_engine_is_the_native_engine_version() -> None:

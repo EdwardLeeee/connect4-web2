@@ -1,0 +1,9 @@
+# level opponent ai_seat games seed  (product_check.py: the shipped difficulty.py)
+easy novice 1 200 1001
+easy novice 2 200 1002
+easy casual 1 200 1003
+easy casual 2 200 1004
+normal novice 1 200 1005
+normal novice 2 200 1006
+normal casual 1 200 1007
+normal casual 2 200 1008

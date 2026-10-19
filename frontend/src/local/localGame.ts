@@ -268,6 +268,7 @@ export class LocalGame {
       room: { id: this.roomId, code: null, mode: "ai" },
       game: {
         revision: game.revision,
+        difficulty: "super",
         status: game.status,
         board: game.board.map((row) => [...row]),
         history: game.history,
