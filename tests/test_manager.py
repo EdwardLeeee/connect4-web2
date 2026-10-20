@@ -821,10 +821,10 @@ async def test_the_same_seed_replays_the_same_moves() -> None:
 @pytest.mark.parametrize("restart", ["game.ai.retry", "game.rematch"])
 async def test_a_restart_keeps_the_level_and_order_with_a_new_seed(restart: str) -> None:
     # The first seed needs the solver for the opening move, the second picks it at random.
-    best_first = seed_where("normal", "", random_move=False)
-    random_first = seed_where("normal", "", random_move=True)
+    best_first = seed_where("easy", "", random_move=False)
+    random_first = seed_where("easy", "", random_move=True)
     manager, player, _ = await start_level(
-        {"difficulty": "normal", "ai_first": True},
+        {"difficulty": "easy", "ai_first": True},
         solver=FailingSolver(),
         seeds=(best_first, random_first),
     )
@@ -836,7 +836,7 @@ async def test_a_restart_keeps_the_level_and_order_with_a_new_seed(restart: str)
     await manager.handle(player, {"type": restart, "payload": {}})
     view = manager.snapshot(player)["game"]
     assert (view["difficulty"], view["first"], view["status"], view["history"]) == (
-        "normal",
+        "easy",
         "pink",
         "thinking",
         "",
@@ -845,7 +845,7 @@ async def test_a_restart_keeps_the_level_and_order_with_a_new_seed(restart: str)
     game = manager._game_for(player)
     assert game is not None
     assert game.seed == random_first
-    assert game.history == str(planned_move("normal", random_first, "") + 1)  # type: ignore[operator]
+    assert game.history == str(planned_move("easy", random_first, "") + 1)  # type: ignore[operator]
     assert game.status == "playing"
 
 
@@ -876,3 +876,16 @@ async def test_the_ais_first_move_survives_a_disconnect() -> None:
     view = replacement.messages[-1]["payload"]["game"]
     assert len(view["history"]) == 1
     assert view["status"] == "playing"
+
+
+@pytest.mark.asyncio
+async def test_normal_needs_the_solver_through_its_opening() -> None:
+    # Normal plays the best move while fewer than 12 stones are on the board, so a failing
+    # solver fails its first move whatever the seed.
+    for seed in range(20):
+        manager, player, _ = await start_level(
+            {"difficulty": "normal", "ai_first": True}, solver=FailingSolver(), seeds=(seed,)
+        )
+        await next(iter(manager.ai_tasks.values()))
+        view = manager.snapshot(player)["game"]
+        assert (view["status"], view["result_reason"]) == ("error", "solver_unavailable")

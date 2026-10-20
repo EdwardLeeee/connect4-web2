@@ -149,14 +149,20 @@ iOS／Android app 把網頁打包在 app 裡（Capacitor），頁面來源是 `c
 ### AI 難度
 
 - `super`：每一手都是精確解，同分時照中央優先 `[3,2,4,1,5,0,6]` 選欄。
-- `easy` 與 `normal` 都先看一步內的輸贏：自己一步能連成四就下那一欄；否則對手下一步能連成四，就擋那一欄
-  （都從左邊的欄找起）。其他時候：
-  - `easy`：每一手都從所有能下的欄隨機挑一欄。
-  - `normal`：50% 的手隨機挑一欄，但避開「下了之後對手下一步就能連成四」的欄（每一欄都會時才不避開）；另外 50% 下精確解。
-- 兩條規則都是使用者 2026-10-19 選定的。量測見 `docs/research/2026-10-ai-difficulty.md`，規則在
-  `backend/connect4_app/difficulty.py`。
-- 「這一手隨機或下精確解」在求解之前就決定；需要精確解而求解器故障時，任何難度都回報 `solver_unavailable`，
-  不會改成隨機。
+- `easy`：一步內會贏會擋，其他時候一半隨手下（不送分）。
+  - 自己一步能連成四就下那一欄；否則對手下一步能連成四，就擋那一欄（都從左邊的欄找起）。
+  - 其他時候，50% 的手隨機挑一欄，但避開「下了之後對手下一步就能連成四」的欄（每一欄都會時才不避開）；另外 50% 下精確解。
+- `normal`：開局 12 子內下最佳棋，之後偶爾故意下對手兩手內能逼勝的棋。
+  - 盤面不到 12 顆棋子時，每一手都是精確解。
+  - 之後先看一步內的輸贏，和 `easy` 一樣：會贏就贏，該擋就擋。
+  - 其他時候，50% 的手要故意犯錯：從「下了之後對手不能馬上連成四，但能在自己的兩手內逼出連成四」的欄裡隨機挑一欄。
+    這種欄很少有，沒有時就下精確解；另外 50% 的手也下精確解。
+  - 「兩手內逼出連成四」用簡短的戰術搜尋判斷，不用求解器：對手先下一手，之後不論 AI 怎麼應（AI 自己能連成四也算應對），
+    對手下一手都能連成四。
+- 規則都是使用者選定的：`easy` 是 2026-10-19 的 `normal`，`normal` 是 2026-10-20 改的。量測見
+  `docs/research/2026-10-ai-difficulty.md`，規則與強度常數在 `backend/connect4_app/difficulty.py` 的開頭。
+- 「這一手隨機或犯錯，還是下精確解」在求解之前就決定；需要精確解而求解器故障時，任何難度都回報 `solver_unavailable`，
+  不會改成隨機或犯錯。
 - 隨機只由每局的 64 位元種子和 `history` 決定：伺服器在開局與每次重開時產生新種子，不送給用戶端。
   所以同一局斷線重連，AI 的下一手不變。
 
@@ -258,10 +264,10 @@ iOS／Android app 把網頁打包在 app 裡（Capacitor），頁面來源是 `c
 
 - 單一 uvicorn worker；房間、配對與 session 都存在記憶體裡，程序重啟就會全部清空。
 - 求解器沒有啟發式或計時備援。故障時 `status` 為 `error`，`result_reason` 為 `solver_unavailable`。
-  簡單、普通的隨機步是刻意設計的難度，不是備援，見「AI 難度」。
+  簡單的隨機步和普通的故意失誤是刻意設計的難度，不是備援，見「AI 難度」。
 - AI 局輪到 AI 時（玩家落子後，或 AI 先手的開局）進入 `thinking`，至少維持 1 秒才落子；求解超過 1 秒時不再額外等待。
   這只影響時間，不影響下法；求解器故障會立即回報 `error`，不等待。
-- Super AI 後手時在已下 9、11、13 手、先手時在已下 8、10、12 手，改查預先算好的精確分數表（`native_solver/data/reply-table.bin`），其他時候現場求解；兩者給出的分數與選的欄完全相同，下法不變。表無法載入或查不到時一律現場求解。簡單、普通需要精確解時也先查這張表，但它們很快就會走出 Super AI 的路線，多半查不到。
+- Super AI 後手時在已下 9、11、13 手、先手時在已下 8、10、12 手，改查預先算好的精確分數表（`native_solver/data/reply-table.bin`），其他時候現場求解；兩者給出的分數與選的欄完全相同，下法不變。表無法載入或查不到時一律現場求解。簡單、普通需要精確解時也先查這張表。簡單很快就會走出 Super AI 的路線，多半查不到；普通開局 12 子內和 Super AI 下法相同，都查得到。
 - 伺服器只負責網站的 AI 局與所有真人局。app 的 AI 局在手機上進行，伺服器不會收到，也不接受
   用戶端回報的 AI 對局結果；見下方「App 本機 AI 局」。
 
@@ -278,8 +284,8 @@ iOS／Android app 的 AI 對局一律在手機上計算，有沒有網路都一�
 - **同樣的下法**：Web Worker 裡的 `connect-four-ai-wasm`（與伺服器的 `connect-four-ai` 同為 1.0.0），
   加上同一份分數表與同樣的中央優先順序 `[3,2,4,1,5,0,6]`，每一手都是精確解，和伺服器選的欄完全相同。
   AI 同樣至少想 1 秒才落子。
-- **難度**：`game.ai.start` 的選項、檢查與錯誤代碼都和伺服器相同（見「AI 局的選項」）。簡單、普通的選欄規則在
-  `frontend/src/local/difficulty.ts`，照 `difficulty.py` 移植；種子由手機用 `crypto.getRandomValues` 產生，只存在手機上。
+- **難度**：`game.ai.start` 的選項、檢查與錯誤代碼都和伺服器相同（見「AI 局的選項」）。簡單、普通的選欄規則與強度常數在
+  `frontend/src/local/difficulty.ts` 的開頭，照 `difficulty.py` 移植；種子由手機用 `crypto.getRandomValues` 產生，只存在手機上。
 - **故障**：WASM 載入或求解失敗時，`status` 為 `error`，`result_reason` 為 `solver_unavailable`，不會改用
   其他下法；玩家用 `game.ai.retry` 重開。分數表載入或解析失敗時，Worker 在 console 留一行
   `[local-ai] reply table unavailable` 警告，之後每一手都改成現場計算：下法不變，只是比較慢。
@@ -299,4 +305,4 @@ iOS／Android app 的 AI 對局一律在手機上計算，有沒有網路都一�
   `frontend/tests/local/fixtures/`，`frontend/tests/local/` 用同一份資料驗證手機版。改了伺服器 AI 局的
   規則、訊息或錯誤代碼時，要執行 `.venv/bin/python tests/local_parity.py` 重新產生，並同步修改
   `frontend/src/local/`；兩邊不一致時 `tests/test_local_parity.py` 會失敗。簡單、普通的強度常數也一樣：
-  `difficulty.py` 和 `frontend/src/local/constants.ts` 要一起改，再重新產生。
+  `difficulty.py` 和 `frontend/src/local/difficulty.ts` 開頭的常數要一起改，再重新產生。

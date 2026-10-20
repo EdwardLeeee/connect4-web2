@@ -36,6 +36,7 @@
 ## Features
 
 - **A Super AI that plays perfectly.** An exact solver scores every legal move to the end of the game and picks the best one, with a fixed centre-first tie-break. It has no depth limit, no random weakening and no heuristic fallback. A precomputed reply table answers the slowest positions instantly.
+- **Two easier levels, and you choose who starts and your colour.** Easy always takes a win in one and blocks yours, and otherwise plays half of its moves at random, never one that hands you a win. Normal plays perfectly for the first 12 stones, then now and then makes a deliberate mistake: a move after which you can force a win within two moves. You can let any level move first, the Super AI included.
 - **Play with friends.** Create a private room and share the room code, invite link or QR code. Friends can join from the app or any browser.
 - **Quick match** pairs you with another player online.
 - **The iPhone app works offline.** The same solver runs on the phone as WebAssembly, so AI games need no network, and an unfinished game resumes after the app is closed.
@@ -122,6 +123,7 @@ Connect 4 is a trademark of Hasbro. This project is an independent implementatio
 ### 特色
 
 - **Super AI 下出完美的棋**：每一步都算到終局，選最好的一手；沒有深度限制，不會故意放水。最花時間的局面事先算好存成回應表，所以回得很快。
+- **另外兩個難度，也能選誰先下和棋子顏色**：簡單一步內會贏會擋，其他時候一半隨手下（不送分）；普通開局 12 子內下最佳棋，之後偶爾故意下對手兩手內能逼勝的棋。三個難度都可以讓 AI 先下，Super AI 也可以。
 - **跟朋友玩**：建立私人房間，分享房號、邀請連結或 QR code；朋友用 app 或任何瀏覽器都能加入。
 - **隨機配對**：跟線上的其他玩家對戰。
 - **iPhone app 可以離線玩**：AI 直接在手機上算，沒有網路也能下；下到一半關掉 app，再開會接著下。

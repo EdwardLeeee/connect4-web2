@@ -24,11 +24,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 from connect4_app import _solver  # noqa: E402
 from connect4_app.difficulty import (  # noqa: E402
     MASK,
+    MISTAKE_OR_BEST,
+    NORMAL_MISTAKE_DEPTH,
+    NORMAL_MISTAKE_PERCENT,
+    NORMAL_OPENING_STONES,
     RANDOM_OR_BEST,
     WHICH_COLUMN,
+    WHICH_MISTAKE,
     connects_four,
     draw,
     hands_over_win,
+    mistake_columns,
+    open_columns,
     planned_move,
     stones,
 )
@@ -264,11 +271,18 @@ FAILING_SCRIPTS: dict[str, list[dict[str, Any]]] = {
         {"type": "game.ai.retry", "payload": {}},
         {"type": "game.leave", "payload": {}},
     ],
-    # Normal's own picks need no engine; its best moves fail.
+    # Normal plays the best move through its opening, so its first move always fails.
     "the engine fails in a Normal game with the AI first": [
         {"type": "game.ai.start", "payload": {"difficulty": "normal", "ai_first": True}},
         *[{"type": "game.move", "payload": {"column": c}} for c in [3, 2, 4, 1]],
         {"type": "game.ai.retry", "payload": {}},
+        {"type": "game.leave", "payload": {}},
+    ],
+    # Easy's own picks need no engine; its best moves fail.
+    "the engine fails in an Easy game with the AI first": [
+        {"type": "game.ai.start", "payload": {"difficulty": "easy", "ai_first": True}},
+        *[{"type": "game.move", "payload": {"column": c}} for c in [3, 2, 4, 1, 5, 0, 6]],
+        *[{"type": "game.ai.retry", "payload": {}} for _ in range(3)],
         {"type": "game.leave", "payload": {}},
     ],
 }
@@ -332,23 +346,63 @@ def ai_fixture() -> list[dict[str, Any]]:
     return fixtures
 
 
-def difficulty_fixture() -> dict[str, Any]:
-    """Draws, and the Easy and Normal AIs' own picks (null: the exact best move).
+def random_position(rng: random.Random, length: int) -> str | None:
+    """A random game cut after `length` moves, or None if it ended sooner."""
+    game = Game(room_id="r", mode="ai", seats={"green": HUMAN, "pink": AI}, status="playing")
+    while game.status == "playing" and len(game.history) < length:
+        legal = [column for column in range(7) if game.board[0][column] is None]
+        game.drop(game.turn, rng.choice(legal))
+    return game.history if game.status == "playing" else None
 
-    Seeds and draws are decimal strings: JSON numbers lose precision above 2**53.
+
+def quiet(history: str) -> bool:
+    """Neither side can connect four with its next stone."""
+    stacks, player = stones(history), len(history) % 2
+    return not any(
+        connects_four(stacks, column, mover)
+        for column in open_columns(stacks)
+        for mover in (player, 1 - player)
+    )
+
+
+def seed_drawing(rng: random.Random, history: str, mistake: bool) -> int:
+    """A seed whose Normal draw for `history` does, or does not, ask for a mistake."""
+    while True:
+        seed = rng.getrandbits(64)
+        if (draw(seed, history, MISTAKE_OR_BEST) % 100 < NORMAL_MISTAKE_PERCENT) is mistake:
+            return seed
+
+
+def difficulty_fixture() -> dict[str, Any]:
+    """Draws, Normal's mistake columns, and the Easy and Normal AIs' own picks (null: the
+    exact best move).
+
+    Normal's mistakes are rare in random positions, so the moves include positions picked
+    on purpose: a mistake taken, a mistake asked for but none found, its opening, and a win
+    and a block after the opening. Seeds and draws are decimal strings: JSON numbers lose
+    precision above 2**53.
     """
     rng = random.Random(20261019)
     histories = ["", "4", "121212", "12121", "4337466"]
     # Quiet positions where exactly one column would hand the opponent a win.
     histories += ["2114462", "3236211", "3552372", "4112442", "4344311", "5356356", "6447716"]
+    # After Normal's opening: both sides threaten; the opponent threatens; mistakes next to a
+    # column that hands over a win; no mistake; a forced win that the mover's own win refutes.
+    histories += ["3265252736442", "1224317537341", "353633352113444", "221321136442"]
+    histories += ["66632324261442", "22125476257546"]
     while len(histories) < 320:
-        game = Game(room_id="r", mode="ai", seats={"green": HUMAN, "pink": AI}, status="playing")
-        length = rng.randrange(41)
-        while game.status == "playing" and len(game.history) < length:
-            legal = [column for column in range(7) if game.board[0][column] is None]
-            game.drop(game.turn, rng.choice(legal))
-        if game.status == "playing" and game.history not in histories:
-            histories.append(game.history)
+        history = random_position(rng, rng.randrange(41))
+        if history is not None and history not in histories:
+            histories.append(history)
+
+    late = [h for h in histories if len(h) >= NORMAL_OPENING_STONES and quiet(h)]
+    with_mistakes = [h for h in late if mistake_columns(stones(h), len(h) % 2, 2)]
+    without = [h for h in late if not mistake_columns(stones(h), len(h) % 2, 2)]
+    while len(with_mistakes) < 60:
+        history = random_position(rng, rng.randrange(NORMAL_OPENING_STONES, 36))
+        if history is not None and quiet(history) and history not in with_mistakes:
+            if mistake_columns(stones(history), len(history) % 2, NORMAL_MISTAKE_DEPTH):
+                with_mistakes.append(history)
 
     seeds = [0, 1, MASK] + [rng.getrandbits(64) for _ in range(5)]
     draws = [
@@ -360,7 +414,16 @@ def difficulty_fixture() -> dict[str, Any]:
         }
         for seed in seeds
         for history in ("", "4", "4453", "44444455555")
-        for salt in (RANDOM_OR_BEST, WHICH_COLUMN)
+        for salt in (RANDOM_OR_BEST, WHICH_COLUMN, MISTAKE_OR_BEST, WHICH_MISTAKE)
+    ]
+    mistakes = [
+        {
+            "history": history,
+            "depth": depth,
+            "columns": mistake_columns(stones(history), len(history) % 2, depth),
+        }
+        for history in dict.fromkeys(histories + with_mistakes)
+        for depth in (1, 2, 3)
     ]
     moves = []
     for difficulty in ("easy", "normal", "super"):
@@ -370,27 +433,50 @@ def difficulty_fixture() -> dict[str, Any]:
             moves.append(
                 {"difficulty": difficulty, "seed": str(seed), "history": history, "column": column}
             )
-    return {"draws": draws, "moves": moves}
+    for history, mistake in [(h, True) for h in with_mistakes] + [(h, True) for h in without]:
+        seed = seed_drawing(rng, history, mistake)
+        moves.append(
+            {
+                "difficulty": "normal",
+                "seed": str(seed),
+                "history": history,
+                "column": planned_move("normal", seed, history),
+            }
+        )
+    return {"draws": draws, "mistakes": mistakes, "moves": moves}
 
 
 def difficulty_coverage(fixture: dict[str, Any]) -> Counter[str]:
-    """Which of Normal's rules the recorded positions exercise."""
+    """Which of Easy's and Normal's rules the recorded moves exercise."""
     seen: Counter[str] = Counter()
     for move in fixture["moves"]:
-        if move["difficulty"] != "normal":
+        difficulty, history = move["difficulty"], move["history"]
+        if difficulty == "super":
             continue
-        stacks, player = stones(move["history"]), len(move["history"]) % 2
-        legal = [column for column in range(7) if len(stacks[column]) < 6]
-        if any(connects_four(stacks, column, player) for column in legal):
-            seen["win"] += 1
+        stacks, player = stones(history), len(history) % 2
+        legal = open_columns(stacks)
+        if difficulty == "normal" and len(history) < NORMAL_OPENING_STONES:
+            seen["normal: opening"] += 1
+        elif any(connects_four(stacks, column, player) for column in legal):
+            seen[f"{difficulty}: win"] += 1
         elif any(connects_four(stacks, column, 1 - player) for column in legal):
-            seen["block"] += 1
+            seen[f"{difficulty}: block"] += 1
+        elif difficulty == "normal":
+            asked = draw(int(move["seed"]), history, MISTAKE_OR_BEST) % 100
+            if asked >= NORMAL_MISTAKE_PERCENT:
+                seen["normal: best"] += 1
+            elif move["column"] is None:
+                seen["normal: mistake asked, none found"] += 1
+            elif any(hands_over_win(stacks, column, player) for column in legal):
+                seen["normal: mistake next to a column that hands over a win"] += 1
+            else:
+                seen["normal: mistake"] += 1
         elif move["column"] is None:
-            seen["best"] += 1
+            seen["easy: best"] += 1
         elif any(hands_over_win(stacks, column, player) for column in legal):
-            seen["random, avoiding a column"] += 1
+            seen["easy: random, avoiding a column"] += 1
         else:
-            seen["random"] += 1
+            seen["easy: random"] += 1
     return seen
 
 

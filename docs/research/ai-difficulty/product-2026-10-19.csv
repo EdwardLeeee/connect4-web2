@@ -1,0 +1,9 @@
+ai,opponent,ai_moves_first,games,ai_wins,draws,opponent_wins
+easy,casual,True,200,44,12,144
+easy,casual,False,200,46,13,141
+easy,novice,True,200,104,13,83
+easy,novice,False,200,88,11,101
+normal,casual,True,200,164,13,23
+normal,casual,False,200,144,12,44
+normal,novice,True,200,183,3,14
+normal,novice,False,200,176,8,16

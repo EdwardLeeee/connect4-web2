@@ -12,10 +12,11 @@ from connect4_app.sessions import DEFAULT_NICKNAMES, LOCALES, default_nickname
 
 ROOT = Path(__file__).resolve().parents[1]
 CONSTANTS = (ROOT / "frontend" / "src" / "local" / "constants.ts").read_text(encoding="utf-8")
+PORT = (ROOT / "frontend" / "src" / "local" / "difficulty.ts").read_text(encoding="utf-8")
 
 
-def ts_number(name: str) -> int:
-    match = re.search(rf"export const {name} = (\d+);", CONSTANTS)
+def ts_number(name: str, source: str = CONSTANTS) -> int:
+    match = re.search(rf"export const {name} = (\d+);", source)
     assert match, name
     return int(match.group(1))
 
@@ -43,24 +44,47 @@ def test_constants_match_the_server() -> None:
 
 
 def test_difficulty_constants_match_the_server() -> None:
-    for name in ["EASY_RANDOM_PERCENT", "NORMAL_RANDOM_PERCENT"]:
-        assert ts_number(name) == getattr(difficulty, name), name
-    for name in ["EASY_RANDOM_IS_SAFE", "NORMAL_RANDOM_IS_SAFE"]:
-        safe = re.search(rf"export const {name} = (true|false);", CONSTANTS)
-        assert safe and (safe.group(1) == "true") is getattr(difficulty, name), name
+    numbers = ["EASY_RANDOM_PERCENT", "NORMAL_OPENING_STONES", "NORMAL_MISTAKE_PERCENT"]
+    for name in [*numbers, "NORMAL_MISTAKE_DEPTH"]:
+        assert ts_number(name, PORT) == getattr(difficulty, name), name
+    safe = re.search(r"export const EASY_RANDOM_IS_SAFE = (true|false);", PORT)
+    assert safe and (safe.group(1) == "true") is difficulty.EASY_RANDOM_IS_SAFE
 
-    port = (ROOT / "frontend" / "src" / "local" / "difficulty.ts").read_text(encoding="utf-8")
-    levels = re.search(r"DIFFICULTIES: readonly Difficulty\[\] = \[([^\]]+)\]", port)
+    levels = re.search(r"DIFFICULTIES: readonly Difficulty\[\] = \[([^\]]+)\]", PORT)
     assert levels and re.findall(r'"(\w+)"', levels.group(1)) == list(difficulty.DIFFICULTIES)
+    # Each draw's salt is the same number on both sides.
+    for name in ["RANDOM_OR_BEST", "WHICH_COLUMN", "MISTAKE_OR_BEST", "WHICH_MISTAKE"]:
+        salt = re.search(rf"const {name} = (\d+)n;", PORT)
+        assert salt and int(salt.group(1)) == getattr(difficulty, name), name
 
 
 def test_the_difficulty_fixture_exercises_every_rule() -> None:
     fixture = json.loads((local_parity.FIXTURES / "difficulty-parity.json").read_text("utf-8"))
     seen = local_parity.difficulty_coverage(fixture)
-    for rule in ["win", "block", "best", "random, avoiding a column", "random"]:
-        assert seen[rule] >= 3, (rule, seen)
+    least = {
+        "easy: win": 3,
+        "easy: block": 3,
+        "easy: best": 3,
+        "easy: random, avoiding a column": 3,
+        "easy: random": 3,
+        "normal: opening": 3,
+        "normal: win": 3,
+        "normal: block": 3,
+        "normal: best": 3,
+        "normal: mistake asked, none found": 10,
+        "normal: mistake next to a column that hands over a win": 10,
+    }
+    for rule, count in least.items():
+        assert seen[rule] >= count, (rule, seen)
+    taken = seen["normal: mistake"] + seen["normal: mistake next to a column that hands over a win"]
+    assert taken >= 50, seen
     easy = [move["column"] for move in fixture["moves"] if move["difficulty"] == "easy"]
     assert set(range(7)) <= set(easy)
+    # A column that hands over a win at once is never a mistake, at any depth.
+    lists = fixture["mistakes"]
+    assert all(not entry["columns"] for entry in lists if entry["depth"] == 1)
+    assert sum(1 for entry in lists if entry["depth"] == 2 and entry["columns"]) >= 50
+    assert sum(1 for entry in lists if entry["depth"] == 3 and entry["columns"]) >= 50
 
 
 def test_the_wasm_engine_is_the_native_engine_version() -> None:
