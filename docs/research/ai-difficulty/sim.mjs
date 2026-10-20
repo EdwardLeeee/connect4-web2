@@ -5,6 +5,8 @@
 //   TIMING=warm logs every solve and caches nothing (one solver for all games, like the
 //   server); TIMING=fresh also starts each game with a new solver (like a freshly opened app).
 //   Without TIMING, exact scores are cached across games and only solves over 50 ms are logged.
+//   TABLE=<reply-table.bin> answers the positions it holds from the reply table first, as the
+//   server and the app do; those lookups are not logged as solves.
 // ai spec: best | soft:<T> (library softmax over normalised scores) | eps:<e> (random with
 //          probability e, else best) | epsafe:<e> (like eps, but the random move never hands
 //          the opponent an immediate win) | raw:<T> (softmax over raw scores)
@@ -16,11 +18,18 @@
 //            nearabs: score >= -k (a win, a draw or a small loss)
 //            nearrel: score >= best score - k
 //          When no move is near, it plays the best move.
-// opponent: random | novice | casual | <any ai spec>
+//          forced:<N>:<p>:<d> (the exact best move while fewer than N stones are on the board;
+//          then always wins in one and blocks a win in one; otherwise with probability p a
+//          deliberate mistake: a random column after which the opponent cannot win at once but
+//          can force a win within d of its own moves, found by a short tactical search, not
+//          the solver; when no column qualifies, or otherwise, the best move)
+// opponent: random | novice | casual | sharp (casual, and also plays a move that forces a win
+//          within 2 of its own moves when it has one) | <any ai spec>
 // Prints one JSON line per game.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { forcingMove, H, handsOverWin, isMistake, legal, newGrid, W, winsAt } from "./tactics.mjs";
 
 const [pkg, aiSpec, oppSpec, aiSeatArg, gamesArg, seedArg] = process.argv.slice(2);
 const wasm = await import(pathToFileURL(join(pkg, "connect_four_ai_wasm.js")).href);
@@ -29,7 +38,6 @@ const { Solver, Position } = wasm;
 let solver = new Solver();
 const TIMING = process.env.TIMING;
 
-const W = 7, H = 6;
 const CENTRE_FIRST = [3, 2, 4, 1, 5, 0, 6];
 const CENTRE_WEIGHT = [1, 2, 3, 4, 3, 2, 1];
 
@@ -42,30 +50,6 @@ function mulberry32(a) {
   };
 }
 
-// Plain grid for the proxies' one-move tactics: grid[c] lists the stones bottom-up.
-const newGrid = () => Array.from({ length: W }, () => []);
-const legal = (g) => [...Array(W).keys()].filter((c) => g[c].length < H);
-function winsAt(g, c, p) {
-  const r = g[c].length;
-  if (r >= H) return false;
-  const at = (cc, rr) => (cc === c && rr === r ? p : g[cc]?.[rr]);
-  for (const [dc, dr] of [[1, 0], [0, 1], [1, 1], [1, -1]]) {
-    let n = 1;
-    for (const s of [1, -1]) {
-      let cc = c + dc * s, rr = r + dr * s;
-      while (cc >= 0 && cc < W && rr >= 0 && rr < H && at(cc, rr) === p) { n++; cc += dc * s; rr += dr * s; }
-    }
-    if (n >= 4) return true;
-  }
-  return false;
-}
-function handsOverWin(g, c, p) {
-  g[c].push(p);
-  const o = 3 - p;
-  const bad = legal(g).some((cc) => winsAt(g, cc, o));
-  g[c].pop();
-  return bad;
-}
 const pick = (arr, u) => arr[Math.min(arr.length - 1, Math.floor(u * arr.length))];
 function weighted(cols, weights, u) {
   const total = weights.reduce((a, b) => a + b, 0);
@@ -74,9 +58,47 @@ function weighted(cols, weights, u) {
   return cols[cols.length - 1];
 }
 
+// The reply table (native_solver/src/reply_table.rs), keyed like frontend/src/local/replyTable.ts.
+const TABLE = process.env.TABLE ? loadTable(process.env.TABLE) : null;
+function loadTable(path) {
+  const bytes = readFileSync(path);
+  const count = bytes.readUInt32LE(8);
+  const table = new Map();
+  for (let i = 0; i < count; i++) {
+    const offset = 16 + 15 * i;
+    table.set(bytes.readBigUInt64LE(offset), Array.from(bytes.subarray(offset + 8, offset + 15), (b) => (b === 128 ? null : b > 127 ? b - 256 : b)));
+  }
+  return table;
+}
+function tableScores(history) {
+  let position = 0n, mask = 0n;
+  for (const move of history) {
+    position ^= mask;
+    mask |= mask + (1n << (BigInt(Number(move) - 1) * 7n));
+  }
+  let mp = 0n, mm = 0n;
+  for (let c = 0; c < W; c++) {
+    const column = ((1n << 6n) - 1n) << (BigInt(c) * 7n);
+    const shift = BigInt(W - 1 - 2 * c) * 7n;
+    const move = (bits) => (shift >= 0n ? bits << shift : bits >> -shift);
+    mp |= move(position & column);
+    mm |= move(mask & column);
+  }
+  const own = position + mask, mirrored = mp + mm;
+  const key = own < mirrored ? own : mirrored;
+  const stored = TABLE.get(key);
+  if (!stored) return null;
+  return own === key ? stored : [...stored].reverse();
+}
+
 const cache = new Map();
 let solveMs = [];
+let tableHits = 0;
 function scoresFor(pos, history) {
+  if (TABLE) {
+    const stored = tableScores(history);
+    if (stored) { tableHits++; return stored; }
+  }
   const key = `${pos.position}:${pos.mask}`;
   let s = TIMING ? undefined : cache.get(key);
   if (!s) {
@@ -94,9 +116,52 @@ function best(scores) {
 }
 
 function makePlayer(spec) {
-  const [kind, arg, arg2] = spec.split(":");
+  const [kind, arg, arg2, arg3] = spec.split(":");
   const x = Number(arg);
   if (kind === "random") return (ctx) => pick(legal(ctx.g), ctx.rand());
+  if (kind === "sharp") {
+    return (ctx) => {
+      const cols = legal(ctx.g);
+      const win = cols.find((c) => winsAt(ctx.g, c, ctx.me));
+      if (win !== undefined) return win;
+      const block = cols.find((c) => winsAt(ctx.g, c, 3 - ctx.me));
+      if (block !== undefined) return block;
+      // A forcing move never hands over a win: the reply would refute it.
+      const forcing = forcingMove(ctx.g, ctx.me, 2);
+      if (forcing !== undefined) return forcing;
+      const safe = cols.filter((c) => !handsOverWin(ctx.g, c, ctx.me));
+      const pool = safe.length ? safe : cols;
+      return weighted(pool, pool.map((c) => CENTRE_WEIGHT[c]), ctx.rand());
+    };
+  }
+  if (kind === "forced") {
+    const opening = x, p = Number(arg2), d = Number(arg3);
+    return (ctx) => {
+      if (ctx.history.length < opening) return best(scoresFor(ctx.pos, ctx.history));
+      const cols = legal(ctx.g);
+      const win = cols.find((c) => winsAt(ctx.g, c, ctx.me));
+      if (win !== undefined) return win;
+      const block = cols.find((c) => winsAt(ctx.g, c, 3 - ctx.me));
+      if (block !== undefined) return block;
+      if (ctx.rand() < p) {
+        const t = performance.now();
+        const mistakes = cols.filter((c) => isMistake(ctx.g, c, ctx.me, d));
+        ctx.stats.tacticsMs = Math.max(ctx.stats.tacticsMs, performance.now() - t);
+        if (mistakes.length) {
+          const c = pick(mistakes, ctx.rand());
+          ctx.stats.mistakes++;
+          if (!TIMING) {
+            // Only for the record: did the mistake turn a game it was not losing into a loss?
+            const scores = scoresFor(ctx.pos, ctx.history);
+            if (scores[best(scores)] >= 0 && scores[c] < 0) ctx.stats.thrown++;
+          }
+          return c;
+        }
+        ctx.stats.noMistake++;
+      }
+      return best(scoresFor(ctx.pos, ctx.history));
+    };
+  }
   if (kind === "novice" || kind === "casual") {
     return (ctx) => {
       const cols = legal(ctx.g);
@@ -187,12 +252,14 @@ for (let n = 0; n < games; n++) {
   let history = "";
   let winner = 0;
   solveMs = [];
+  tableHits = 0;
+  const stats = { mistakes: 0, thrown: 0, noMistake: 0, tacticsMs: 0 };
   if (TIMING === "fresh") { solver.free(); solver = new Solver(); }
   const t0 = performance.now();
   for (let ply = 0; ply < W * H; ply++) {
     const me = (ply % 2) + 1;
     const player = me === aiSeat ? ai : opp;
-    const c = player({ pos, g, history, me, rand });
+    const c = player({ pos, g, history, me, rand, stats: me === aiSeat ? stats : { mistakes: 0, thrown: 0, noMistake: 0, tacticsMs: 0 } });
     if (!pos.isPlayable(c)) throw new Error(`illegal ${c} after ${history}`);
     const won = pos.isWinningMove(c);
     pos.play(c); g[c].push(me); history += String(c + 1);
@@ -203,5 +270,6 @@ for (let n = 0; n < games; n++) {
   const slow = TIMING
     ? solveMs.map((s) => [s.ply, Math.round(s.ms * 10) / 10])
     : solveMs.filter((s) => s.ms > 50).map((s) => [s.ply, Math.round(s.ms)]);
-  console.log(JSON.stringify({ ai: aiSpec, opp: oppSpec, aiSeat, result, plies: history.length, history, ms: Math.round(performance.now() - t0), slow }));
+  stats.tacticsMs = Math.round(stats.tacticsMs * 10) / 10;
+  console.log(JSON.stringify({ ai: aiSpec, opp: oppSpec, aiSeat, result, plies: history.length, history, ms: Math.round(performance.now() - t0), slow, tableHits, ...stats }));
 }

@@ -1,4 +1,4 @@
-# timing ai opponent ai_seat games seed  (one at a time, see run.sh)
+# mode ai opponent ai_seat games seed [table]  (one at a time, see run.sh)
 fresh eps:0.6 casual 1 60 901
 warm eps:0.6 casual 1 60 951
 fresh eps:0.6 casual 2 60 902
@@ -29,3 +29,23 @@ fresh tacsafe:0.5 casual 1 60 1201
 warm tacsafe:0.5 casual 1 60 1251
 fresh tacsafe:0.5 casual 2 60 1202
 warm tacsafe:0.5 casual 2 60 1252
+# 2026-10-20: cold, and every lookup goes to the reply table first (7th field)
+fresh forced:8:0.25:2 casual 1 60 2201 table
+fresh forced:8:0.25:2 casual 2 60 2202 table
+fresh forced:8:0.5:2 casual 1 60 2201 table
+fresh forced:8:0.5:2 casual 2 60 2202 table
+fresh forced:12:0.25:2 casual 1 60 2201 table
+fresh forced:12:0.25:2 casual 2 60 2202 table
+fresh forced:12:0.5:2 casual 1 60 2201 table
+fresh forced:12:0.5:2 casual 2 60 2202 table
+fresh forced:16:0.25:2 casual 1 60 2201 table
+fresh forced:16:0.25:2 casual 2 60 2202 table
+fresh forced:16:0.5:2 casual 1 60 2201 table
+fresh forced:16:0.5:2 casual 2 60 2202 table
+fresh forced:12:0.25:3 casual 1 60 2201 table
+fresh forced:12:0.25:3 casual 2 60 2202 table
+fresh forced:12:0.5:3 casual 1 60 2201 table
+fresh forced:12:0.5:3 casual 2 60 2202 table
+fresh tacsafe:0.5 casual 1 60 2201 table
+fresh tacsafe:0.5 casual 2 60 2202 table
+fresh best casual 1 60 2201 table

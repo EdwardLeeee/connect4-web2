@@ -1,9 +1,14 @@
 # level opponent ai_seat games seed  (product_check.py: the shipped difficulty.py)
-easy novice 1 200 1001
-easy novice 2 200 1002
-easy casual 1 200 1003
-easy casual 2 200 1004
-normal novice 1 200 1005
-normal novice 2 200 1006
-normal casual 1 200 1007
-normal casual 2 200 1008
+# Levels as of 2026-10-20: Easy is the 2026-10-19 Normal; Normal is the new rule.
+easy novice 1 200 1101
+easy novice 2 200 1102
+easy casual 1 200 1103
+easy casual 2 200 1104
+easy sharp 1 200 1105
+easy sharp 2 200 1106
+normal novice 1 200 1107
+normal novice 2 200 1108
+normal casual 1 200 1109
+normal casual 2 200 1110
+normal sharp 1 200 1111
+normal sharp 2 200 1112
