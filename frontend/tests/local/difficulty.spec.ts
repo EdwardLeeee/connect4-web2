@@ -1,11 +1,18 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { draw, mix, plannedMove } from "../../src/local/difficulty";
+import {
+  draw,
+  mistakeColumns,
+  mix,
+  plannedMove,
+  stones,
+} from "../../src/local/difficulty";
 import type { Difficulty } from "../../src/types";
 import { fixture } from "./wasm";
 
 const recorded = fixture<{
   draws: Array<{ seed: string; history: string; salt: number; value: string }>;
+  mistakes: Array<{ history: string; depth: number; columns: number[] }>;
   moves: Array<{
     difficulty: Difficulty;
     seed: string;
@@ -24,6 +31,16 @@ describe("Easy and Normal pick like difficulty.py", () => {
     expect(recorded.draws.length).toBeGreaterThan(0);
     for (const { seed, history, salt, value } of recorded.draws) {
       expect(String(draw(BigInt(seed), history, BigInt(salt)))).toBe(value);
+    }
+  });
+
+  it("finds the server's mistake columns on every recorded position and depth", () => {
+    expect(recorded.mistakes.length).toBeGreaterThan(0);
+    for (const { history, depth, columns } of recorded.mistakes) {
+      expect(
+        mistakeColumns(stones(history), history.length % 2, depth),
+        `${history} depth ${depth}`,
+      ).toEqual(columns);
     }
   });
 

@@ -18,12 +18,3 @@ export const AI_NICKNAMES: Readonly<Record<Difficulty, string>> = {
   normal: "Normal AI",
   super: "Super AI",
 };
-
-/**
- * backend/connect4_app/difficulty.py: how often Easy and Normal play at random, and whether
- * those random moves avoid handing over a win in one.
- */
-export const EASY_RANDOM_PERCENT = 100;
-export const EASY_RANDOM_IS_SAFE = false;
-export const NORMAL_RANDOM_PERCENT = 50;
-export const NORMAL_RANDOM_IS_SAFE = true;
