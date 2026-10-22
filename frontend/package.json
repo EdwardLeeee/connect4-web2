@@ -21,19 +21,19 @@
     "connect-four-ai-wasm": "1.0.0",
     "pinia": "^3.0.3",
     "qrcode-generator": "^2.0.4",
-    "vue": "^3.5.43",
-    "vue-i18n": "^11.4.14",
+    "vue": "^3.5.44",
+    "vue-i18n": "^11.4.16",
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.64.0",
+    "@playwright/test": "^1.64.1",
     "@types/node": "^26.6.5",
     "@vitejs/plugin-vue": "^6.0.10",
     "jsdom": "^26.1.0",
     "prettier": "^3.9.10",
     "typescript": "~5.8.3",
     "vite": "^8.3.4",
-    "vitest": "^5.0.4",
+    "vitest": "^5.0.5",
     "vue-tsc": "^3.3.13"
   }
 }
