@@ -28,7 +28,7 @@ jobs:
       - run: cmp native_solver/data/reply-table.bin "$RUNNER_TEMP/reply-table.bin"
       # After a generator change, commit this file in place of the old table.
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: reply-table
           path: ${{ runner.temp }}/reply-table.bin
